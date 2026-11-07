@@ -1,0 +1,52 @@
+\chapter*{Preface}
+\markboth{Preface}{Preface}
+\addcontentsline{toc}{chapter}{Preface}
+
+\textbf{To the student.}
+
+Machine learning is the science of teaching computers to learn from data instead of programming every rule by hand. It sits behind the spam filter in your e-mail, the recommendations on your phone, the translation of a web page and the face unlock of your camera. It is also a subject that can look frightening: it mixes statistics, linear algebra, calculus and programming.
+
+This book was written to make that mixture \textbf{easy to understand}. It follows the syllabus \textbf{NBCA-601 Machine Learning} of the BCA programme topic by topic, and it is organised around one idea:
+
+\begin{center}
+\emph{First understand it with a picture and an everyday story, then see the definition, then solve a small example by hand, and only then look at the code.}
+\end{center}
+
+\paragraph{What makes this book different.}
+\begin{itemize}
+  \item \textbf{Every method has a plain-language idea first}: a pizza-shop story for K-Means, a mayor building the widest road for SVMs, a detective multiplying clues for Naive Bayes, a conveyor belt for data pipelines.
+  \item \textbf{Every method is defined in exam style} (a definition box you can copy into an answer) and finishes with a clear list of \textbf{advantages, disadvantages and applications}.
+  \item \textbf{Every important algorithm is solved by hand, end to end}, with small numbers you can check on paper: a regression line, a perceptron, a decision tree, K-Means, PCA, backpropagation.
+  \item \textbf{Every figure is explained.} Below each picture a box called \emph{Reading the Figure} says what the axes, colours and arrows mean.
+  \item \textbf{Every chapter ends with an Exam Corner}: questions of 2, 5 and 10 marks with model answers, numerical problems with answers, multiple-choice questions, practice problems and a one-page quick-revision table.
+  \item \textbf{All the numbers from Python are real.} Every table of results was produced by running the code shown (Python $3.13$, scikit-learn $1.9$, NumPy $2.5$, TensorFlow $2.21$, Keras $3.15$). Where a result is a schematic illustration and not a real run, the caption says so.
+\end{itemize}
+
+\paragraph{How the book is organised.} The ten chapters match the five units of the syllabus, two chapters per unit:
+
+\begin{center}
+\begin{tabular}{@{}cp{5.2cm}p{6.3cm}@{}}
+\toprule
+\textbf{Unit} & \textbf{Theme} & \textbf{Chapters}\\
+\midrule
+I & Introduction and statistical learning & 1~Introduction to ML, 2~Statistical Learning\\
+II & Supervised learning & 3~k-NN, Decision Trees, Naive Bayes; 4~Linear Models and SVM basics\\
+III & Ensembles, SVM and Naive Bayes & 5~Ensemble Learning; 6~SVMs and Naive Bayes Classifiers\\
+IV & Unsupervised learning & 7~Clustering; 8~Dimensionality Reduction and PCA\\
+V & Neural networks & 9~ANNs and MLPs with Keras; 10~TensorFlow and Data Pipelines\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{What you need.} School-level algebra, a little knowledge of probability and Python programming. The few extra mathematical ideas (mean and variance, derivatives, matrices) are explained when they first appear. You do not need a powerful computer: all examples run on an ordinary laptop (the Fashion-MNIST network of Chapter~9 trains in a few minutes on a CPU).
+
+\paragraph{A request.} Do not only read. Take a pencil and \emph{redo the worked examples without looking}, then run the Python code and change the numbers. Machine learning, like swimming, is learned by doing.
+
+\begin{warning}
+\textbf{About this edition.} This draft was written with the help of an AI assistant (Claude). All numerical examples were checked by hand, and every Python result was obtained by running the code, but you should still verify important facts, definitions and notation against the textbooks and lecture notes prescribed by your university, and use this book together with them. Please report errors to your teacher so that they can be corrected.
+\end{warning}
+
+\vspace{1em}
+\begin{flushright}
+\emph{Happy learning!}
+\end{flushright}

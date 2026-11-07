@@ -1,0 +1,168 @@
+\chapter{Formula Sheet}\label{app:formulas}
+
+All the important formulas of the book in one place, chapter by chapter. Each row gives the \textbf{name}, the \textbf{formula} and a \textbf{reminder}. Use it for revision, but remember that in an exam you must also \emph{explain} every symbol.
+
+\newcommand{\ftab}[1]{\begin{center}\small\renewcommand{\arraystretch}{1.5}\begin{tabular}{@{}p{3.5cm}p{7.9cm}p{3.1cm}@{}}\toprule\textbf{Name} & \textbf{Formula} & \textbf{Reminder}\\\midrule #1 \\\bottomrule\end{tabular}\end{center}}
+
+%====================================================================
+\section*{Chapter~\ref{ch:intro}: Introduction to Machine Learning}
+\addcontentsline{toc}{section}{Chapter 1: Introduction to Machine Learning}
+\ftab{
+Mitchell's definition & performance $P$ at task $T$ improves with experience $E$ & Samuel (1959): learn without being programmed\\
+Simple linear model & $\hat y=\theta_0+\theta_1x$ & model-based learning\\
+Least-squares slope & $\theta_1=\dfrac{\sum_i(x_i-\bar x)(y_i-\bar y)}{\sum_i(x_i-\bar x)^2}=\dfrac{S_{xy}}{S_{xx}}$ & $\theta_0=\bar y-\theta_1\bar x$\\
+Discounted return (RL) & $G_t=\sum_{k=0}^{\infty}\gamma^{k}\,r_{t+k+1}$, $\;0\le\gamma\le1$ & $\gamma$ values the future\\
+Data split & training 60--80\%, validation 10--20\%, test 10--20\% & tune on validation, report on test
+}
+
+%====================================================================
+\section*{Chapter~\ref{ch:stat}: Statistical Learning}
+\addcontentsline{toc}{section}{Chapter 2: Statistical Learning}
+\ftab{
+Statistical model & $Y=f(X)+\varepsilon$, $\;\E[\varepsilon]=0$, $\Var(\varepsilon)=\sigma^2$ & $\sigma^2$ is irreducible\\
+Reducible + irreducible & $\E[(Y-\hat Y)^2]=[f(X)-\hat f(X)]^2+\sigma^2$ & \\
+Squared / absolute / 0--1 loss & $(y-\hat y)^2,\quad|y-\hat y|,\quad\mathbb 1[y\ne\hat y]$ & MSE, MAE, error rate\\
+RMSE & $\sqrt{\tfrac1n\sum_i(y_i-\hat y_i)^2}$ & same units as $y$\\
+Risk / empirical risk & $\Risk(f)=\E[L(Y,f(X))],\quad\hat\Risk=\tfrac1n\sum_iL(y_i,f(x_i))$ & training loss is optimistic\\
+Bias--variance & $\E[(y_0-\hat f(x_0))^2]=\Bias^2+\Var+\sigma^2$ & flexibility: bias$\downarrow$, variance$\uparrow$\\
+k-fold CV & $\mathrm{CV}_{(k)}=\tfrac1k\sum_{i=1}^kE_i$ & use $k=5$ or $10$\\
+Accuracy & $\dfrac{TP+TN}{TP+TN+FP+FN}$ & misleading if imbalanced\\
+Precision, recall & $\dfrac{TP}{TP+FP},\qquad\dfrac{TP}{TP+FN}$ & specificity $=\frac{TN}{TN+FP}$\\
+$F_1$ score & $\dfrac{2\cdot\text{Precision}\cdot\text{Recall}}{\text{Precision}+\text{Recall}}$ & harmonic mean\\
+Bias, MSE of an estimator & $\Bias(\hat\theta)=\E[\hat\theta]-\theta,\quad\mathrm{MSE}=\Var(\hat\theta)+\Bias^2$ & \\
+Sample mean & $\E[\bar X]=\mu,\quad\Var(\bar X)=\dfrac{\sigma^2}{n},\quad\SE=\dfrac{\sigma}{\sqrt n}$ & $4\times$ data $\Rightarrow$ $2\times$ precision\\
+Central limit theorem & $\bar X\approx\mathcal N\!\big(\mu,\tfrac{\sigma^2}{n}\big)$ for large $n$ & $n\ge30$ is usually enough\\
+95\% confidence interval & $\bar x\pm1.96\,\dfrac{s}{\sqrt n}$ & \\
+Sample variance & $S_{n-1}^2=\dfrac1{n-1}\sum_i(x_i-\bar x)^2$ & unbiased; dividing by $n$ is biased
+}
+
+%====================================================================
+\section*{Chapter~\ref{ch:knn}: k-NN, Decision Trees and Naive Bayes}
+\addcontentsline{toc}{section}{Chapter 3: k-NN, Decision Trees and Naive Bayes}
+\ftab{
+Euclidean / Manhattan & $\sqrt{\sum_i(a_i-b_i)^2},\qquad\sum_i|a_i-b_i|$ & $L_2$, $L_1$\\
+Minkowski / Chebyshev & $\big(\sum_i|a_i-b_i|^p\big)^{1/p},\qquad\max_i|a_i-b_i|$ & $L_p$, $L_\infty$\\
+Cosine similarity & $\dfrac{\vect a\cdot\vect b}{\|\vect a\|\,\|\vect b\|}$ & direction, not size\\
+Min--max / z-score & $x'=\dfrac{x-x_{\min}}{x_{\max}-x_{\min}},\qquad x'=\dfrac{x-\mu}{\sigma}$ & fit on training set only\\
+Weighted k-NN & $w_i=\dfrac1{d_i},\quad\hat y=\dfrac{\sum w_iy_i}{\sum w_i}$ & closer neighbours count more\\
+Entropy / Gini & $H=-\sum_ip_i\log_2p_i,\qquad G=1-\sum_ip_i^2$ & both $0$ for a pure node\\
+Information gain & $\mathrm{Gain}(S,A)=H(S)-\sum_v\dfrac{|S_v|}{|S|}H(S_v)$ & choose the maximum\\
+Bayes' theorem & $P(C\mid\vect x)=\dfrac{P(\vect x\mid C)\,P(C)}{P(\vect x)}$ & posterior $\propto$ likelihood $\times$ prior\\
+Naive Bayes rule & $\hat y=\argmax_c\,P(c)\prod_jP(x_j\mid c)$ & conditional independence\\
+Laplace smoothing & $P(x_j=v\mid c)=\dfrac{\mathrm{count}+\alpha}{N_c+\alpha V_j}$ & avoids zero probabilities\\
+Gaussian density & $\dfrac{1}{\sqrt{2\pi}\,\sigma}\exp\!\Big(-\dfrac{(x-\mu)^2}{2\sigma^2}\Big)$ & Gaussian Naive Bayes
+}
+
+%====================================================================
+\section*{Chapter~\ref{ch:linear}: Linear Models, GLMs and SVM Basics}
+\addcontentsline{toc}{section}{Chapter 4: Linear Models, GLMs and SVM Basics}
+\ftab{
+Linear regression & $\hat y=\theta_0+\theta_1x_1+\dots+\theta_dx_d=\vect\theta^{\!\top}\vect x$ & \\
+Squared-error cost & $J(\vect\theta)=\dfrac1{2n}\sum_i(\hat y_i-y_i)^2$ & least squares\\
+Normal equation & $\vect\theta=(\mathbf X^{\!\top}\mathbf X)^{-1}\mathbf X^{\!\top}\vect y$ & $O(d^3)$\\
+Gradient descent & $\theta_j\leftarrow\theta_j-\alpha\,\dfrac{\partial J}{\partial\theta_j}$ & $\frac{\partial J}{\partial\theta_0}=\frac1n\sum(\hat y_i-y_i)$, $\frac{\partial J}{\partial\theta_1}=\frac1n\sum(\hat y_i-y_i)x_i$\\
+$R^2$, adjusted $R^2$ & $1-\dfrac{\mathrm{SSE}}{\mathrm{SST}},\qquad1-(1-R^2)\dfrac{n-1}{n-p-1}$ & \\
+Ridge / Lasso & $J+\lambda\sum\theta_j^2,\qquad J+\lambda\sum|\theta_j|$ & Lasso gives sparse weights\\
+Sigmoid & $\sigma(z)=\dfrac1{1+e^{-z}}$ & range $(0,1)$; $\sigma'=\sigma(1-\sigma)$\\
+Odds, log-odds & $\dfrac p{1-p},\qquad\ln\dfrac p{1-p}=\vect\theta^{\!\top}\vect x$ & odds ratio $=e^{\theta_j}$\\
+Log-loss (cross-entropy) & $J=-\dfrac1n\sum_i\big[y_i\ln p_i+(1-y_i)\ln(1-p_i)\big]$ & gradient $\frac1n\sum(p_i-y_i)x_{ij}$\\
+Softmax & $P(y=k)=\dfrac{e^{z_k}}{\sum_je^{z_j}}$ & multi-class\\
+GLM & $g(\mu)=\vect\theta^{\!\top}\vect x$ & identity / logit / log links\\
+Poisson regression & $\mu=e^{\eta},\quad P(y=k)=\dfrac{\mu^ke^{-\mu}}{k!}$ & rate ratio $e^{\theta_j}$\\
+SVM margin & $\dfrac2{\|\vect w\|}$ & maximise margin\\
+Hard-margin SVM & $\min\tfrac12\|\vect w\|^2$ s.t.\ $y_i(\vect w\cdot\vect x_i+b)\ge1$ & $y_i\in\{-1,+1\}$\\
+Soft-margin SVM & $\min\tfrac12\|\vect w\|^2+C\sum\xi_i$, $\;y_if(\vect x_i)\ge1-\xi_i$ & hinge loss $\max(0,1-yf)$
+}
+
+%====================================================================
+\section*{Chapter~\ref{ch:ensemble}: Ensemble Learning}
+\addcontentsline{toc}{section}{Chapter 5: Ensemble Learning}
+\ftab{
+Majority-vote accuracy & $\sum_{k>n/2}\binom nk p^k(1-p)^{n-k}$ & independent voters, each accuracy $p$\\
+Soft voting & $\bar P(c)=\dfrac1m\sum_jP_j(c)$, predict $\argmax_c\bar P(c)$ & weighted version possible\\
+Variance of an average & $\Var(\bar f)=\rho\sigma^2+\dfrac{1-\rho}{B}\sigma^2$ & correlation $\rho$ limits the gain\\
+Out-of-bag fraction & $(1-\tfrac1n)^n\to e^{-1}\approx0.368$ & $63.2\%$ in each bootstrap sample\\
+AdaBoost error & $\varepsilon_t=\sum_{i:\,h_t(\vect x_i)\ne y_i}w_i$ & weighted error\\
+AdaBoost learner weight & $\alpha_t=\tfrac12\ln\dfrac{1-\varepsilon_t}{\varepsilon_t}$ & $\alpha=0$ at $\varepsilon=0.5$\\
+AdaBoost weight update & $w_i\leftarrow w_ie^{-\alpha_ty_ih_t(\vect x_i)}$, then normalise & wrong points grow\\
+AdaBoost prediction & $H(\vect x)=\operatorname{sign}\sum_t\alpha_th_t(\vect x)$ & \\
+Gradient boosting & $r_i=y_i-F_{m-1}(\vect x_i),\quad F_m=F_{m-1}+\eta\,h_m$ & fit trees to residuals
+}
+
+%====================================================================
+\section*{Chapter~\ref{ch:svm}: SVMs and Naive Bayes Classifiers}
+\addcontentsline{toc}{section}{Chapter 6: SVMs and Naive Bayes Classifiers}
+\ftab{
+Dual SVM prediction & $f(\vect x)=\sum_i\alpha_iy_i\,(\vect x_i\cdot\vect x)+b$ & $\alpha_i>0$ only for support vectors\\
+Dual constraints & $\sum_i\alpha_iy_i=0,\quad0\le\alpha_i\le C$ & $\vect w=\sum\alpha_iy_i\vect x_i$\\
+Kernel trick & $K(\vect a,\vect b)=\varphi(\vect a)\cdot\varphi(\vect b)$ & replace dot products\\
+Polynomial kernel & $K=(\gamma\,\vect a\cdot\vect b+r)^d$ & e.g.\ $(\vect a\cdot\vect b)^2$\\
+RBF kernel & $K=\exp\!\big(-\gamma\|\vect a-\vect b\|^2\big)$ & large $\gamma$: overfit\\
+$\varepsilon$-insensitive loss & $L_\varepsilon=\max\big(0,\,|y-f(\vect x)|-\varepsilon\big)$ & SVR: points in the tube are free\\
+SVR problem & $\min\tfrac12\|\vect w\|^2+C\sum(\xi_i+\xi_i^*)$ & kernelised: $f=\sum(\alpha_i-\alpha_i^*)K+b$\\
+Multinomial NB & $P(w\mid c)=\dfrac{N_{wc}+\alpha}{N_c+\alpha V}$ & word counts\\
+Bernoulli NB & $P(x_j\mid c)=p_{jc}^{x_j}(1-p_{jc})^{1-x_j},\ p_{jc}=\dfrac{n_{jc}+\alpha}{N_c^{\text{docs}}+2\alpha}$ & presence and absence\\
+Log form of NB & $\hat y=\argmax_c\big[\ln P(c)+\sum_j\ln P(x_j\mid c)\big]$ & avoids underflow
+}
+
+%====================================================================
+\section*{Chapter~\ref{ch:cluster}: Clustering}
+\addcontentsline{toc}{section}{Chapter 7: Clustering}
+\ftab{
+K-Means objective (inertia) & $J=\sum_{j=1}^k\sum_{\vect x_i\in C_j}\|\vect x_i-\vect\mu_j\|^2$ & never increases\\
+Centroid update & $\vect\mu_j=\dfrac1{|C_j|}\sum_{\vect x_i\in C_j}\vect x_i$ & assign, then update\\
+K-Means++ probability & $P(\vect x)\propto D(\vect x)^2$ & $D$ = distance to nearest centroid\\
+Silhouette & $s(i)=\dfrac{b(i)-a(i)}{\max\{a(i),b(i)\}}\in[-1,1]$ & choose $k$ with the highest mean\\
+DBSCAN core point & $|N_\varepsilon(p)|\ge\mathrm{MinPts}$ & border: near a core; else noise\\
+GMM density & $p(\vect x)=\sum_k\pi_k\,\mathcal N(\vect x\mid\vect\mu_k,\mathbf\Sigma_k)$, $\sum\pi_k=1$ & soft clustering\\
+E-step (responsibility) & $\gamma_{ik}=\dfrac{\pi_k\mathcal N(\vect x_i\mid\vect\mu_k,\mathbf\Sigma_k)}{\sum_j\pi_j\mathcal N(\vect x_i\mid\vect\mu_j,\mathbf\Sigma_j)}$ & \\
+M-step & $N_k=\sum_i\gamma_{ik},\ \vect\mu_k=\tfrac1{N_k}\sum_i\gamma_{ik}\vect x_i,\ \pi_k=\tfrac{N_k}{n}$ & $\mathbf\Sigma_k=\tfrac1{N_k}\sum_i\gamma_{ik}(\vect x_i-\vect\mu_k)(\vect x_i-\vect\mu_k)^{\!\top}$\\
+BIC & $\mathrm{BIC}=p\ln n-2\ln\hat L$ & lower is better
+}
+
+%====================================================================
+\section*{Chapter~\ref{ch:dimred}: Dimensionality Reduction and PCA}
+\addcontentsline{toc}{section}{Chapter 8: Dimensionality Reduction and PCA}
+\ftab{
+Ball volume & $V_d(r)=\dfrac{\pi^{d/2}}{\Gamma(d/2+1)}\,r^d$ & shrinks fast with $d$\\
+Near the border & $P=1-(1-2\delta)^d$ & $\delta=0.001$: $86\%$ at $d=1000$\\
+Cells needed & $b^{\,d}$ with $b$ bins per feature & e.g.\ $10^{d}$\\
+Covariance matrix & $\mathbf C=\dfrac1{n-1}\tilde{\mathbf X}^{\!\top}\tilde{\mathbf X}$ & $\tilde{\mathbf X}$ is centred (and scaled)\\
+Principal components & $\mathbf C\vect w_j=\lambda_j\vect w_j$, $\lambda_1\ge\lambda_2\ge\dots$ & eigenvalue $=$ variance\\
+Explained variance ratio & $\dfrac{\lambda_j}{\sum_i\lambda_i}$, cumulative $\dfrac{\sum_{j\le m}\lambda_j}{\sum_i\lambda_i}$ & keep about $95\%$\\
+Projection & $\mathbf Z=\tilde{\mathbf X}\mathbf W_m$ & $n\times m$\\
+Reconstruction & $\hat{\mathbf X}=\mathbf Z\mathbf W_m^{\!\top}+\text{mean}$ & error $=$ discarded eigenvalues\\
+PCA via SVD & $\tilde{\mathbf X}=\mathbf U\mathbf S\mathbf V^{\!\top},\quad\lambda_j=\dfrac{s_j^2}{n-1}$ & rows of $\mathbf V^{\!\top}$ are components
+}
+
+%====================================================================
+\section*{Chapter~\ref{ch:ann}: Neural Networks and MLPs with Keras}
+\addcontentsline{toc}{section}{Chapter 9: Neural Networks and MLPs with Keras}
+\ftab{
+Artificial neuron & $z=\vect w\cdot\vect x+b,\quad a=\varphi(z)$ & \\
+Perceptron & $\hat y=\mathbb 1[\vect w\cdot\vect x+b>0]$ & step activation\\
+Perceptron rule & $w_j\leftarrow w_j+\eta(y-\hat y)x_j,\quad b\leftarrow b+\eta(y-\hat y)$ & converges if separable\\
+Parameters of a dense layer & $n_{\text{in}}\,n_{\text{out}}+n_{\text{out}}$ & 784--300--100--10: $266\,610$\\
+Activations & $\sigma(z),\ \tanh z,\ \max(0,z),\ \dfrac{e^{z_k}}{\sum_je^{z_j}}$ & ReLU: hidden layers\\
+Loss functions & MSE; $-[y\ln p+(1-y)\ln(1-p)]$; $-\ln p_{\text{true}}$ & regression; binary; multi-class\\
+Output delta & $\delta^{(L)}=\dfrac{\partial J}{\partial a^{(L)}}\odot\varphi'(z^{(L)})$ & backpropagation\\
+Hidden delta & $\delta^{(l)}=\big(\mathbf W^{(l+1)\top}\delta^{(l+1)}\big)\odot\varphi'(z^{(l)})$ & \\
+Weight gradient & $\dfrac{\partial J}{\partial\mathbf W^{(l)}}=\delta^{(l)}a^{(l-1)\top},\quad\dfrac{\partial J}{\partial\vect b^{(l)}}=\delta^{(l)}$ & then $\mathbf W\leftarrow\mathbf W-\eta\,\partial J/\partial\mathbf W$\\
+Momentum & $\vect v\leftarrow\beta\vect v-\eta\vect g,\quad\vect\theta\leftarrow\vect\theta+\vect v$ & $\beta\approx0.9$\\
+Updates per epoch & $\lceil n/\text{batch size}\rceil$ & e.g.\ $55\,000/32\to1719$
+}
+
+%====================================================================
+\section*{Chapter~\ref{ch:tf}: TensorFlow and Data Pipelines}
+\addcontentsline{toc}{section}{Chapter 10: TensorFlow and Data Pipelines}
+\ftab{
+Elements of a tensor & product of the shape, e.g.\ $(32,28,28,1)\to25\,088$ & rank $=$ number of axes\\
+Broadcasting & $[[1,2],[3,4]]+[10,20]=[[11,22],[13,24]]$ & smaller tensor is stretched\\
+Automatic differentiation & \texttt{with tf.GradientTape() as t: loss=\dots}; \texttt{t.gradient(loss, vars)} & exact gradients\\
+Manual gradient step & \texttt{w.assign\_sub(eta * grad)} & $w\leftarrow w-\eta\,\nabla J$\\
+Pipeline order & \texttt{shuffle} $\to$ \texttt{map} $\to$ \texttt{batch} $\to$ \texttt{prefetch} & shuffle before batch\\
+Batches in a dataset & $\lceil n/\text{batch size}\rceil$; $\lfloor n/\text{batch size}\rfloor$ with \texttt{drop\_remainder} & \\
+Normalization layer & $x'=\dfrac{x-\mu}{\sigma}$ with $\mu,\sigma$ from \texttt{adapt} & training data only\\
+Embedding parameters & $\#\text{categories}\times\text{output\_dim}$ & 50 categories, dim 8: $400$\\
+Speed-up & $\dfrac{t_{\text{eager}}}{t_{\text{graph}}}$ & $22.8/15.7=1.45$
+}

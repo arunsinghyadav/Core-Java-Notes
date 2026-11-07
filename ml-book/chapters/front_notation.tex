@@ -1,0 +1,42 @@
+\chapter*{Notation}
+\markboth{Notation}{Notation}
+\addcontentsline{toc}{chapter}{Notation}
+
+The same symbols are used throughout the book. Vectors are bold lower-case letters, matrices are bold upper-case letters.
+
+\small
+\begin{longtable}{@{}p{2.6cm}p{11.4cm}@{}}
+\toprule
+\textbf{Symbol} & \textbf{Meaning}\\
+\midrule
+\endhead
+$n$ & number of training instances\\
+$d$, $p$ & number of features (dimension of the input)\\
+$m$, $k$, $K$ & number of components kept (PCA), number of clusters or neighbours, number of classes or mixture components\\
+$\vect x$, $x_j$ & feature vector of an instance; its $j$-th feature\\
+$\mathbf X$ & data matrix with $n$ rows (instances) and $d$ columns (features)\\
+$y$, $\hat y$ & true target (label) and predicted target\\
+$f$, $\hat f$ & true (unknown) function and its estimate (the model)\\
+$\varepsilon$, $\sigma^2$ & random error (noise) and its variance; also the radius in DBSCAN and the tube half-width in SVR\\
+$\vect w$, $\vect\theta$, $b$ & weights (parameters) and bias (intercept)\\
+$\eta$, $\alpha$ & learning rate (also written $\eta$); $\alpha$ is also the Laplace smoothing constant, the dual variable in SVMs and the leaky-ReLU slope\\
+$\lambda$ & regularisation strength; eigenvalue (PCA, covariance matrix)\\
+$C$ & SVM penalty for margin violations\\
+$\gamma$ & kernel width in the RBF kernel; discount factor in reinforcement learning\\
+$\xi_i$ & slack variable\\
+$J$, $L$, $\Risk$ & loss (cost) function; loss of one example; risk (expected loss)\\
+$\E[\cdot]$, $\Var$, $\SE$ & expectation, variance, standard error\\
+$\mu$, $\sigma$, $\bar x$, $s$ & population mean and standard deviation; sample mean and standard deviation\\
+$\mathcal N(\mu,\sigma^2)$ & normal (Gaussian) distribution\\
+$\mathbf\Sigma$, $\mathbf C$ & covariance matrix\\
+$P(\cdot)$, $P(\cdot\mid\cdot)$ & probability and conditional probability\\
+$z$, $a$, $\varphi$ & pre-activation $z=\vect w\cdot\vect x+b$, activation $a=\varphi(z)$, activation function\\
+$\sigma(z)$ & sigmoid function $1/(1+e^{-z})$ (context distinguishes it from a standard deviation)\\
+$\delta^{(l)}$ & error signal of layer $l$ in backpropagation\\
+$\|\vect a\|$ & Euclidean length (norm) of $\vect a$\\
+$\vect a\cdot\vect b$ & dot product\\
+$\argmax$, $\argmin$ & the argument that gives the maximum, minimum\\
+$\mathbb 1[\cdot]$ & indicator: 1 if the condition is true, 0 otherwise\\
+TP, FP, TN, FN & true/false positives and negatives in a confusion matrix\\
+\bottomrule
+\end{longtable}

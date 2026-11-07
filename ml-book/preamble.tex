@@ -89,5 +89,22 @@
 \newtcolorbox{theory}[1]{enhanced,breakable,colback=yellow!7,colframe=orange!75!black,
   fonttitle=\bfseries,title={\faPen\ \ Write-up for the Exam: #1},arc=3pt,
   boxrule=1pt,toptitle=2pt,bottomtitle=2pt}
-\newcommand{\tpart}[1]{\par\smallskip\noindent\textbf{\color{orange!70!black}#1.}\ }
+\newcommand{\tpart}[1]{\par\medskip\noindent{\bfseries\color{orange!75!black}\large #1}\par\nopagebreak\vspace{1pt}\noindent\ignorespaces}
 \setlength{\emergencystretch}{3em}
+
+% ---------- presentation: whitespace, indentation, spacing ----------
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.65em plus 0.2em minus 0.1em}
+\linespread{1.12}
+\renewcommand{\arraystretch}{1.35}
+\setlist{itemsep=5pt plus 1pt,topsep=7pt plus 2pt,parsep=3pt,leftmargin=*,labelindent=0.6em}
+\setlist[itemize,2]{itemsep=3pt,topsep=3pt}
+\setlength{\abovedisplayskip}{12pt plus 3pt minus 3pt}
+\setlength{\belowdisplayskip}{12pt plus 3pt minus 3pt}
+\setlength{\jot}{5pt}
+\titlespacing*{\section}{0pt}{26pt plus 4pt minus 2pt}{12pt}
+\titlespacing*{\subsection}{0pt}{20pt plus 3pt minus 2pt}{9pt}
+\titlespacing*{\subsubsection}{0pt}{14pt plus 2pt}{7pt}
+\tcbset{before skip=16pt plus 3pt minus 2pt, after skip=16pt plus 3pt minus 2pt,
+  left=11pt, right=11pt, top=9pt, bottom=9pt}
+\captionsetup{skip=8pt}

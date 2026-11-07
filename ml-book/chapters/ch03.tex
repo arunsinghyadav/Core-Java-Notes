@@ -91,6 +91,47 @@ Hamming: for the bit strings $10110$ and $11100$ the strings differ in positions
 Each coloured outline is the set of points that are \emph{exactly one unit away} from the origin under a different distance. Under \textbf{Euclidean} distance ($L_2$, blue) this set is a \emph{circle}. Under \textbf{Manhattan} ($L_1$, red) it is a \emph{diamond}, because you may only move along the axes. Under \textbf{Chebyshev} ($L_\infty$, green) it is a \emph{square}. The point $(1,1)$ lies on the green square but far outside the red diamond: the \emph{same pair of points} is counted as ``close'' or ``far'' depending on the metric. Hence the choice of metric changes which points are neighbours.
 \end{explain}
 
+\begin{theory}{Distance-Based Methods}
+\tpart{Definition}
+\textbf{Distance-based methods} make predictions or form groups using the \emph{distance (or similarity) between instances} in feature space: close points are assumed to be similar.
+
+\tpart{Working}
+\begin{enumerate}[itemsep=2pt,topsep=3pt]
+  \item Choose a distance measure (Euclidean, Manhattan, Minkowski, Hamming, cosine).
+  \item Scale the features so that none dominates.
+  \item Compute distances between the query and the data.
+  \item Use the nearest or most similar instances to predict or to form clusters.
+\end{enumerate}
+
+\tpart{Assumptions}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Nearby points tend to share the same label or behaviour
+  \item The chosen metric reflects real similarity
+\end{itemize}
+
+\tpart{Advantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Intuitive and easy to implement
+  \item Little or no training
+  \item Works for classification, regression and clustering
+\end{itemize}
+
+\tpart{Disadvantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Very sensitive to feature scale and irrelevant features
+  \item Slow for large datasets
+  \item Loses meaning in high dimensions (curse of dimensionality)
+\end{itemize}
+
+\tpart{Applications}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item k-NN and K-Means clustering
+  \item Recommender systems
+  \item Anomaly detection
+\end{itemize}
+
+\end{theory}
+
 \subsection{Feature Scaling}
 
 Distance measures add up differences across all features, so a feature with a \emph{large numeric range} dominates the sum. We must put features on a comparable scale.
@@ -196,6 +237,47 @@ The prediction \emph{changes} from B to A when $k$ grows to 7, which shows how s
 \begin{explain}
 The \textbf{green star} is the query point. Blue circles are class~A and orange triangles are class~B. The \textbf{dashed green circle} is just big enough to contain the 3 nearest points: all three are orange, so $k=3$ votes B. The \textbf{dotted red circle} is large enough to contain 5 points: three orange and two blue, so $k=5$ still votes B, but by a smaller margin. If we kept enlarging the circle to include all 7 points the blue majority would win. The \emph{radius adapts} to the local density of data; this is why k-NN is called \emph{local}.
 \end{explain}
+
+\begin{theory}{k-Nearest Neighbours (k-NN)}
+\tpart{Definition}
+\textbf{k-NN} is a \emph{supervised, non-parametric, instance-based (lazy)} algorithm that predicts the output for a query point from the labels of its $k$ closest training points: the \emph{majority class} for classification or the \emph{mean} value for regression.
+
+\tpart{Working}
+\begin{enumerate}[itemsep=2pt,topsep=3pt]
+  \item Choose $k$ and a distance measure; scale the features.
+  \item Compute the distance from the query to every training point.
+  \item Select the $k$ points with the smallest distance.
+  \item Classification: majority vote; regression: average of their targets (optionally weighted by $1/d$).
+\end{enumerate}
+
+\tpart{Assumptions}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Similar points have similar labels
+  \item Features are on comparable scales
+\end{itemize}
+
+\tpart{Advantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Simple; no training; handles many classes
+  \item No assumption about the data distribution
+  \item Improves as more data is added
+\end{itemize}
+
+\tpart{Disadvantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Slow prediction and large memory
+  \item Sensitive to $k$, scaling and irrelevant features
+  \item Poor in high dimensions
+\end{itemize}
+
+\tpart{Applications}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Recommendation systems
+  \item Handwriting and pattern recognition
+  \item Credit rating and anomaly detection
+\end{itemize}
+
+\end{theory}
 
 \subsection{Choosing $k$}
 
@@ -440,6 +522,48 @@ Temperature & Hot (2,2), Mild (4,2), Cool (3,1) & $1.000,\ 0.918,\ 0.811$ & $0.0
 Every split in a tree tests \emph{one feature against a threshold}, which draws a \textbf{straight line parallel to an axis}. The \textbf{green vertical line} is the root test $x_1<4$: everything to its left is class~A. On the right, the \textbf{red horizontal line} tests $x_2<5$: below it is class~B (orange), above it class~A. The final result is three \emph{rectangular regions}, each assigned one class. Trees therefore produce \emph{boxy} decision boundaries, which suit data with axis-aligned structure but approximate diagonal boundaries only with many small steps.
 \end{explain}
 
+\begin{theory}{Decision Tree}
+\tpart{Definition}
+A \textbf{decision tree} is a \emph{supervised, non-parametric} model that predicts by asking a sequence of feature tests arranged as a tree: internal nodes test a feature, branches are outcomes and leaves hold the prediction (class or value).
+
+\tpart{Working (ID3 / CART)}
+\begin{enumerate}[itemsep=2pt,topsep=3pt]
+  \item Start with all training data at the root.
+  \item For every feature (and threshold) compute the \textbf{information gain} (entropy) or \textbf{Gini reduction} of the split.
+  \item Split on the best feature and create child nodes.
+  \item Repeat recursively until nodes are pure or a stopping rule is met; label leaves by majority class (or mean).
+  \item Prune the tree to avoid overfitting.
+\end{enumerate}
+
+\tpart{Assumptions}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Classes can be separated by axis-parallel splits
+  \item Training and test data come from the same distribution
+\end{itemize}
+
+\tpart{Advantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Easy to understand, visualise and convert to rules
+  \item Handles numeric and categorical features; no scaling needed
+  \item Fast prediction
+\end{itemize}
+
+\tpart{Disadvantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Prone to overfitting; needs pruning
+  \item Unstable: small data changes can change the tree
+  \item Only axis-parallel (boxy) boundaries
+\end{itemize}
+
+\tpart{Applications}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Credit approval and medical diagnosis
+  \item Customer churn prediction
+  \item Rule extraction; base learner in Random Forests
+\end{itemize}
+
+\end{theory}
+
 \subsection{Overfitting and Pruning}
 
 A tree allowed to grow until every leaf is pure will memorise the training data, noise included (low bias, \textbf{high variance}; see Chapter~2). We control complexity by \textbf{pruning}.
@@ -566,6 +690,48 @@ $P(\text{Strong}\mid\cdot)$ & $3/9$ & $3/5$\\
 \]
 \textbf{Decision:} $0.02057>0.00529\Rightarrow$ predict \textbf{No}.\\
 \textbf{Posterior probabilities} (normalise): $P(\text{No}\mid\vect{x})=\dfrac{0.02057}{0.02057+0.00529}=0.795$ and $P(\text{Yes}\mid\vect{x})=0.205$.
+
+\begin{theory}{Naive Bayes Classifier}
+\tpart{Definition}
+\textbf{Naive Bayes} is a \emph{supervised, probabilistic} classifier based on \textbf{Bayes' theorem} with the ``naive'' assumption that features are \emph{conditionally independent} given the class: $\hat y=\argmax_c P(c)\prod_jP(x_j\mid c)$.
+
+\tpart{Working}
+\begin{enumerate}[itemsep=2pt,topsep=3pt]
+  \item Estimate priors $P(c)=N_c/N$ from the training data.
+  \item Estimate likelihoods $P(x_j\mid c)$ by counting (or with a Gaussian density for continuous features), using Laplace smoothing.
+  \item For a new instance compute $P(c)\prod_jP(x_j\mid c)$ for every class.
+  \item Predict the class with the largest score (normalise to get posterior probabilities).
+\end{enumerate}
+
+\tpart{Assumptions}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Features are conditionally independent given the class
+  \item Each feature follows the assumed distribution (Gaussian, multinomial or Bernoulli)
+\end{itemize}
+
+\tpart{Advantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Very fast to train and predict
+  \item Works well with little data and many features
+  \item Excellent baseline for text classification
+\end{itemize}
+
+\tpart{Disadvantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Independence assumption is rarely true
+  \item Probability estimates can be poorly calibrated
+  \item Zero-frequency problem (needs smoothing)
+\end{itemize}
+
+\tpart{Applications}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Spam filtering
+  \item Sentiment analysis
+  \item Document and news classification
+  \item Medical diagnosis
+\end{itemize}
+
+\end{theory}
 
 \subsection{Laplace Smoothing}
 

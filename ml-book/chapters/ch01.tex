@@ -146,6 +146,46 @@ Remember the order $\text{DL} \subset \text{ML} \subset \text{AI}$.
 \end{exam}
 
 %====================================================================
+\begin{theory}{Machine Learning}
+\tpart{Definition}
+\textbf{Machine Learning (ML)} is a branch of Artificial Intelligence in which a computer program \emph{learns patterns from data} and improves its performance on a task with experience, without being explicitly programmed with rules. (Samuel, 1959; Mitchell, 1997: performance $P$ at task $T$ improves with experience $E$.)
+
+\tpart{Working}
+\begin{enumerate}[itemsep=2pt,topsep=3pt]
+  \item Collect data relevant to the task.
+  \item Clean and prepare the data (missing values, encoding, scaling).
+  \item Choose a model and a loss function.
+  \item Train: fit the parameters by minimising the loss on the training set.
+  \item Evaluate on unseen test data using a performance measure.
+  \item Deploy the model and monitor it; retrain when performance drops.
+\end{enumerate}
+
+\tpart{Advantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Solves problems too complex for hand-written rules
+  \item Adapts when data changes
+  \item Discovers hidden patterns in large datasets
+  \item Improves as more data becomes available
+\end{itemize}
+
+\tpart{Disadvantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Needs large amounts of good-quality data
+  \item May overfit or inherit bias from the data
+  \item Many models are hard to interpret (black boxes)
+  \item Training can be computationally expensive
+\end{itemize}
+
+\tpart{Applications}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Spam filtering and recommendation systems
+  \item Medical diagnosis and fraud detection
+  \item Speech, image and language recognition
+  \item Self-driving vehicles
+\end{itemize}
+
+\end{theory}
+
 \section{Where Is Machine Learning Used?}
 
 ML is the right tool when (i) rules are too many or too complex, (ii) the environment keeps changing, (iii) the problem has no known algorithmic solution, or (iv) large amounts of data are available to learn from.
@@ -299,6 +339,47 @@ Given a training set $\{(\vect{x}_i, y_i)\}_{i=1}^{n}$ where $\vect{x}_i\in\R^d$
 \end{explain}
 
 %--------------------------------------------------------------------
+\begin{theory}{Supervised Learning}
+\tpart{Definition}
+\textbf{Supervised learning} learns a function $f$ from \emph{labelled} training examples $(\vect{x}_i,y_i)$ so that $f(\vect{x})\approx y$ for new, unseen inputs. The labels act as a teacher.
+
+\tpart{Working}
+\begin{enumerate}[itemsep=2pt,topsep=3pt]
+  \item Collect a labelled dataset and split it into training and test sets.
+  \item Choose a model (e.g.\ linear regression, decision tree) and a loss function.
+  \item Fit the parameters by minimising the training loss.
+  \item Tune hyperparameters on a validation set.
+  \item Report final performance on the test set.
+\end{enumerate}
+
+\tpart{Types}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item \textbf{Classification}: the label is a category (spam / not spam)
+  \item \textbf{Regression}: the label is a number (house price)
+\end{itemize}
+
+\tpart{Advantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Clear goal; accuracy can be measured directly
+  \item Many mature and well-understood algorithms
+\end{itemize}
+
+\tpart{Disadvantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Labelled data is expensive and slow to obtain
+  \item Poor labels (noise) lead to poor models
+  \item Does not generalise beyond the training distribution
+\end{itemize}
+
+\tpart{Applications}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Spam detection and credit scoring
+  \item House-price and sales prediction
+  \item Disease diagnosis from tests or images
+\end{itemize}
+
+\end{theory}
+
 \subsection{Unsupervised Learning}
 
 The training data is \textbf{unlabelled}. The system must discover structure on its own, like sorting a heap of unfamiliar coins into groups by size and colour without anyone naming them.
@@ -315,6 +396,49 @@ Given only inputs $\{\vect{x}_i\}_{i=1}^n$ with no labels, discover hidden struc
 \end{itemize}
 
 %--------------------------------------------------------------------
+\begin{theory}{Unsupervised Learning}
+\tpart{Definition}
+\textbf{Unsupervised learning} discovers hidden structure (groups, patterns, directions of variation) in \emph{unlabelled} data $\{\vect{x}_i\}$; there is no target variable.
+
+\tpart{Working}
+\begin{enumerate}[itemsep=2pt,topsep=3pt]
+  \item Collect unlabelled data and scale the features.
+  \item Choose a task and algorithm (clustering, dimensionality reduction, anomaly detection).
+  \item Optimise a criterion such as within-cluster distance or retained variance.
+  \item Interpret the discovered structure using domain knowledge.
+\end{enumerate}
+
+\tpart{Types}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Clustering (K-Means, DBSCAN)
+  \item Dimensionality reduction (PCA)
+  \item Anomaly detection and association rules
+\end{itemize}
+
+\tpart{Advantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item No labels needed; works on cheap raw data
+  \item Reveals patterns humans did not expect
+  \item Useful as preprocessing for supervised learning
+\end{itemize}
+
+\tpart{Disadvantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item No ground truth, so results are hard to evaluate
+  \item Results can be subjective and depend on parameters
+  \item Sensitive to feature scaling and noise
+\end{itemize}
+
+\tpart{Applications}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Customer segmentation
+  \item Fraud and fault detection
+  \item Topic discovery in documents
+  \item Data compression and visualisation
+\end{itemize}
+
+\end{theory}
+
 \subsection{Semi-supervised Learning}
 
 Labelling is slow and costly (a doctor must label every X-ray), but unlabelled data is cheap. \textbf{Semi-supervised} algorithms use a \emph{small labelled} set and a \emph{large unlabelled} set. A typical method is \textbf{self-training}: train on the labelled data, predict labels for the unlabelled data, keep the most confident predictions as new labels, and retrain.
@@ -322,6 +446,39 @@ Labelling is slow and costly (a doctor must label every X-ray), but unlabelled d
 \textbf{Example.} Photo apps first cluster faces automatically (unsupervised), then ask you to name each person once (supervised); the name then spreads to every photo in the cluster.
 
 %--------------------------------------------------------------------
+\begin{theory}{Semi-supervised Learning}
+\tpart{Definition}
+\textbf{Semi-supervised learning} trains a model using a \emph{small amount of labelled data together with a large amount of unlabelled data}.
+
+\tpart{Working (self-training)}
+\begin{enumerate}[itemsep=2pt,topsep=3pt]
+  \item Train an initial model on the labelled examples.
+  \item Predict labels for the unlabelled examples.
+  \item Keep the most confident predictions as new (pseudo) labels.
+  \item Retrain on the enlarged labelled set and repeat.
+\end{enumerate}
+
+\tpart{Advantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Greatly reduces the cost of labelling
+  \item Usually more accurate than using the few labels alone
+\end{itemize}
+
+\tpart{Disadvantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Early wrong pseudo-labels can reinforce themselves
+  \item Assumes labelled and unlabelled data come from the same distribution
+\end{itemize}
+
+\tpart{Applications}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Photo tagging and face grouping
+  \item Speech recognition
+  \item Medical image analysis
+\end{itemize}
+
+\end{theory}
+
 \subsection{Reinforcement Learning}
 
 There are no labelled examples. An \textbf{agent} observes the \textbf{state} of an \textbf{environment}, chooses an \textbf{action}, and receives a \textbf{reward} (positive) or \textbf{penalty} (negative). It learns a \textbf{policy}, a rule that says which action to take in each state, that maximises the total reward over time.
@@ -378,6 +535,41 @@ Reinforcement & No & Reward/penalty & Sequential decisions & Games, robots\\
 \end{center}
 
 %--------------------------------------------------------------------
+\begin{theory}{Reinforcement Learning}
+\tpart{Definition}
+In \textbf{reinforcement learning (RL)} an \emph{agent} interacts with an \emph{environment}: it observes a state, takes an action, and receives a reward or penalty. It learns a \emph{policy} that maximises the total discounted reward $G_t=\sum_k\gamma^k r_{t+k+1}$.
+
+\tpart{Working}
+\begin{enumerate}[itemsep=2pt,topsep=3pt]
+  \item The agent observes the current state $s_t$.
+  \item It chooses an action $a_t$ using its policy (balancing \emph{exploration} and \emph{exploitation}).
+  \item The environment returns the next state $s_{t+1}$ and a reward $r_{t+1}$.
+  \item The agent updates its policy to increase future reward; the loop repeats.
+\end{enumerate}
+
+\tpart{Advantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Needs no labelled data
+  \item Can learn long-term strategies for sequential decisions
+  \item Adapts to a changing environment
+\end{itemize}
+
+\tpart{Disadvantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Needs very many trials (sample inefficient)
+  \item Designing a good reward function is difficult
+  \item Exploration can be unsafe or costly
+\end{itemize}
+
+\tpart{Applications}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Game playing (AlphaGo, chess)
+  \item Robotics and self-driving control
+  \item Resource scheduling and recommendation
+\end{itemize}
+
+\end{theory}
+
 \subsection{Batch vs.\ Online Learning}
 
 \begin{description}
@@ -388,6 +580,72 @@ Reinforcement & No & Reward/penalty & Sequential decisions & Games, robots\\
 The key hyperparameter of online learning is the \textbf{learning rate}: a \emph{high} rate adapts quickly but forgets old data fast and is sensitive to noise; a \emph{low} rate is stable but slow to adapt. A risk is that \emph{bad data} (a faulty sensor) can quickly degrade a live system, so its performance must be monitored.
 
 %--------------------------------------------------------------------
+\begin{theory}{Batch (Offline) Learning}
+\tpart{Definition}
+\textbf{Batch learning} trains the model once on \emph{all} the available data, then deploys it unchanged; it does not learn after deployment.
+
+\tpart{Working}
+\begin{enumerate}[itemsep=2pt,topsep=3pt]
+  \item Gather the complete dataset and train the model offline.
+  \item Deploy the trained model.
+  \item To include new data, retrain from scratch on old $+$ new data.
+\end{enumerate}
+
+\tpart{Advantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Simple, stable and reproducible
+  \item Any algorithm can be used
+\end{itemize}
+
+\tpart{Disadvantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Cannot learn incrementally; retraining is slow and memory-hungry
+  \item The model becomes outdated as data changes (concept drift)
+  \item Unsuitable for huge or streaming datasets
+\end{itemize}
+
+\tpart{Applications}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Credit-scoring models retrained monthly
+  \item Offline image classifiers
+\end{itemize}
+
+\end{theory}
+
+\begin{theory}{Online (Incremental) Learning}
+\tpart{Definition}
+\textbf{Online learning} updates the model continuously, one instance or small \emph{mini-batch} at a time, as new data arrives.
+
+\tpart{Working}
+\begin{enumerate}[itemsep=2pt,topsep=3pt]
+  \item Receive a new instance or mini-batch.
+  \item Update the parameters with a small step controlled by the \textbf{learning rate}.
+  \item Discard the data (saving memory) and repeat.
+\end{enumerate}
+
+\tpart{Advantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Fast, cheap updates; low memory use
+  \item Adapts quickly to changing data
+  \item Handles very large datasets (out-of-core learning) and streams
+\end{itemize}
+
+\tpart{Disadvantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Sensitive to the choice of learning rate
+  \item Bad data can quickly degrade the live model
+  \item Needs continuous monitoring
+\end{itemize}
+
+\tpart{Applications}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Stock-price prediction
+  \item Daily-updated spam filters
+  \item Sensor and news-feed streams
+\end{itemize}
+
+\end{theory}
+
 \subsection{Instance-based vs.\ Model-based Learning}
 
 \begin{description}
@@ -408,6 +666,69 @@ Example & k-NN & Linear regression\\
 \bottomrule
 \end{tabular}
 \end{center}
+
+\begin{theory}{Instance-based Learning}
+\tpart{Definition}
+\textbf{Instance-based (memory-based) learning} stores the training examples and predicts for a new point by \emph{comparing it with the stored examples} using a similarity measure. It is a \emph{lazy learner}: it builds no explicit model.
+
+\tpart{Working}
+\begin{enumerate}[itemsep=2pt,topsep=3pt]
+  \item Store all training instances.
+  \item For a new point, measure its distance to every stored instance.
+  \item Predict from the most similar instances (e.g.\ majority class of the $k$ nearest).
+\end{enumerate}
+
+\tpart{Advantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item No training phase
+  \item Flexible; can fit complex local patterns
+  \item Immediately uses new data
+\end{itemize}
+
+\tpart{Disadvantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Slow prediction and large memory use
+  \item Sensitive to feature scaling and irrelevant features
+\end{itemize}
+
+\tpart{Applications}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item k-Nearest Neighbours
+  \item Recommender systems and pattern recognition
+\end{itemize}
+
+\end{theory}
+
+\begin{theory}{Model-based Learning}
+\tpart{Definition}
+\textbf{Model-based learning} builds a mathematical model with parameters learned from the training data and then predicts using \emph{only the model}.
+
+\tpart{Working}
+\begin{enumerate}[itemsep=2pt,topsep=3pt]
+  \item Choose a model form, e.g.\ $\hat y=\theta_0+\theta_1x$.
+  \item Define a loss and fit the parameters to minimise it.
+  \item Predict by evaluating the fitted model; the training data may be discarded.
+\end{enumerate}
+
+\tpart{Advantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Fast prediction; compact model
+  \item Often interpretable
+\end{itemize}
+
+\tpart{Disadvantages}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item A wrong model form causes high bias
+  \item Training can be costly
+\end{itemize}
+
+\tpart{Applications}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Linear and logistic regression
+  \item SVMs and neural networks
+\end{itemize}
+
+\end{theory}
 
 \subsubsection*{Worked example: a model-based learner by hand}
 
@@ -589,6 +910,62 @@ Remedies & more training data; simpler model or fewer features; \textbf{regulari
 \begin{definition}[: Regularisation]
 \textbf{Regularisation} means deliberately \emph{constraining} a model to make it simpler and so reduce overfitting, for example by adding a penalty on large parameter values to the loss (Chapter~4). The amount of regularisation is a hyperparameter.
 \end{definition}
+
+\begin{theory}{Overfitting}
+\tpart{Definition}
+\textbf{Overfitting} occurs when a model fits the training data, \emph{including its noise}, so closely that it performs poorly on new data (low bias, high variance).
+
+\tpart{Causes}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Model too complex for the amount of data
+  \item Too little or noisy training data
+  \item Too many irrelevant features
+  \item Training for too long
+\end{itemize}
+
+\tpart{How to detect}
+Very low training error but much higher validation or test error.
+
+\tpart{Remedies}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Collect more data
+  \item Use a simpler model or fewer features
+  \item Apply regularisation
+  \item Use cross-validation, early stopping or pruning
+\end{itemize}
+
+\tpart{Example}
+A degree-9 polynomial through 10 noisy points has zero training error but swings wildly between the points.
+
+\end{theory}
+
+\begin{theory}{Underfitting}
+\tpart{Definition}
+\textbf{Underfitting} occurs when a model is too simple to capture the pattern in the data, so it performs poorly on \emph{both} training and test data (high bias).
+
+\tpart{Causes}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Model too simple (e.g.\ a straight line for curved data)
+  \item Too few or poorly chosen features
+  \item Too much regularisation
+  \item Insufficient training
+\end{itemize}
+
+\tpart{How to detect}
+High training error and high test error, close to each other.
+
+\tpart{Remedies}
+\begin{itemize}[itemsep=2pt,topsep=3pt]
+  \item Use a more complex model
+  \item Add or engineer better features
+  \item Reduce regularisation
+  \item Train longer
+\end{itemize}
+
+\tpart{Example}
+Fitting a horizontal line to data that clearly rises and then falls.
+
+\end{theory}
 
 \subsection{Testing and Validating}
 

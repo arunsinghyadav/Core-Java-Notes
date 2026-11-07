@@ -1,0 +1,866 @@
+\chapter{Distance-Based Methods, Decision Trees and Naive Bayes}
+
+\begin{objectives}
+After studying this chapter you will be able to:
+\begin{itemize}
+  \item compute \textbf{Euclidean, Manhattan, Minkowski, Chebyshev, Hamming} and \textbf{cosine} measures and explain why \textbf{feature scaling} matters;
+  \item apply the \textbf{k-Nearest Neighbours} algorithm to classification and regression, and explain the effect of $k$;
+  \item build a \textbf{decision tree} by hand using \textbf{entropy, information gain} and \textbf{Gini index};
+  \item explain \textbf{overfitting in trees} and \textbf{pruning};
+  \item state \textbf{Bayes' theorem} and apply the \textbf{Naive Bayes} classifier, including \textbf{Laplace smoothing} and the \textbf{Gaussian} variant;
+  \item compare the three methods and choose between them;
+  \item answer 2-, 5- and 10-mark university questions on these topics.
+\end{itemize}
+\end{objectives}
+
+\begin{pullquote}[--- Cover \& Hart, 1967 (on nearest neighbours)]
+Birds of a feather flock together: the nearest neighbour of a point carries a lot of information about its class.
+\end{pullquote}
+
+This chapter begins Unit~II (Supervised Learning). The three methods here are among the simplest and most intuitive classifiers, and each uses a different idea:
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Method} & \textbf{Core idea} & \textbf{Type (Chapter~1 / 2)}\\
+\midrule
+k-Nearest Neighbours & ``You are like your closest neighbours'' & instance-based, non-parametric\\
+Decision tree & ``Ask a sequence of yes/no questions'' & model-based, non-parametric\\
+Naive Bayes & ``Use probability and Bayes' rule'' & model-based, parametric\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%====================================================================
+\section{Distance-Based Methods}
+
+Many learning algorithms (k-NN, K-Means, SVMs with kernels) depend on one question: \emph{how similar are two instances?} We answer it with a \textbf{distance} (small = similar) or a \textbf{similarity} (large = similar).
+
+\begin{definition}[: Distance metric]
+A function $d(\vect{a},\vect{b})$ is a \textbf{metric} if for all points: (i)~$d(\vect{a},\vect{b})\ge0$ and $d(\vect{a},\vect{b})=0\iff\vect{a}=\vect{b}$; (ii)~symmetry $d(\vect{a},\vect{b})=d(\vect{b},\vect{a})$; (iii)~triangle inequality $d(\vect{a},\vect{c})\le d(\vect{a},\vect{b})+d(\vect{b},\vect{c})$.
+\end{definition}
+
+\subsection{Common Distance Measures}
+
+For two $d$-dimensional points $\vect{a}=(a_1,\dots,a_d)$ and $\vect{b}=(b_1,\dots,b_d)$:
+
+\begin{center}
+\begin{tabular}{@{}p{3.3cm}p{5.8cm}p{4.4cm}@{}}
+\toprule
+\textbf{Measure} & \textbf{Formula} & \textbf{Use}\\
+\midrule
+Euclidean ($L_2$) & $\sqrt{\sum_i (a_i-b_i)^2}$ & Default for numeric data\\
+Manhattan ($L_1$) & $\sum_i |a_i-b_i|$ & Grid-like paths; less sensitive to outliers\\
+Minkowski ($L_p$) & $\big(\sum_i |a_i-b_i|^p\big)^{1/p}$ & General family ($p=1,2$ above)\\
+Chebyshev ($L_\infty$) & $\max_i |a_i-b_i|$ & Largest single difference\\
+Hamming & number of positions where $a_i\neq b_i$ & Binary / categorical strings\\
+Cosine similarity & $\dfrac{\vect{a}\cdot\vect{b}}{\|\vect{a}\|\,\|\vect{b}\|}$ & Text; direction, not size\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{example}[: Computing distances]
+Let $\vect{a}=(1,2,3)$ and $\vect{b}=(4,6,3)$. The coordinate differences are $3,4,0$.
+\begin{align*}
+d_{L_2}&=\sqrt{3^2+4^2+0^2}=\sqrt{25}=5, &
+d_{L_1}&=3+4+0=7,\\
+d_{L_\infty}&=\max(3,4,0)=4, &
+d_{L_3}&=(27+64+0)^{1/3}=91^{1/3}\approx4.50.
+\end{align*}
+Cosine similarity: $\vect{a}\cdot\vect{b}=4+12+9=25$, $\|\vect{a}\|=\sqrt{14}\approx3.742$, $\|\vect{b}\|=\sqrt{61}\approx7.810$, so $\cos\theta=25/29.22\approx0.855$.\par
+Hamming: for the bit strings $10110$ and $11100$ the strings differ in positions 2 and 4, so $d_H=2$.\par
+\textbf{Note the ordering} $L_\infty\le L_3\le L_2\le L_1$ for the same pair of points.
+\end{example}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[scale=1.6]
+\draw[-{Stealth},gray] (-1.4,0)--(1.5,0); \draw[-{Stealth},gray] (0,-1.4)--(0,1.5);
+\draw[very thick,mlred] (1,0)--(0,1)--(-1,0)--(0,-1)--cycle;
+\draw[very thick,mlblue] (0,0) circle (1);
+\draw[very thick,mlgreen] (-1,-1) rectangle (1,1);
+\node[mlred,font=\small,fill=white,inner sep=1pt] at (0.62,0.62) {$L_1$};
+\node[mlblue,font=\small,fill=white,inner sep=1pt] at (0.62,-0.82) {$L_2$};
+\node[mlgreen,font=\small,fill=white,inner sep=1pt] at (1.18,0.9) {$L_\infty$};
+\fill (0,0) circle (1pt) node[below left,font=\scriptsize] {origin};
+\end{tikzpicture}
+\caption{The set of all points at distance exactly 1 from the origin, for three metrics.}\label{fig:unitballs}
+\end{figure}
+
+\begin{explain}
+Each coloured outline is the set of points that are \emph{exactly one unit away} from the origin under a different distance. Under \textbf{Euclidean} distance ($L_2$, blue) this set is a \emph{circle}. Under \textbf{Manhattan} ($L_1$, red) it is a \emph{diamond}, because you may only move along the axes. Under \textbf{Chebyshev} ($L_\infty$, green) it is a \emph{square}. The point $(1,1)$ lies on the green square but far outside the red diamond: the \emph{same pair of points} is counted as ``close'' or ``far'' depending on the metric. Hence the choice of metric changes which points are neighbours.
+\end{explain}
+
+\subsection{Feature Scaling}
+
+Distance measures add up differences across all features, so a feature with a \emph{large numeric range} dominates the sum. We must put features on a comparable scale.
+
+\begin{center}
+\begin{tabular}{@{}p{3.6cm}p{5cm}p{4.6cm}@{}}
+\toprule
+\textbf{Method} & \textbf{Formula} & \textbf{Result}\\
+\midrule
+Min--max scaling & $x'=\dfrac{x-x_{\min}}{x_{\max}-x_{\min}}$ & Values in $[0,1]$\\[3mm]
+Standardisation (z-score) & $x'=\dfrac{x-\mu}{\sigma}$ & Mean 0, standard deviation 1\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{example}[: Why scaling matters]
+Three people: $P=(\text{age }25,\ \text{salary }40000)$, $Q=(45,\ 42000)$, $R=(26,\ 80000)$. Raw Euclidean distances:
+\[
+d(P,Q)=\sqrt{20^2+2000^2}\approx2000.1,\qquad d(P,R)=\sqrt{1^2+40000^2}\approx40000.0 .
+\]
+The salary difference swamps age, so $Q$ (20 years older) looks far closer to $P$ than $R$ (1 year older) does, which is silly. Now min--max scale with age range $20$--$60$ and salary range $20\,000$--$100\,000$:
+\[
+P'=(0.125,\,0.250),\quad Q'=(0.625,\,0.275),\quad R'=(0.150,\,0.750).
+\]
+$d(P',Q')=\sqrt{0.5^2+0.025^2}\approx0.5006$ and $d(P',R')=\sqrt{0.025^2+0.5^2}\approx0.5006$: after scaling, age and salary contribute fairly.
+\end{example}
+
+\begin{warning}
+Always compute the scaling parameters ($x_{\min},x_{\max},\mu,\sigma$) on the \textbf{training set only} and then apply the \emph{same} numbers to the test set. Using the test data to compute them leaks information.
+\end{warning}
+
+%====================================================================
+\section{Nearest Neighbours (k-NN)}
+
+\subsection{The Algorithm}
+
+k-NN is the simplest learning algorithm: it has \textbf{no training phase}. It just stores the training data (a \emph{lazy learner}) and does all the work at prediction time.
+
+\begin{definition}[: k-Nearest Neighbours]
+To predict for a new point $\vect{x}_q$:
+\begin{enumerate}
+  \item Compute the distance from $\vect{x}_q$ to every training point.
+  \item Pick the $k$ training points with the smallest distances (the \emph{neighbourhood} $N_k(\vect{x}_q)$).
+  \item \textbf{Classification:} output the \emph{majority class} among the $k$ neighbours.\\
+        \textbf{Regression:} output the \emph{mean} of their target values.
+\end{enumerate}
+\end{definition}
+
+\begin{example}[: k-NN classification by hand]
+Training data (two features, two classes) and the query $\vect{x}_q=(5,4)$:
+
+\begin{center}
+\begin{tabular}{@{}c|cc|c|c|c@{}}
+\toprule
+Point & $x_1$ & $x_2$ & Class & Distance to $(5,4)$ & Rank\\
+\midrule
+$P_4$ & 6 & 5 & B & $\sqrt{1+1}=1.414$ & 1\\
+$P_5$ & 7 & 4 & B & $\sqrt{4+0}=2.000$ & 2--3\\
+$P_6$ & 5 & 6 & B & $\sqrt{0+4}=2.000$ & 2--3\\
+$P_7$ & 4 & 2 & A & $\sqrt{1+4}=2.236$ & 4\\
+$P_3$ & 3 & 2 & A & $\sqrt{4+4}=2.828$ & 5\\
+$P_2$ & 2 & 3 & A & $\sqrt{9+1}=3.162$ & 6\\
+$P_1$ & 1 & 1 & A & $\sqrt{16+9}=5.000$ & 7\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{@{}cll@{}}
+\toprule
+$k$ & Neighbours & Prediction\\
+\midrule
+1 & $P_4$ (B) & \textbf{B}\\
+3 & $P_4,P_5,P_6$ = B,B,B & \textbf{B}\\
+5 & B,B,B,A,A (3 vs 2) & \textbf{B}\\
+7 & all points: 4 A vs 3 B & \textbf{A}\\
+\bottomrule
+\end{tabular}
+\end{center}
+The prediction \emph{changes} from B to A when $k$ grows to 7, which shows how sensitive k-NN is to $k$.
+\end{example}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=8.2cm,height=8.2cm,xmin=0,xmax=8,ymin=0,ymax=8,xlabel={$x_1$},ylabel={$x_2$},
+  axis equal image,grid=both,grid style={gray!20},legend style={at={(1.03,0.5)},anchor=west,font=\small}]
+\addplot[only marks,mark=*,mlblue,mark size=3pt] coordinates {(1,1)(2,3)(3,2)(4,2)};
+\addlegendentry{class A}
+\addplot[only marks,mark=triangle*,mlorange,mark size=4pt] coordinates {(6,5)(7,4)(5,6)};
+\addlegendentry{class B}
+\addplot[only marks,mark=star,mlgreen,mark size=5pt,very thick] coordinates {(5,4)};
+\addlegendentry{query}
+\addplot[dashed,mlgreen,thick,domain=0:360,samples=100,variable=\t]({5+2.05*cos(t)},{4+2.05*sin(t)});
+\addlegendentry{$k=3$}
+\addplot[dotted,mlred,very thick,domain=0:360,samples=100,variable=\t]({5+2.9*cos(t)},{4+2.9*sin(t)});
+\addlegendentry{$k=5$}
+\end{axis}
+\end{tikzpicture}
+\caption{Neighbourhoods of the query point for $k=3$ and $k=5$.}\label{fig:knn}
+\end{figure}
+
+\begin{explain}
+The \textbf{green star} is the query point. Blue circles are class~A and orange triangles are class~B. The \textbf{dashed green circle} is just big enough to contain the 3 nearest points: all three are orange, so $k=3$ votes B. The \textbf{dotted red circle} is large enough to contain 5 points: three orange and two blue, so $k=5$ still votes B, but by a smaller margin. If we kept enlarging the circle to include all 7 points the blue majority would win. The \emph{radius adapts} to the local density of data; this is why k-NN is called \emph{local}.
+\end{explain}
+
+\subsection{Choosing $k$}
+
+\begin{center}
+\begin{tabular}{@{}p{2.8cm}p{5.5cm}p{5.5cm}@{}}
+\toprule
+ & \textbf{Small $k$ (e.g.\ 1)} & \textbf{Large $k$}\\
+\midrule
+Decision boundary & Very jagged, follows every point & Smooth\\
+Bias & Low & High\\
+Variance & High (sensitive to noise) & Low\\
+Risk & Overfitting & Underfitting\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+$k$ is a \textbf{hyperparameter}, chosen by cross-validation (Chapter~2). Use an \emph{odd} $k$ for two-class problems to avoid ties. A common starting point is $k\approx\sqrt n$.
+
+\begin{keyidea}
+$1/k$ is a measure of model flexibility: $k=1$ is the \emph{most flexible} (and most variable) k-NN; $k=n$ always predicts the overall majority class (the least flexible). This is the bias--variance trade-off of Chapter~2 in action.
+\end{keyidea}
+
+\subsection{Weighted k-NN and k-NN Regression}
+
+In \textbf{weighted k-NN}, closer neighbours get more influence, with a weight $w_i=1/d_i$ (or $1/d_i^2$).
+
+\begin{example}[: k-NN regression]
+Use the house data of Chapter~1: size $x=1,2,3,4,5$ with price $y=15,26,29,44,46$. Predict the price at $x_q=3.4$ with $k=2$. The two nearest sizes are $x=3$ (distance $0.4$, price $29$) and $x=4$ (distance $0.6$, price $44$).
+\begin{itemize}
+  \item \textbf{Plain average:} $\hat y=(29+44)/2=36.5$.
+  \item \textbf{Weighted ($w=1/d$):} $w_1=2.5$, $w_2=1.667$; $\hat y=\dfrac{2.5(29)+1.667(44)}{2.5+1.667}=\dfrac{145.83}{4.167}=35.0$.
+\end{itemize}
+The weighted answer is pulled towards the closer house (price 29). For comparison, the linear model $8+8x$ from Chapter~1 predicts $35.2$.
+\end{example}
+
+\subsection{Strengths and Weaknesses}
+
+\begin{center}
+\begin{tabular}{@{}p{6.7cm}p{6.7cm}@{}}
+\toprule
+\textbf{Advantages} & \textbf{Disadvantages}\\
+\midrule
+Very simple; no training & Slow prediction: must scan all $n$ points ($O(nd)$ per query)\\
+Naturally handles multiple classes & Needs a lot of memory (stores everything)\\
+No assumption about the data shape & Sensitive to feature scale and irrelevant features\\
+Improves as more data arrives & Suffers from the \emph{curse of dimensionality}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Curse of dimensionality.} In high dimensions, points become almost equally far apart, so the idea of a ``nearest'' neighbour loses meaning and k-NN degrades. Remedies: feature selection and dimensionality reduction such as PCA (Chapter~8).
+
+%====================================================================
+\section{Decision Trees}
+
+\subsection{Idea and Structure}
+
+A decision tree predicts by asking a sequence of simple questions about the features, like a game of ``twenty questions''.
+
+\begin{definition}[: Decision tree]
+A \textbf{decision tree} is a flowchart-like model in which each \textbf{internal node} tests one feature, each \textbf{branch} is an outcome of the test, and each \textbf{leaf} holds a prediction (a class label for \emph{classification trees}, or a number for \emph{regression trees}). The top node is the \textbf{root}.
+\end{definition}
+
+The learning problem is: \emph{which feature should we test at each node?} We choose the test that makes the resulting groups as \textbf{pure} as possible, i.e.\ each group dominated by one class.
+
+\subsection{Measures of Impurity}
+
+Let a node contain examples of $C$ classes with proportions $p_1,\dots,p_C$.
+
+\begin{definition}[: Entropy]
+\[
+  H=-\sum_{i=1}^{C}p_i\log_2 p_i\qquad(0\log0:=0).
+\]
+Entropy is $0$ when the node is pure and is maximal ($\log_2C$) when all classes are equally likely. It is measured in \emph{bits}.
+\end{definition}
+
+\begin{definition}[: Gini index]
+\[
+  G=1-\sum_{i=1}^{C}p_i^2 .
+\]
+Gini is $0$ for a pure node and equals $0.5$ for a 50/50 two-class node. It is the probability that two items drawn at random from the node have different classes.
+\end{definition}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=10cm,height=6cm,xlabel={proportion of class 1, $p$},ylabel={impurity},
+  xmin=0,xmax=1,ymin=0,ymax=1.1,domain=0.001:0.999,samples=120,axis lines=left,
+  legend style={at={(0.5,1.04)},anchor=south,legend columns=3,font=\small}]
+\addplot[thick,mlblue]{-x*ln(x)/ln(2)-(1-x)*ln(1-x)/ln(2)};
+\addplot[thick,mlred]{2*x*(1-x)};
+\addplot[thick,mlgreen,dashed]{1-max(x,1-x)};
+\legend{Entropy,Gini ($\times2$ for comparison),Misclassification error}
+\draw[dotted] (axis cs:0.5,0)--(axis cs:0.5,1.1);
+\end{axis}
+\end{tikzpicture}
+\caption{Impurity measures for a two-class node as a function of $p$.}\label{fig:impurity}
+\end{figure}
+
+\begin{explain}
+The horizontal axis is the \textbf{proportion of class 1} in a node: $p=0$ or $p=1$ means a \emph{pure} node and $p=0.5$ is the most mixed. All three curves are \textbf{zero at the ends} (pure) and \textbf{highest at the middle} (maximum confusion). \textbf{Entropy} (blue) is slightly more curved than \textbf{Gini} (red; drawn here as $2p(1-p)$ so that it peaks at 1 like entropy). In practice they almost always choose the same splits. The dashed green \emph{misclassification error} has a sharp corner and is less sensitive to changes, which is why it is rarely used for growing trees.
+\end{explain}
+
+\begin{definition}[: Information gain]
+If a split on feature $A$ divides a set $S$ into subsets $S_v$ (one for each value $v$ of $A$), then
+\[
+  \text{Gain}(S,A)=H(S)-\sum_{v}\frac{|S_v|}{|S|}\,H(S_v).
+\]
+It is the \emph{reduction in entropy} achieved by the split. At each node the tree picks the feature with the \textbf{highest information gain}. (The ID3 algorithm does exactly this; C4.5 uses the \emph{gain ratio} to avoid favouring features with many values; CART uses the Gini index and binary splits.)
+\end{definition}
+
+\subsection{Worked Example: Building a Tree with ID3}
+
+We want to decide whether to \textbf{play tennis} from the weather. There are 14 past days.
+
+\begin{center}
+\small
+\begin{tabular}{@{}cllllc@{}}
+\toprule
+\textbf{Day} & \textbf{Outlook} & \textbf{Temp.} & \textbf{Humidity} & \textbf{Wind} & \textbf{Play}\\
+\midrule
+D1 & Sunny & Hot & High & Weak & No\\
+D2 & Sunny & Hot & High & Strong & No\\
+D3 & Overcast & Hot & High & Weak & Yes\\
+D4 & Rain & Mild & High & Weak & Yes\\
+D5 & Rain & Cool & Normal & Weak & Yes\\
+D6 & Rain & Cool & Normal & Strong & No\\
+D7 & Overcast & Cool & Normal & Strong & Yes\\
+D8 & Sunny & Mild & High & Weak & No\\
+D9 & Sunny & Cool & Normal & Weak & Yes\\
+D10 & Rain & Mild & Normal & Weak & Yes\\
+D11 & Sunny & Mild & Normal & Strong & Yes\\
+D12 & Overcast & Mild & High & Strong & Yes\\
+D13 & Overcast & Hot & Normal & Weak & Yes\\
+D14 & Rain & Mild & High & Strong & No\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Step 1: entropy of the whole set.} There are 9 Yes and 5 No:
+\[
+H(S)=-\tfrac{9}{14}\log_2\tfrac{9}{14}-\tfrac{5}{14}\log_2\tfrac{5}{14}=0.410+0.530=\mathbf{0.940}.
+\]
+
+\paragraph{Step 2: information gain of every feature.}
+
+\begin{center}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Split} & \textbf{Values (Yes, No)} & \textbf{Entropies} & \textbf{Gain}\\
+\midrule
+Outlook & Sunny (2,3), Overcast (4,0), Rain (3,2) & $0.971,\ 0,\ 0.971$ & $\mathbf{0.247}$\\
+Humidity & High (3,4), Normal (6,1) & $0.985,\ 0.592$ & $0.152$\\
+Wind & Weak (6,2), Strong (3,3) & $0.811,\ 1.000$ & $0.048$\\
+Temperature & Hot (2,2), Mild (4,2), Cool (3,1) & $1.000,\ 0.918,\ 0.811$ & $0.029$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\emph{Detail for Outlook:}
+\[
+\text{Gain}=0.940-\tfrac{5}{14}(0.971)-\tfrac{4}{14}(0)-\tfrac{5}{14}(0.971)=0.940-0.694=0.247 .
+\]
+\textbf{Outlook has the highest gain, so it becomes the root.}
+
+\paragraph{Step 3: recurse on each branch.}
+\begin{itemize}
+  \item \textbf{Overcast:} all 4 days are Yes $\Rightarrow$ pure $\Rightarrow$ leaf \emph{Yes}.
+  \item \textbf{Sunny} (D1, D2, D8, D9, D11; 2 Yes, 3 No): splitting on Humidity gives High $\to$ \{D1, D2, D8\} all No, Normal $\to$ \{D9, D11\} all Yes. Both pure, so Humidity is chosen.
+  \item \textbf{Rain} (D4, D5, D6, D10, D14; 3 Yes, 2 No): splitting on Wind gives Weak $\to$ \{D4, D5, D10\} all Yes, Strong $\to$ \{D6, D14\} all No.
+\end{itemize}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[
+  every node/.style={font=\small},
+  dec/.style={draw,rounded corners,fill=mlblue!12,draw=mlblue,thick,minimum width=2.1cm,minimum height=0.8cm},
+  yes/.style={draw,fill=mlgreen!22,draw=mlgreen,thick,minimum width=1.4cm,minimum height=0.7cm,rounded corners},
+  no/.style={draw,fill=mlred!15,draw=mlred,thick,minimum width=1.4cm,minimum height=0.7cm,rounded corners},
+  lab/.style={fill=white,inner sep=1.5pt,font=\footnotesize}]
+\node[dec] (o) at (0,0) {Outlook?};
+\node[dec] (h) at (-4.2,-2.3) {Humidity?};
+\node[yes] (oc) at (0,-2.3) {Yes};
+\node[dec] (w) at (4.2,-2.3) {Wind?};
+\node[no]  (hn) at (-5.4,-4.6) {No};
+\node[yes] (hy) at (-3.0,-4.6) {Yes};
+\node[no]  (ws) at (3.0,-4.6) {No};
+\node[yes] (ww) at (5.4,-4.6) {Yes};
+\draw[thick] (o)--(h) node[midway,lab]{Sunny};
+\draw[thick] (o)--(oc) node[midway,lab]{Overcast};
+\draw[thick] (o)--(w) node[midway,lab]{Rain};
+\draw[thick] (h)--(hn) node[midway,lab]{High};
+\draw[thick] (h)--(hy) node[midway,lab]{Normal};
+\draw[thick] (w)--(ws) node[midway,lab]{Strong};
+\draw[thick] (w)--(ww) node[midway,lab]{Weak};
+\end{tikzpicture}
+\caption{The decision tree learned by ID3 from the Play-Tennis data.}\label{fig:tree}
+\end{figure}
+
+\begin{explain}
+\textbf{Blue boxes} are decision nodes (questions), \textbf{green} and \textbf{red} boxes are leaves (final answers: Yes/No). To classify a new day, start at the \emph{root} and follow the branch matching the day's value at each question until you reach a leaf. For example, a day that is \emph{Rain} and \emph{Weak wind}: Outlook $=$ Rain $\to$ Wind? $\to$ Weak $\to$ \textbf{Yes}. The tree also reads as rules:
+\textit{IF Outlook=Overcast THEN Play=Yes; IF Outlook=Sunny AND Humidity=High THEN No; \ldots}\ This is why trees are so easy to \emph{interpret}.
+\end{explain}
+
+\paragraph{The same split using the Gini index.} $G(S)=1-(\tfrac9{14})^2-(\tfrac5{14})^2=0.459$. For Outlook, $G(\text{Sunny})=G(\text{Rain})=1-(0.4)^2-(0.6)^2=0.48$ and $G(\text{Overcast})=0$, so the weighted Gini is $\tfrac5{14}(0.48)+\tfrac4{14}(0)+\tfrac5{14}(0.48)=0.343$ and the Gini gain is $0.459-0.343=0.116$, again the best feature.
+
+\subsection{Algorithm Summary}
+
+\begin{enumerate}
+  \item Start with all training data at the root.
+  \item If the node is pure (or a stopping rule applies), make it a leaf labelled with the majority class.
+  \item Otherwise, evaluate every candidate split; choose the one with the highest gain (or largest drop in Gini).
+  \item Split the data and \textbf{recurse} on each child.
+\end{enumerate}
+
+\paragraph{Continuous features.} Sort the values, try thresholds halfway between consecutive values (e.g.\ ``Age $\le 30$?''), and choose the threshold with the best gain.
+
+\paragraph{Regression trees.} Leaves store the \emph{mean} target of their training points; the best split minimises the sum of squared errors (variance) in the two children.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=8cm,height=6.4cm,xmin=0,xmax=10,ymin=0,ymax=10,xlabel={$x_1$},ylabel={$x_2$},ticks=none,
+  legend style={at={(1.03,0.5)},anchor=west,font=\small}]
+\fill[mlblue!8] (axis cs:0,0) rectangle (axis cs:4,10);
+\fill[mlorange!10] (axis cs:4,0) rectangle (axis cs:10,5);
+\fill[mlblue!8] (axis cs:4,5) rectangle (axis cs:10,10);
+\addplot[only marks,mark=*,mlblue,mark size=2.5pt] coordinates {(1,2)(2,6)(3,4)(1.5,8)(6,8)(8,7)(7,9)};
+\addlegendentry{class A}
+\addplot[only marks,mark=triangle*,mlorange,mark size=3.5pt] coordinates {(5,2)(6,3)(8,1.5)(7,4)(9,3)};
+\addlegendentry{class B}
+\draw[very thick,mlgreen] (axis cs:4,0)--(axis cs:4,10);
+\draw[very thick,mlred] (axis cs:4,5)--(axis cs:10,5);
+\node[font=\scriptsize,mlgreen!50!black,fill=white,inner sep=1pt] at (axis cs:4,9.5) {split 1: $x_1<4$};
+\node[font=\scriptsize,mlred,fill=white,inner sep=1pt] at (axis cs:8.2,5.4) {split 2: $x_2<5$};
+\end{axis}
+\end{tikzpicture}
+\caption{A decision tree with two splits carves the feature space into axis-parallel rectangles.}\label{fig:partition}
+\end{figure}
+
+\begin{explain}
+Every split in a tree tests \emph{one feature against a threshold}, which draws a \textbf{straight line parallel to an axis}. The \textbf{green vertical line} is the root test $x_1<4$: everything to its left is class~A. On the right, the \textbf{red horizontal line} tests $x_2<5$: below it is class~B (orange), above it class~A. The final result is three \emph{rectangular regions}, each assigned one class. Trees therefore produce \emph{boxy} decision boundaries, which suit data with axis-aligned structure but approximate diagonal boundaries only with many small steps.
+\end{explain}
+
+\subsection{Overfitting and Pruning}
+
+A tree allowed to grow until every leaf is pure will memorise the training data, noise included (low bias, \textbf{high variance}; see Chapter~2). We control complexity by \textbf{pruning}.
+
+\begin{center}
+\begin{tabular}{@{}p{3.3cm}p{10.2cm}@{}}
+\toprule
+\textbf{Pre-pruning} (early stopping) & Stop growing early: limit the depth (\texttt{max\_depth}), require a minimum number of samples to split (\texttt{min\_samples\_split}) or in a leaf (\texttt{min\_samples\_leaf}), or require a minimum gain.\\
+\textbf{Post-pruning} & Grow the full tree, then \emph{cut back} branches that do not improve accuracy on a validation set (reduced-error pruning) or minimise cost $=\text{error}+\alpha\cdot(\text{number of leaves})$ (cost-complexity pruning).\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Strengths and Weaknesses}
+
+\begin{center}
+\begin{tabular}{@{}p{6.7cm}p{6.7cm}@{}}
+\toprule
+\textbf{Advantages} & \textbf{Disadvantages}\\
+\midrule
+Easy to understand and visualise; human-readable rules & Prone to overfitting\\
+Handles numeric and categorical features & Unstable: small data changes can give a very different tree\\
+No feature scaling needed & Axis-parallel (boxy) boundaries only\\
+Fast prediction; performs feature selection implicitly & Biased towards features with many values\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The instability of single trees is fixed by combining many of them into \emph{ensembles} such as Random Forests (Chapter~5).
+
+%====================================================================
+\section{Naive Bayes}
+
+\subsection{Bayes' Theorem}
+
+\begin{definition}[: Bayes' theorem]
+For a class $C$ and observed evidence $\vect{x}$,
+\[
+  P(C\mid\vect{x})=\frac{P(\vect{x}\mid C)\,P(C)}{P(\vect{x})},\qquad
+  P(\vect{x})=\sum_{c}P(\vect{x}\mid c)P(c).
+\]
+Here $P(C\mid\vect{x})$ is the \textbf{posterior}, $P(\vect{x}\mid C)$ the \textbf{likelihood}, $P(C)$ the \textbf{prior} and $P(\vect{x})$ the \textbf{evidence}.
+\end{definition}
+
+It follows directly from the definition of conditional probability, $P(C\mid\vect{x})P(\vect{x})=P(\vect{x},C)=P(\vect{x}\mid C)P(C)$. In words: \emph{posterior} (what we believe after seeing the evidence) $\propto$ \emph{likelihood} (how well the class explains the evidence) $\times$ \emph{prior} (what we believed before).
+
+\begin{example}[: Spam and the word ``offer'']
+Suppose 30\% of all e-mail is spam, so $P(\text{spam})=0.3$ and $P(\text{ham})=0.7$. The word ``offer'' occurs in 60\% of spam, $P(\text{offer}\mid\text{spam})=0.6$, but only in 10\% of ham, $P(\text{offer}\mid\text{ham})=0.1$. An e-mail contains ``offer''. How likely is it to be spam?
+\[
+P(\text{spam}\mid\text{offer})=\frac{0.6\times0.3}{0.6\times0.3+0.1\times0.7}=\frac{0.18}{0.18+0.07}=\frac{0.18}{0.25}=\mathbf{0.72}.
+\]
+\end{example}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[
+  every node/.style={font=\small},
+  lvl/.style={draw,rounded corners,thick,minimum height=0.8cm,inner sep=4pt},
+  lab/.style={fill=white,inner sep=1.5pt,font=\footnotesize}]
+\node[lvl,fill=gray!12] (r) at (0,0) {All e-mails};
+\node[lvl,fill=mlred!15,draw=mlred] (s) at (4.2,1.6) {Spam};
+\node[lvl,fill=mlgreen!15,draw=mlgreen] (h) at (4.2,-1.6) {Ham};
+\node[lvl,fill=mlred!25,draw=mlred] (so) at (8.6,2.3) {contains ``offer''};
+\node[lvl,fill=gray!8] (sn) at (8.6,0.9) {does not};
+\node[lvl,fill=mlgreen!25,draw=mlgreen] (ho) at (8.6,-0.9) {contains ``offer''};
+\node[lvl,fill=gray!8] (hn) at (8.6,-2.3) {does not};
+\draw[thick] (r)--(s) node[midway,lab]{$0.3$};
+\draw[thick] (r)--(h) node[midway,lab]{$0.7$};
+\draw[thick] (s)--(so) node[midway,lab]{$0.6$};
+\draw[thick] (s)--(sn) node[midway,lab]{$0.4$};
+\draw[thick] (h)--(ho) node[midway,lab]{$0.1$};
+\draw[thick] (h)--(hn) node[midway,lab]{$0.9$};
+\node[font=\footnotesize,anchor=west,mlred] at (10.9,2.3) {$0.3\times0.6=0.18$};
+\node[font=\footnotesize,anchor=west,mlgreen!50!black] at (10.9,-0.9) {$0.7\times0.1=0.07$};
+\end{tikzpicture}
+\caption{Probability tree for the spam example. Only the two ``offer'' leaves matter once we know the word appeared.}\label{fig:bayestree}
+\end{figure}
+
+\begin{explain}
+Read the tree \textbf{left to right}, \emph{multiplying probabilities along a path}. First the e-mail is spam (0.3) or ham (0.7). Then, given its class, it contains ``offer'' with probability 0.6 (spam) or 0.1 (ham). The \textbf{two paths that end in ``contains offer''} have joint probabilities $0.18$ (spam) and $0.07$ (ham). Because we \emph{know} the word appeared, we only look at those two paths, and the posterior is the spam share of their total: $0.18/(0.18+0.07)=0.72$. The prior of 30\% has been \textbf{updated} to 72\% by the evidence.
+\end{explain}
+
+\subsection{The Naive Bayes Classifier}
+
+With many features $\vect{x}=(x_1,\dots,x_d)$, the likelihood $P(x_1,\dots,x_d\mid C)$ would need an enormous number of probabilities. Naive Bayes makes one simplifying assumption.
+
+\begin{definition}[: Naive (conditional independence) assumption]
+Given the class, the features are \textbf{independent}:
+\[
+  P(x_1,\dots,x_d\mid C)=\prod_{j=1}^{d}P(x_j\mid C).
+\]
+\end{definition}
+
+The classification rule becomes (the denominator $P(\vect{x})$ is the same for every class, so it can be dropped):
+\begin{equation}\label{eq:nb}
+  \hat y=\argmax_{c}\; P(c)\prod_{j=1}^{d}P(x_j\mid c).
+\end{equation}
+The assumption is usually \emph{false} (in e-mail, ``free'' and ``offer'' tend to appear together), hence ``naive'', yet the classifier works surprisingly well, because we only need the class with the \emph{largest} score, not exact probabilities.
+
+\paragraph{Training = counting.} Estimate $P(c)=N_c/N$ and $P(x_j=v\mid c)=\dfrac{\text{count}(x_j=v,\ \text{class }c)}{N_c}$ from the training data.
+
+\subsection{Worked Example: Play-Tennis Again}
+
+Classify the new day $\vect{x}=(\text{Sunny},\ \text{Cool},\ \text{High},\ \text{Strong})$ using the 14-day table.
+
+\textbf{Priors:} $P(\text{Yes})=\tfrac9{14}$, $P(\text{No})=\tfrac5{14}$.
+
+\begin{center}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Likelihood} & \textbf{Given Yes (9 days)} & \textbf{Given No (5 days)}\\
+\midrule
+$P(\text{Sunny}\mid\cdot)$ & $2/9$ & $3/5$\\
+$P(\text{Cool}\mid\cdot)$ & $3/9$ & $1/5$\\
+$P(\text{High}\mid\cdot)$ & $3/9$ & $4/5$\\
+$P(\text{Strong}\mid\cdot)$ & $3/9$ & $3/5$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\[
+\text{score(Yes)}=\tfrac{9}{14}\cdot\tfrac29\cdot\tfrac39\cdot\tfrac39\cdot\tfrac39=0.00529,\qquad
+\text{score(No)}=\tfrac{5}{14}\cdot\tfrac35\cdot\tfrac15\cdot\tfrac45\cdot\tfrac35=0.02057 .
+\]
+\textbf{Decision:} $0.02057>0.00529\Rightarrow$ predict \textbf{No}.\\
+\textbf{Posterior probabilities} (normalise): $P(\text{No}\mid\vect{x})=\dfrac{0.02057}{0.02057+0.00529}=0.795$ and $P(\text{Yes}\mid\vect{x})=0.205$.
+
+\subsection{Laplace Smoothing}
+
+\begin{warning}
+\textbf{The zero-frequency problem.} If a value never occurs with a class in training (e.g.\ ``Overcast'' never occurs with ``No''), then $P(\text{Overcast}\mid\text{No})=0$ and the \emph{whole product becomes zero}, whatever the other features say.
+\end{warning}
+
+\textbf{Laplace (add-one) smoothing} adds a pseudo-count $\alpha$ (usually $1$) to every count:
+\[
+  P(x_j=v\mid c)=\frac{\text{count}(x_j=v,c)+\alpha}{N_c+\alpha V_j},
+\]
+where $V_j$ is the number of different values of feature $j$.
+
+\begin{example}[: Smoothing]
+$\text{count}(\text{Overcast},\text{No})=0$, $N_{\text{No}}=5$, and Outlook has $V=3$ values. With $\alpha=1$: $P(\text{Overcast}\mid\text{No})=\dfrac{0+1}{5+3}=\dfrac18=0.125$ instead of $0$.
+\end{example}
+
+\subsection{Variants of Naive Bayes}
+
+\begin{center}
+\begin{tabular}{@{}p{3.4cm}p{4.6cm}p{5.2cm}@{}}
+\toprule
+\textbf{Variant} & \textbf{Feature type} & \textbf{Model for $P(x_j\mid c)$}\\
+\midrule
+Gaussian & Continuous & Normal density with class-wise mean $\mu_{jc}$ and variance $\sigma_{jc}^2$\\
+Multinomial & Counts (word counts) & Relative frequency of word in class (with smoothing)\\
+Bernoulli & Binary (word present/absent) & Probability of presence/absence\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+For the \textbf{Gaussian} variant,
+\[
+  P(x_j\mid c)=\frac{1}{\sqrt{2\pi}\,\sigma_{jc}}\exp\!\left(-\frac{(x_j-\mu_{jc})^2}{2\sigma_{jc}^2}\right).
+\]
+
+\begin{example}[: Gaussian Naive Bayes with one feature]
+Heights: males have $\mu=175$, $\sigma=7$ cm; females have $\mu=162$, $\sigma=6$ cm; priors are equal. Classify a person of height $170$ cm.
+\begin{align*}
+P(170\mid\text{male})&=\tfrac{1}{7\sqrt{2\pi}}e^{-25/98}=0.0570\times0.775=0.0442,\\
+P(170\mid\text{female})&=\tfrac{1}{6\sqrt{2\pi}}e^{-64/72}=0.0665\times0.411=0.0273.
+\end{align*}
+Since the priors are equal, the larger likelihood wins: \textbf{male}, with posterior $0.0442/(0.0442+0.0273)\approx0.62$. (Only 62\% confident because $170$ is plausible for both.)
+\end{example}
+
+\begin{keyidea}
+\textbf{Numerical tip.} Multiplying many small probabilities underflows to $0$. Real implementations add \textbf{logarithms} instead: $\hat y=\argmax_c\big[\ln P(c)+\sum_j\ln P(x_j\mid c)\big]$.
+\end{keyidea}
+
+\begin{center}
+\begin{tabular}{@{}p{6.7cm}p{6.7cm}@{}}
+\toprule
+\textbf{Advantages} & \textbf{Disadvantages}\\
+\midrule
+Very fast to train and predict (just counting) & Independence assumption rarely true\\
+Works well with little data and many features & Probability estimates can be poorly calibrated\\
+Excellent baseline for text (spam, sentiment) & Zero-frequency problem (needs smoothing)\\
+Handles multiple classes naturally & Cannot learn interactions between features\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%====================================================================
+\section{Putting It Together: The Three Methods in Python}
+
+\begin{tryit}
+Compare all three on the classic \emph{Iris} flower dataset (150 flowers, 4 measurements, 3 species).
+\begin{lstlisting}
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
+
+X, y = load_iris(return_X_y=True)
+Xtr, Xte, ytr, yte = train_test_split(
+    X, y, test_size=0.3, random_state=42, stratify=y)
+
+models = {
+  "k-NN (k=5)": make_pipeline(StandardScaler(),
+                              KNeighborsClassifier(n_neighbors=5)),
+  "Decision tree": DecisionTreeClassifier(max_depth=3, random_state=0),
+  "Naive Bayes": GaussianNB(),
+}
+for name, m in models.items():
+    m.fit(Xtr, ytr)
+    cv = cross_val_score(m, X, y, cv=5).mean()
+    print(f"{name:14s} test = {m.score(Xte, yte):.3f}  CV = {cv:.3f}")
+\end{lstlisting}
+\textbf{Output:}
+\begin{center}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Model} & \textbf{Test accuracy} & \textbf{5-fold CV accuracy}\\
+\midrule
+k-NN ($k=5$) & 0.911 & 0.960\\
+Decision tree (depth 3) & 0.933 & 0.960\\
+Naive Bayes & 0.911 & 0.953\\
+\bottomrule
+\end{tabular}
+\end{center}
+All three do well here. The single test split (45 flowers) is noisy, so the \emph{cross-validated} numbers are more reliable and show the methods are practically tied.
+
+\medskip\noindent\textbf{Effect of $k$} (same data, scaled):
+\begin{center}
+\begin{tabular}{@{}cccl@{}}
+\toprule
+$k$ & Train acc. & Test acc. & Comment\\
+\midrule
+1 & 1.000 & 0.933 & memorises training data\\
+3 & 0.971 & 0.911 & \\
+5 & 0.981 & 0.911 & \\
+15 & 0.981 & 0.933 & smooth boundary\\
+51 & 0.876 & 0.822 & \textbf{underfits}: both fall\\
+\bottomrule
+\end{tabular}
+\end{center}
+A huge $k$ averages over too much of the data and accuracy drops on \emph{both} sets: underfitting, exactly as predicted.
+
+\medskip\noindent\textbf{A tiny tree you can read} (\texttt{max\_depth=2}, printed with \texttt{export\_text}):
+\begin{lstlisting}[numbers=none]
+|--- petal_wid <= 0.70            -> class 0 (setosa)
+|--- petal_wid >  0.70
+|   |--- petal_wid <= 1.55       -> class 1 (versicolor)
+|   |--- petal_wid >  1.55       -> class 2 (virginica)
+\end{lstlisting}
+Just \emph{two questions about petal width} separate the three species.
+\end{tryit}
+
+\section{Comparison of the Three Methods}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{3.1cm}p{3.5cm}p{3.5cm}p{3.5cm}@{}}
+\toprule
+ & \textbf{k-NN} & \textbf{Decision tree} & \textbf{Naive Bayes}\\
+\midrule
+Learner type & Lazy, instance-based & Eager, model-based & Eager, model-based\\
+Training cost & None & Moderate & Very low\\
+Prediction cost & High & Very low & Very low\\
+Assumption & Similar points share classes & Axis-aligned splits & Features independent given class\\
+Needs scaling? & \textbf{Yes} & No & No (Gaussian: no)\\
+Interpretable? & Low & \textbf{High} & Moderate\\
+Main hyperparameter & $k$, metric & depth, min samples & smoothing $\alpha$\\
+Typical weakness & Slow; high dimensions & Overfits; unstable & Independence assumption\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%====================================================================
+\begin{summary}
+\begin{itemize}
+  \item Distance measures ($L_1,L_2,L_p,L_\infty$, Hamming, cosine) define similarity; \textbf{scale features} first (min--max or z-score, fitted on training data only).
+  \item \textbf{k-NN} stores data and predicts by majority vote (classification) or mean (regression) of the $k$ closest points. Small $k$ $\Rightarrow$ high variance; large $k$ $\Rightarrow$ high bias.
+  \item \textbf{Decision trees} split on the feature with highest \textbf{information gain} (entropy) or largest Gini reduction. Full trees overfit; control with \textbf{pruning}.
+  \item Entropy $H=-\sum p_i\log_2p_i$; Gini $=1-\sum p_i^2$; Gain $=H(S)-\sum\frac{|S_v|}{|S|}H(S_v)$.
+  \item \textbf{Naive Bayes}: $\hat y=\argmax_c P(c)\prod_jP(x_j\mid c)$, assuming conditional independence; use \textbf{Laplace smoothing} and log-probabilities; variants: Gaussian, multinomial, Bernoulli.
+  \item In the Play-Tennis example the tree root is Outlook (gain $0.247$) and Naive Bayes predicts ``No'' with posterior $0.795$ for (Sunny, Cool, High, Strong).
+\end{itemize}
+\end{summary}
+
+%====================================================================
+\section*{Exam Corner}
+\addcontentsline{toc}{section}{Exam Corner}
+
+\subsection*{A.\ Very Short Answer Questions (2 marks each)}
+\begin{enumerate}
+  \item Define Euclidean and Manhattan distance. \qmarks{2}
+  \item Why is feature scaling necessary for k-NN? \qmarks{2}
+  \item Why is k-NN called a lazy learner? \qmarks{2}
+  \item What happens when $k=1$ and when $k=n$ in k-NN? \qmarks{2}
+  \item Define entropy and Gini index. \qmarks{2}
+  \item What is information gain? \qmarks{2}
+  \item What is pruning? Name its two types. \qmarks{2}
+  \item State Bayes' theorem. \qmarks{2}
+  \item Why is Naive Bayes called ``naive''? \qmarks{2}
+  \item What is Laplace smoothing and why is it needed? \qmarks{2}
+\end{enumerate}
+
+\begin{modelans}[: Q4 and Q10]
+\textbf{Q4.} For $k=1$ the prediction is the label of the single nearest point: the boundary is very jagged, bias is low, variance is high (overfitting). For $k=n$ every query gets the overall majority class: the model is a constant, bias is high and variance is zero (underfitting).\par
+\textbf{Q10.} Laplace smoothing adds a pseudo-count (usually 1) to every feature-value count so that $P(x_j\mid c)=\frac{\text{count}+1}{N_c+V_j}$. It is needed to avoid zero probabilities for unseen feature--class combinations, which would force the whole product $\prod P(x_j\mid c)$ to zero.
+\end{modelans}
+
+\subsection*{B.\ Short Answer Questions (5 marks each)}
+\begin{enumerate}
+  \item Explain the k-NN algorithm for classification with an example. \qmarks{5}
+  \item Discuss the effect of the value of $k$ on k-NN (bias, variance, over/underfitting). \qmarks{5}
+  \item List the advantages and disadvantages of k-NN. What is the curse of dimensionality? \qmarks{5}
+  \item Explain the structure of a decision tree. Differentiate entropy and Gini index. \qmarks{5}
+  \item Explain overfitting in decision trees. How can it be reduced? \qmarks{5}
+  \item Explain the Naive Bayes classifier and its independence assumption. \qmarks{5}
+  \item Compare k-NN, decision trees and Naive Bayes in a table. \qmarks{5}
+\end{enumerate}
+
+\begin{modelans}[: B4 (outline for 5 marks)]
+\emph{Structure:} root node (first test), internal nodes (feature tests), branches (outcomes), leaves (class label or value); classification of a new point follows the path from root to a leaf.\par
+\emph{Entropy} $H=-\sum p_i\log_2p_i$: measures disorder of class labels; $0$ for a pure node, $1$ for a 50/50 binary node.
+\emph{Gini} $=1-\sum p_i^2$: probability of mis-classifying a random item; $0$ for pure, $0.5$ for 50/50.\par
+\begin{center}\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & \textbf{Entropy} & \textbf{Gini}\\
+\midrule
+Formula & $-\sum p_i\log_2 p_i$ & $1-\sum p_i^2$\\
+Range (2 classes) & $0$ to $1$ & $0$ to $0.5$\\
+Cost & Needs logarithm & Cheaper (no log)\\
+Used in & ID3, C4.5 & CART\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{modelans}
+
+\subsection*{C.\ Long Answer Questions (10 marks each)}
+\begin{enumerate}
+  \item Explain the ID3 algorithm. Using the 14-day Play-Tennis table, compute the information gain of \emph{Outlook} and show that it is chosen as the root. \qmarks{10}
+  \item Explain the Naive Bayes classifier with Laplace smoothing. Use the Play-Tennis data to classify (Sunny, Cool, High, Strong). \qmarks{10}
+  \item Describe the k-NN algorithm for classification and regression. Illustrate with a numerical example and discuss the choice of $k$ and distance metric. \qmarks{10}
+  \item Explain distance measures used in machine learning with examples. Why must features be scaled? \qmarks{10}
+  \item Discuss pre-pruning and post-pruning in decision trees. How do trees compare to k-NN and Naive Bayes in terms of interpretability and cost? \qmarks{10}
+\end{enumerate}
+
+\begin{modelans}[: C1 (key steps)]
+1.~$H(S)=0.940$ (9 Yes, 5 No).\quad
+2.~Outlook: Sunny (2Y,3N) $H=0.971$; Overcast (4Y,0N) $H=0$; Rain (3Y,2N) $H=0.971$.\quad
+3.~$\text{Gain}=0.940-\tfrac5{14}(0.971)-\tfrac4{14}(0)-\tfrac5{14}(0.971)=0.247$.\quad
+4.~Gains of the others: Humidity $0.152$, Wind $0.048$, Temperature $0.029$. Outlook is largest, so it is the root.\quad
+5.~Overcast is pure (Yes); Sunny splits on Humidity; Rain splits on Wind. Draw the tree of Figure~\ref{fig:tree}.
+\end{modelans}
+
+\subsection*{D.\ Numerical Problems}
+\begin{enumerate}
+  \item Find the Euclidean and Manhattan distance between $(2,3)$ and $(6,6)$. \textit{(Answer: $5$ and $7$.)}
+  \item Training points: $(1,2)$ A, $(2,1)$ A, $(3,3)$ A, $(4,5)$ B, $(5,4)$ B. Classify the query $(4,4)$ using $k=3$ and $k=5$ (Euclidean). \textit{(Distances: $1,1,1.414,3.606,3.606$. Answer: $k=3$: B,B,A $\to$ \textbf{B}; $k=5$: 2B vs 3A $\to$ \textbf{A}.)}
+  \item Distances to a query are $1$ and $2$ with target values $10$ and $20$. Give the weighted ($1/d$) k-NN regression value for $k=2$. \textit{(Answer: $\frac{1\cdot10+0.5\cdot20}{1.5}=13.33$.)}
+  \item Compute the entropy of a node with 6 positive and 2 negative examples. \textit{(Answer: $-0.75\log_2 0.75-0.25\log_2 0.25=0.811$.)}
+  \item A node with 4 positives and 4 negatives is split into $(3+,1-)$ and $(1+,3-)$. Compute the information gain. \textit{(Answer: $1-\tfrac48(0.811)-\tfrac48(0.811)=0.189$.)}
+  \item Compute the Gini index of a node with 3 ``yes'' and 1 ``no''. \textit{(Answer: $1-0.5625-0.0625=0.375$.)}
+  \item $P(\text{spam})=0.4$, $P(\text{``free''}\mid\text{spam})=0.5$, $P(\text{``free''}\mid\text{ham})=0.05$. Find $P(\text{spam}\mid\text{``free''})$. \textit{(Answer: $\frac{0.4\cdot0.5}{0.4\cdot0.5+0.6\cdot0.05}=\frac{0.20}{0.23}=0.870$.)}
+  \item A word never appears in the 100 words of class ``ham''; vocabulary size is 50. Find its smoothed probability. \textit{(Answer: $\frac{0+1}{100+50}=0.0067$.)}
+\end{enumerate}
+
+\subsection*{E.\ Multiple-Choice Questions}
+\begin{enumerate}
+  \item k-NN does its main computation during: \\
+  (a) training \quad (b) prediction \quad (c) pruning \quad (d) scaling
+  \item Which distance is the sum of absolute coordinate differences? \\
+  (a) Euclidean \quad (b) Chebyshev \quad (c) Manhattan \quad (d) Cosine
+  \item The entropy of a pure node is: \\
+  (a) 1 \quad (b) 0.5 \quad (c) 0 \quad (d) $\infty$
+  \item A decision tree chooses the split with the: \\
+  (a) lowest gain \quad (b) highest information gain \quad (c) most branches \quad (d) fewest samples
+  \item Which method needs feature scaling the most? \\
+  (a) Decision tree \quad (b) Naive Bayes \quad (c) k-NN \quad (d) none
+  \item Overfitting of a decision tree is reduced by: \\
+  (a) growing it deeper \quad (b) pruning \quad (c) removing the root \quad (d) adding duplicate data
+  \item In Naive Bayes the features are assumed to be: \\
+  (a) identical \quad (b) correlated \quad (c) conditionally independent given the class \quad (d) Gaussian only
+  \item Laplace smoothing prevents: \\
+  (a) overfitting of trees \quad (b) zero probabilities \quad (c) scaling errors \quad (d) ties in k-NN
+  \item The Gini index of a 50/50 two-class node is: \\
+  (a) 1 \quad (b) 0.5 \quad (c) 0.25 \quad (d) 0
+  \item A very large $k$ in k-NN typically causes: \\
+  (a) overfitting \quad (b) underfitting \quad (c) zero error \quad (d) no change
+\end{enumerate}
+\textbf{Answers:} 1-b,\ 2-c,\ 3-c,\ 4-b,\ 5-c,\ 6-b,\ 7-c,\ 8-b,\ 9-b,\ 10-b.
+
+\subsection*{F.\ Practice Problems}
+\begin{enumerate}
+  \item Using the Play-Tennis table, find the best feature to split on inside the \emph{Sunny} branch using information gain, and verify that Humidity gives gain $0.971$.
+  \item Classify (Overcast, Mild, High, Weak) with Naive Bayes using add-one smoothing.
+  \item \textbf{Coding:} using \texttt{sklearn}, plot training and test accuracy of k-NN on Iris for $k=1,3,\dots,31$ and identify the best $k$ by 5-fold cross-validation.
+  \item \textbf{Coding:} fit \texttt{DecisionTreeClassifier} with \texttt{max\_depth} from 1 to 10 and plot train vs.\ test accuracy. At which depth does overfitting begin?
+\end{enumerate}
+
+\begin{revision}
+\begin{center}\small
+\begin{tabular}{@{}p{3.6cm}p{9.6cm}@{}}
+\toprule
+\textbf{Topic} & \textbf{One-line recall}\\
+\midrule
+Euclidean / Manhattan & $\sqrt{\sum(a_i-b_i)^2}$ / $\sum|a_i-b_i|$.\\
+Scaling & Min--max $\frac{x-x_{\min}}{x_{\max}-x_{\min}}$; z-score $\frac{x-\mu}{\sigma}$; fit on train only.\\
+k-NN & Lazy; majority vote / mean of $k$ closest; small $k$ overfits, large $k$ underfits.\\
+Weighted k-NN & $w_i=1/d_i$; closer neighbours count more.\\
+Entropy / Gini & $-\sum p\log_2p$ / $1-\sum p^2$; both $0$ if pure.\\
+Information gain & $H(S)-\sum\frac{|S_v|}{|S|}H(S_v)$; choose the maximum.\\
+Pruning & Pre (max depth, min samples) / post (cut back, cost-complexity).\\
+Tree boundary & Axis-parallel rectangles.\\
+Bayes' theorem & Posterior $=$ likelihood $\times$ prior $/$ evidence.\\
+Naive Bayes & $\argmax_cP(c)\prod_jP(x_j\mid c)$; conditional independence; Laplace $\frac{n+1}{N_c+V}$.\\
+Play-Tennis results & Root Outlook (gain $0.247$); NB for (S,C,H,Str): No, $P=0.795$.\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{revision}

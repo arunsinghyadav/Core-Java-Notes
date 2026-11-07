@@ -1,0 +1,68 @@
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=2.4cm,headheight=14pt]{geometry}
+\usepackage{microtype,amsmath,amssymb,booktabs,array,enumitem,xcolor}
+\usepackage{tikz,pgfplots,listings,fontawesome5,hyperref,fancyhdr,titlesec}
+\usepackage[most]{tcolorbox}
+\usepgfplotslibrary{groupplots}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,fit,backgrounds}
+\pgfplotsset{compat=1.17}
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black}
+\setlist{itemsep=2pt,topsep=4pt}
+
+% ---------- colours ----------
+\definecolor{mlblue}{HTML}{1F4E9C}
+\definecolor{mlgreen}{HTML}{1E8449}
+\definecolor{mlorange}{HTML}{D35400}
+\definecolor{mlred}{HTML}{B03A2E}
+\definecolor{mlpurple}{HTML}{6C3483}
+\definecolor{codebg}{HTML}{F6F8FA}
+
+% ---------- chapter / section style ----------
+\titleformat{\chapter}[display]
+  {\normalfont\bfseries\color{mlblue}}
+  {\flushright\Large\scshape Chapter \thechapter}{8pt}
+  {\Huge}[\vspace{4pt}\color{mlblue}\titlerule]
+\titleformat{\section}{\normalfont\Large\bfseries\color{mlblue}}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\normalfont\large\bfseries\color{mlblue!80!black}}{\thesubsection}{0.6em}{}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[LE]{\small\nouppercase{\leftmark}}
+\fancyhead[RO]{\small Machine Learning (NBCA-601)}
+\fancyfoot[C]{\thepage}
+
+% ---------- interactive boxes ----------
+\newtcolorbox{objectives}{enhanced,breakable,colback=mlblue!6,colframe=mlblue,
+  fonttitle=\bfseries,title={\faBullseye\ \ Learning Objectives},arc=3pt}
+\newtcolorbox{keyidea}{enhanced,breakable,colback=mlgreen!7,colframe=mlgreen,
+  fonttitle=\bfseries,title={\faLightbulb\ \ Key Idea},arc=3pt}
+\newtcolorbox{definition}[1][]{enhanced,breakable,colback=mlblue!4,colframe=mlblue!70!black,
+  fonttitle=\bfseries,title={\faBook\ \ Definition#1},arc=3pt}
+\newtcolorbox{example}[1][]{enhanced,breakable,colback=mlorange!6,colframe=mlorange,
+  fonttitle=\bfseries,title={\faEdit\ \ Example#1},arc=3pt}
+\newtcolorbox{warning}{enhanced,breakable,colback=mlred!6,colframe=mlred,
+  fonttitle=\bfseries,title={\faExclamationTriangle\ \ Common Mistake},arc=3pt}
+\newtcolorbox{tryit}{enhanced,breakable,colback=mlpurple!6,colframe=mlpurple,
+  fonttitle=\bfseries,title={\faLaptopCode\ \ Try It Yourself},arc=3pt}
+\newtcolorbox{exam}{enhanced,breakable,colback=yellow!12,colframe=yellow!50!black,
+  fonttitle=\bfseries,title={\faGraduationCap\ \ Exam Tip},arc=3pt}
+\newtcolorbox{summary}{enhanced,breakable,colback=gray!8,colframe=gray!70!black,
+  fonttitle=\bfseries,title={\faClipboardCheck\ \ Chapter Summary},arc=3pt}
+\newtcolorbox{pullquote}[1][]{blanker,borderline west={3pt}{0pt}{mlorange},
+  left=12pt,before skip=8pt,after skip=8pt,fontupper=\itshape\large,
+  title={},after upper={\par\hfill\upshape\small #1}}
+\newtcolorbox{chat}{enhanced,colback=white,colframe=mlblue!40,boxrule=0.6pt,arc=6pt,
+  left=8pt,right=8pt,fontupper=\small,before skip=6pt,after skip=6pt}
+
+% ---------- code ----------
+\lstdefinestyle{py}{language=Python,basicstyle=\ttfamily\small,
+  keywordstyle=\color{mlblue}\bfseries,commentstyle=\color{mlgreen}\itshape,
+  stringstyle=\color{mlorange},backgroundcolor=\color{codebg},
+  frame=single,rulecolor=\color{gray!40},numbers=left,numberstyle=\tiny\color{gray},
+  breaklines=true,showstringspaces=false,xleftmargin=1.5em,framexleftmargin=1.2em,
+  aboveskip=8pt,belowskip=8pt}
+\lstset{style=py}
+
+% ---------- shortcuts ----------
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\vect}[1]{\boldsymbol{#1}}

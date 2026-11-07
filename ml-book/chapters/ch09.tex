@@ -927,14 +927,14 @@ keras.Sequential([
 We trained the same network for 20 epochs with Adam under four regimes:
 
 \begin{center}
-\begin{tabular}{@{}lccccc@{}}
+\begin{tabular}{@{}p{4.3cm}ccccc@{}}
 \toprule
-\textbf{Regime} & \textbf{Train acc.} & \textbf{Val. acc.} & \textbf{Test acc.} & \textbf{Test loss} & \textbf{Train--val gap}\\
+\textbf{Regime} & \textbf{Train acc.} & \textbf{Val. acc.} & \textbf{Test acc.} & \textbf{Test loss} & \textbf{Gap (train $-$ val)}\\
 \midrule
 No regularisation & 0.943 & 0.880 & 0.876 & 0.503 & 0.063\\
 Dropout $0.3$ & 0.898 & 0.883 & \textbf{0.878} & \textbf{0.345} & \textbf{0.015}\\
 L2, $\lambda=10^{-3}$ & 0.884 & 0.854 & 0.842 & 0.498 & 0.030\\
-Early stopping (stopped after 8 epochs) & 0.911 & 0.878 & 0.870 & 0.367 & 0.033\\
+Early stopping (8 epochs) & 0.911 & 0.878 & 0.870 & 0.367 & 0.033\\
 \bottomrule
 \end{tabular}
 \end{center}

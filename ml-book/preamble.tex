@@ -1,7 +1,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage[margin=2.4cm,headheight=14pt]{geometry}
-\usepackage{microtype,amsmath,amssymb,booktabs,array,enumitem,xcolor}
+\usepackage{microtype,amsmath,amssymb,booktabs,array,enumitem,xcolor,multirow}
 \usepackage{tikz,pgfplots,listings,fontawesome5,hyperref,fancyhdr,titlesec}
 \usepackage[most]{tcolorbox}
 \usepgfplotslibrary{groupplots}
@@ -78,3 +78,9 @@
 \usepackage{caption}
 \captionsetup{font=small,labelfont={bf,color=mlblue},labelsep=period}
 \newcommand{\rupee}{Rs.}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Bias}{Bias}
+\DeclareMathOperator{\SE}{SE}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newcommand{\Risk}{\mathcal{R}}

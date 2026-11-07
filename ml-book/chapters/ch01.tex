@@ -1,14 +1,16 @@
 \chapter{Introduction to Machine Learning}
-
+\label{ch:intro}
 \begin{objectives}
-After this chapter you will be able to:
+After studying this chapter you will be able to:
 \begin{itemize}
-  \item explain the difference between \textbf{AI, Machine Learning and Deep Learning};
-  \item define Machine Learning using Tom Mitchell's $(T,P,E)$ definition;
+  \item explain the relationship between \textbf{AI, Machine Learning and Deep Learning};
+  \item state and apply Samuel's and Mitchell's definitions of Machine Learning;
+  \item use the vocabulary of ML correctly: \emph{instance, feature, label, training set, model, parameter, hyperparameter};
   \item classify ML systems as \textbf{supervised, unsupervised, semi-supervised} or \textbf{reinforcement};
   \item distinguish \textbf{batch vs.\ online} and \textbf{instance-based vs.\ model-based} learning;
-  \item list and explain the main \textbf{challenges} of ML, especially \textbf{overfitting} and \textbf{underfitting};
-  \item train your first model in Python in under ten lines.
+  \item fit a straight-line model by hand using the least-squares formula;
+  \item describe the main \textbf{challenges} of ML (data problems, \emph{overfitting}, \emph{underfitting}) and the remedies for each;
+  \item answer 2-, 5- and 10-mark university questions on this unit.
 \end{itemize}
 \end{objectives}
 
@@ -16,31 +18,39 @@ After this chapter you will be able to:
 Machine learning is the field of study that gives computers the ability to learn without being explicitly programmed.
 \end{pullquote}
 
+%====================================================================
 \section{Why Do We Need Machine Learning?}
 
-Imagine you must write a program that detects \emph{spam e-mail}. The traditional way is to write rules by hand:
+Suppose you must write a program that detects \emph{spam e-mail}. The traditional approach is to write rules by hand:
 
 \begin{itemize}
   \item If the subject contains ``FREE'' $\Rightarrow$ spam.
-  \item If the sender is unknown and the mail contains ``winner'' $\Rightarrow$ spam.
-  \item If \ldots{} (hundreds more rules)
+  \item If the sender is unknown and the body contains ``winner'' $\Rightarrow$ spam.
+  \item \ldots{} and hundreds more rules.
 \end{itemize}
 
-Spammers quickly change their words (``FR33'', ``fr.ee'') and your rule list becomes long, fragile and impossible to maintain. A \textbf{machine-learning} program instead looks at thousands of mails already labelled as spam or not-spam and \emph{discovers the pattern by itself}. When spammers change tactics, we simply retrain it on new data.
+This approach has three serious weaknesses.
 
-\begin{center}
+\begin{enumerate}
+  \item \textbf{Long, hard-to-maintain rule lists.} Every new spam trick needs a new rule, and rules start to contradict each other.
+  \item \textbf{No adaptation.} Spammers change ``FREE'' to ``FR33'' or ``fr.ee'' and the rules stop working.
+  \item \textbf{Problems too complex for rules.} No one can write explicit rules to recognise a spoken word or a face in a photo.
+\end{enumerate}
+
+A machine-learning program instead studies thousands of e-mails already labelled \emph{spam} or \emph{not spam} and discovers the pattern by itself. When spammers change tactics, we simply retrain it on fresh data.
+
+\begin{figure}[!htbp]
+\centering
 \resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[node distance=1.6cm and 1.8cm,
   box/.style={draw,rounded corners,minimum width=2.4cm,minimum height=0.9cm,align=center,font=\small,thick},
   arr/.style={-{Stealth[length=2.5mm]},thick}]
-% traditional
 \node[box,fill=mlblue!10,draw=mlblue] (d1) {Data};
 \node[box,fill=mlorange!15,draw=mlorange,right=of d1] (r1) {Rules\\(written by human)};
 \node[box,fill=gray!15,right=of r1] (p1) {Program};
 \node[box,fill=mlgreen!15,draw=mlgreen,right=of p1] (o1) {Answers};
 \draw[arr] (d1)--(p1); \draw[arr] (r1)--(p1); \draw[arr] (p1)--(o1);
 \node[left=0.2cm of d1,align=right,font=\bfseries\small] {Traditional\\programming};
-% ML
 \node[box,fill=mlblue!10,draw=mlblue,below=1.8cm of d1] (d2) {Data};
 \node[box,fill=mlgreen!15,draw=mlgreen,right=of d2] (a2) {Answers\\(labels)};
 \node[box,fill=gray!15,right=of a2] (p2) {Learning\\algorithm};
@@ -48,38 +58,67 @@ Spammers quickly change their words (``FR33'', ``fr.ee'') and your rule list bec
 \draw[arr] (d2)--(p2); \draw[arr] (a2)--(p2); \draw[arr] (p2)--(r2);
 \node[left=0.2cm of d2,align=right,font=\bfseries\small] {Machine\\learning};
 \end{tikzpicture}}
-\end{center}
+\caption{Traditional programming versus machine learning.}\label{fig:paradigm}
+\end{figure}
+
+\begin{explain}
+\textbf{Top row (traditional programming).} A programmer writes the \emph{rules}. The program applies those rules to the \emph{data} and produces \emph{answers}.\par
+\textbf{Bottom row (machine learning).} The inputs are swapped. We give the algorithm the \emph{data} together with the correct \emph{answers}, and what comes out is the \emph{rules}. These learned rules can then be applied to new data.\par
+\textbf{Note the colours:} orange marks the \emph{rules}. In the top row a human produces them; in the bottom row the algorithm does. This swap of inputs and outputs is the whole idea of ML.
+\end{explain}
 
 \begin{keyidea}
-In traditional programming, humans supply \emph{data + rules} and get \emph{answers}.
-In machine learning, humans supply \emph{data + answers} and the computer finds the \emph{rules}.
+Traditional programming: \emph{data + rules $\rightarrow$ answers}.\quad Machine learning: \emph{data + answers $\rightarrow$ rules}.
 \end{keyidea}
 
+%====================================================================
 \section{Artificial Intelligence, Machine Learning and Deep Learning}
 
-These three terms are often mixed up. They are nested, like Russian dolls.
-
-\begin{center}
-\begin{tikzpicture}
-\draw[fill=mlblue!10,draw=mlblue,thick] (0,0) ellipse (5.2 and 2.6);
-\draw[fill=mlgreen!15,draw=mlgreen,thick] (0,-0.5) ellipse (3.6 and 1.8);
-\draw[fill=mlorange!25,draw=mlorange,thick] (0,-1.0) ellipse (2.0 and 0.95);
-\node[font=\bfseries,mlblue] at (0,1.95) {Artificial Intelligence};
-\node[font=\small,mlblue] at (0,1.5) {(machines that act intelligently)};
-\node[font=\bfseries,mlgreen!60!black] at (0,0.6) {Machine Learning};
-\node[font=\small,mlgreen!60!black] at (0,0.2) {(learns patterns from data)};
-\node[font=\bfseries,mlorange!70!black] at (0,-0.95) {Deep Learning};
-\node[font=\small,mlorange!70!black] at (0,-1.3) {(neural networks)};
-\end{tikzpicture}
-\end{center}
-
 \begin{definition}[: Artificial Intelligence]
-\textbf{Artificial Intelligence (AI)} is the science of building machines that perform tasks that normally require human intelligence, such as reasoning, understanding language, recognising images and making decisions.
+\textbf{Artificial Intelligence (AI)} is the branch of computer science concerned with building machines that perform tasks that normally require human intelligence, such as reasoning, understanding language, recognising images and making decisions.
 \end{definition}
 
-\begin{definition}[: Machine Learning]
-A computer program is said to \textbf{learn} from experience $E$ with respect to some class of tasks $T$ and performance measure $P$, if its performance at tasks in $T$, as measured by $P$, improves with experience $E$. \hfill (Tom Mitchell, 1997)
+Early AI (1950s--1980s) was dominated by \textbf{symbolic AI} or \emph{expert systems}, in which experts typed in thousands of ``if--then'' rules. These systems were useful in narrow areas such as medical diagnosis but broke down on messy real-world data. Since the 1990s the focus has shifted to systems that \emph{learn} from data.
+
+\begin{definition}[: Machine Learning (Samuel, 1959)]
+Machine Learning is the field of study that gives computers the ability to learn without being explicitly programmed.
 \end{definition}
+
+\begin{definition}[: Machine Learning (Mitchell, 1997)]
+A computer program is said to \textbf{learn} from experience $E$ with respect to some class of tasks $T$ and performance measure $P$, if its performance at tasks in $T$, as measured by $P$, improves with experience $E$.
+\end{definition}
+
+Samuel's definition is informal and historical (he wrote a checkers program that improved by playing against itself). Mitchell's definition is more engineering-oriented because it tells us \emph{what to measure}: to claim that a program is learning we must name the task, the metric and the experience.
+
+\begin{definition}[: Deep Learning]
+\textbf{Deep Learning} is a subfield of ML that uses \emph{artificial neural networks with many layers} to learn increasingly abstract representations of data (e.g.\ pixels $\rightarrow$ edges $\rightarrow$ shapes $\rightarrow$ faces). It is the subject of Unit~V.
+\end{definition}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\draw[fill=mlblue!10,draw=mlblue,thick] (0,0) ellipse (5.4 and 2.7);
+\draw[fill=mlgreen!15,draw=mlgreen,thick] (0,-0.5) ellipse (3.7 and 1.85);
+\draw[fill=mlorange!25,draw=mlorange,thick] (0,-1.0) ellipse (2.0 and 0.95);
+\node[font=\bfseries,mlblue] at (0,2.0) {Artificial Intelligence};
+\node[font=\small,mlblue] at (0,1.6) {(machines that act intelligently)};
+\node[font=\bfseries,mlgreen!60!black] at (0,0.65) {Machine Learning};
+\node[font=\small,mlgreen!60!black] at (0,0.25) {(learns patterns from data)};
+\node[font=\bfseries,mlorange!70!black] at (0,-0.95) {Deep Learning};
+\node[font=\small,mlorange!70!black] at (0,-1.3) {(deep neural networks)};
+\end{tikzpicture}
+\caption{AI, ML and Deep Learning as nested sets.}\label{fig:venn}
+\end{figure}
+
+\begin{explain}
+The figure is a \textbf{set diagram}: each ellipse lies completely inside the one before it.
+\begin{itemize}
+  \item \emph{Outer ellipse (AI):} the biggest set. It includes ML but also non-learning AI such as hand-coded chess engines and rule-based expert systems.
+  \item \emph{Middle ellipse (ML):} every ML system is AI, but not every AI system learns.
+  \item \emph{Inner ellipse (DL):} deep learning is one family of ML methods. Decision trees, k-NN and SVMs are ML but \emph{not} deep learning.
+\end{itemize}
+Remember the order $\text{DL} \subset \text{ML} \subset \text{AI}$.
+\end{explain}
 
 \begin{example}[: Spam filter in $(T,P,E)$ form]
 \begin{center}
@@ -91,221 +130,535 @@ A computer program is said to \textbf{learn} from experience $E$ with respect to
 \bottomrule
 \end{tabular}
 \end{center}
-If accuracy rises as we feed in more labelled mail, the program is \emph{learning}.
+\textbf{Check:} if accuracy rises from 90\% to 96\% as we add more labelled mail, the program is learning. If accuracy does not change however much data we add, it is \emph{not} learning, whatever its marketing says.
+\end{example}
+
+\begin{example}[: Which of these is ML?]
+\begin{enumerate}[label=(\alph*)]
+  \item A program that fixes a date's format using a fixed rule. \textbf{Not ML:} no experience is used.
+  \item A music app that suggests songs based on what you skipped. \textbf{ML:} behaviour (experience) improves recommendations.
+  \item A calculator. \textbf{Not ML:} its performance never improves with experience.
+\end{enumerate}
 \end{example}
 
 \begin{exam}
-``Define Machine Learning'' appears almost every year. Write \emph{both} Samuel's one-line definition and Mitchell's $(T,P,E)$ definition, then give the spam-filter example. This earns full marks.
+``Define Machine Learning'' appears almost every year. For full marks write \emph{both} Samuel's and Mitchell's definitions, then give the spam-filter example in $(T,P,E)$ form.
 \end{exam}
+
+%====================================================================
+
+\procon{Machine learning}
+{\item Solves problems too complex for hand-written rules
+ \item Adapts when data changes
+ \item Discovers hidden patterns in large datasets
+ \item Improves as more data becomes available}
+{\item Needs large amounts of good-quality data
+ \item May overfit or inherit bias from the data
+ \item Many models are hard to interpret (black boxes)
+ \item Training can be computationally expensive}
+{\item Spam filtering and recommendation systems
+ \item Medical diagnosis and fraud detection
+ \item Speech, image and language recognition
+ \item Self-driving vehicles}
 
 \section{Where Is Machine Learning Used?}
 
+ML is the right tool when (i) rules are too many or too complex, (ii) the environment keeps changing, (iii) the problem has no known algorithmic solution, or (iv) large amounts of data are available to learn from.
+
 \begin{center}
-\begin{tabular}{@{}p{3.6cm}p{5.2cm}p{4.6cm}@{}}
+\begin{tabular}{@{}p{3.4cm}p{5.4cm}p{4.6cm}@{}}
 \toprule
 \textbf{Area} & \textbf{Application} & \textbf{ML task}\\
 \midrule
 \faEnvelope\ E-mail & Spam filtering & Classification\\
 \faShoppingCart\ E-commerce & ``Customers also bought'' & Recommendation\\
 \faHeartbeat\ Health & Detecting disease from X-rays & Image classification\\
-\faCar\ Transport & Self-driving cars & Perception, control\\
-\faLanguage\ Language & Google Translate, chatbots & Sequence modelling\\
+\faCar\ Transport & Self-driving cars & Perception and control\\
+\faLanguage\ Language & Translation, chatbots & Sequence modelling\\
 \faChartLine\ Finance & Credit-card fraud detection & Anomaly detection\\
-\faHome\ Real estate & Predicting house price & Regression\\
+\faHome\ Real estate & Predicting house prices & Regression\\
+\faUsers\ Marketing & Grouping similar customers & Clustering\\
 \bottomrule
 \end{tabular}
 \end{center}
 
+%====================================================================
+\section{Basic Terminology}
+
+Before going further, learn this vocabulary. It is used in every chapter.
+
+\begin{center}
+\begin{tabular}{@{}p{3.3cm}p{10.2cm}@{}}
+\toprule
+\textbf{Term} & \textbf{Meaning}\\
+\midrule
+Instance (sample) & One data point, e.g.\ one e-mail or one house.\\
+Feature (attribute) & An input measurement describing an instance, e.g.\ area, number of rooms.\\
+Label (target) & The correct output for an instance, e.g.\ price or ``spam''.\\
+Training set & Data used to \emph{fit} the model.\\
+Test set & Data held back to \emph{evaluate} the final model on unseen instances.\\
+Model & The function $f$ learned from data, $\hat y = f(\vect{x})$.\\
+Parameters & Numbers learned \emph{by the algorithm} during training (e.g.\ $\theta_0,\theta_1$).\\
+Hyperparameters & Settings chosen \emph{by the human} before training (e.g.\ $k$ in k-NN, learning rate).\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{example}[: A small dataset]
+\begin{center}
+\begin{tabular}{@{}cccc|c@{}}
+\toprule
+ & \textbf{Area (m$^2$)} & \textbf{Rooms} & \textbf{Age (yr)} & \textbf{Price (lakh \rupee{})}\\
+\midrule
+Instance 1 & 80 & 2 & 10 & 45\\
+Instance 2 & 120 & 3 & 5 & 78\\
+Instance 3 & 60 & 1 & 20 & 28\\
+\bottomrule
+\end{tabular}
+\end{center}
+Here \emph{Area, Rooms, Age} are the three \textbf{features}; the feature vector of instance~1 is $\vect{x}_1=(80,2,10)$, and its \textbf{label} is $y_1=45$. The first three columns together form the input $X$, and the last column is the target $y$.
+\end{example}
+
+\begin{warning}
+Do not mix up \textbf{parameters} and \textbf{hyperparameters}. Parameters are \emph{learned from data}; hyperparameters are \emph{set by you} and are tuned by trying several values and comparing performance on held-out data.
+\end{warning}
+
+%====================================================================
 \section{Types of Machine Learning Systems}
 
-We classify ML systems using three independent questions.
+ML systems are classified in three independent ways. The same system gets one label from each way, e.g.\ ``a supervised, batch, model-based system''.
 
 \begin{enumerate}[label=\textbf{Q\arabic*.}]
-  \item Is it trained with human supervision? (supervised, unsupervised, semi-supervised, reinforcement)
-  \item Can it learn on the fly? (batch vs.\ online)
-  \item Does it compare with known data or build a model? (instance-based vs.\ model-based)
+  \item How much supervision does it get during training? (supervised, unsupervised, semi-supervised, reinforcement)
+  \item Can it learn incrementally on the fly? (batch vs.\ online)
+  \item Does it compare new data to stored examples or build a model? (instance-based vs.\ model-based)
 \end{enumerate}
 
+\begin{figure}[!htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+  level distance=2.2cm,
+  every node/.style={draw,rounded corners,align=center,font=\small,minimum height=0.8cm,thick},
+  l1/.style={fill=mlblue!12,draw=mlblue},
+  l2/.style={fill=mlgreen!12,draw=mlgreen},
+  arr/.style={thick}]
+\node[l1,fill=mlblue!25] (ml) at (0,0) {\textbf{Machine Learning}};
+\node[l1] (sup) at (-7.0,-2.2) {Supervised};
+\node[l1] (uns) at (-1.8,-2.2) {Unsupervised};
+\node[l1] (semi) at (2.6,-2.2) {Semi-\\supervised};
+\node[l1] (rl) at (6.0,-2.2) {Reinforcement};
+\node[l2] (cls) at (-8.6,-4.4) {Classification};
+\node[l2] (reg) at (-6.1,-4.4) {Regression};
+\node[l2] (clu) at (-3.9,-4.4) {Clustering};
+\node[l2] (dim) at (-1.6,-4.4) {Dimension\\reduction};
+\node[l2] (ano) at (0.9,-4.4) {Anomaly\\detection};
+\node[l2] (pol) at (6.0,-4.4) {Policy\\learning};
+\foreach \a in {sup,uns,semi,rl} \draw[arr] (ml)--(\a);
+\draw[arr] (sup)--(cls); \draw[arr] (sup)--(reg);
+\draw[arr] (uns)--(clu); \draw[arr] (uns)--(dim); \draw[arr] (uns)--(ano);
+\draw[arr] (rl)--(pol);
+\end{tikzpicture}}
+\caption{Taxonomy of ML systems by the type of supervision. Blue = learning paradigm, green = typical task.}\label{fig:taxonomy}
+\end{figure}
+
+\begin{explain}
+Read this \textbf{tree from top to bottom}. The root is Machine Learning. The second level (blue) shows the four paradigms; the third level (green) shows the typical \emph{tasks} that each paradigm solves. For example, \emph{classification} and \emph{regression} both need labelled data and therefore sit under \emph{supervised}; \emph{clustering} needs no labels and so sits under \emph{unsupervised}. Semi-supervised learning is a mix of the first two and is usually applied to the same tasks.
+\end{explain}
+
+%--------------------------------------------------------------------
 \subsection{Supervised Learning}
 
-The training data includes the \textbf{answer} (called a \emph{label} or \emph{target}). It is like studying with an answer key.
+In supervised learning the training data includes the \textbf{correct answer} (the label). The learner is like a student who checks each practice answer against an answer key.
 
 \begin{definition}[: Supervised Learning]
-Given training examples $\{(\vect{x}_i, y_i)\}_{i=1}^{n}$, where $\vect{x}_i$ is the input (features) and $y_i$ the correct output (label), learn a function $f$ such that $f(\vect{x}) \approx y$ on new, unseen inputs.
+Given a training set $\{(\vect{x}_i, y_i)\}_{i=1}^{n}$ where $\vect{x}_i\in\R^d$ is the feature vector and $y_i$ is the label, learn a function $f$ such that $f(\vect{x})\approx y$ \emph{for new, unseen inputs}.
 \end{definition}
 
-There are two main kinds of supervised task:
+\paragraph{Types of supervised problems.}
+\begin{itemize}
+  \item \textbf{Classification:} $y$ is a \emph{category}.
+    \begin{itemize}
+      \item \emph{Binary:} two classes (spam / not spam).
+      \item \emph{Multiclass:} one of many classes (digit 0--9).
+      \item \emph{Multilabel:} several labels at once (a photo tagged ``beach'' and ``sunset'').
+    \end{itemize}
+  \item \textbf{Regression:} $y$ is a \emph{real number} (house price, temperature). If there is one feature it is \emph{simple} regression; if more, \emph{multiple} regression.
+\end{itemize}
 
-\begin{center}
-\begin{tabular}{@{}lll@{}}
-\toprule
- & \textbf{Classification} & \textbf{Regression}\\
-\midrule
-Output $y$ is & a \emph{category} & a \emph{number}\\
-Example & spam / not spam & price of a house\\
-Typical algorithms & k-NN, Naive Bayes, SVM & Linear regression\\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\begin{center}
+\begin{figure}[!htbp]
+\centering
 \begin{tikzpicture}
-\begin{axis}[width=6.2cm,height=5cm,title={\textbf{Classification}},xlabel={feature $x_1$},ylabel={feature $x_2$},
-  xmin=0,xmax=10,ymin=0,ymax=10,ticks=none,title style={font=\small}]
+\begin{axis}[width=6.4cm,height=5.2cm,title={(a) Classification},xlabel={feature $x_1$},ylabel={feature $x_2$},
+  xmin=0,xmax=10,ymin=0,ymax=10,ticks=none,title style={font=\small\bfseries}]
 \addplot[only marks,mark=*,mlblue,mark size=2pt] coordinates {(1,2)(2,3)(1.5,4)(3,2.5)(2.5,1.2)(1,5)(3.2,4.2)(2,2)};
 \addplot[only marks,mark=triangle*,mlorange,mark size=3pt] coordinates {(7,8)(8,7)(6.5,6.5)(8.5,9)(7.5,5.8)(9,7.2)(6,8.3)(8,8.5)};
 \addplot[dashed,thick,mlgreen,domain=0:10] {10-x};
+\node[font=\scriptsize,mlblue] at (axis cs:2.5,6.8) {class A};
+\node[font=\scriptsize,mlorange] at (axis cs:7.2,3.3) {class B};
 \end{axis}
 \end{tikzpicture}\hfill
 \begin{tikzpicture}
-\begin{axis}[width=6.2cm,height=5cm,title={\textbf{Regression}},xlabel={size of house (100 m$^2$)},ylabel={price},
-  xmin=0,xmax=10,ymin=0,ymax=10,ticks=none,title style={font=\small}]
+\begin{axis}[width=6.4cm,height=5.2cm,title={(b) Regression},xlabel={house size (100 m$^2$)},ylabel={price},
+  xmin=0,xmax=10,ymin=0,ymax=10,ticks=none,title style={font=\small\bfseries}]
 \addplot[only marks,mark=*,mlblue,mark size=2pt] coordinates {(1,1.5)(2,2.6)(3,2.9)(4,4.4)(5,4.6)(6,6.3)(7,6.4)(8,8.1)(9,8.6)};
 \addplot[thick,mlgreen,domain=0.5:9.5] {0.95*x+0.2};
 \end{axis}
 \end{tikzpicture}
-\end{center}
+\caption{(a) Classification separates two classes with a decision boundary. (b) Regression fits a line that predicts a number.}\label{fig:clsreg}
+\end{figure}
+
+\begin{explain}
+\textbf{Panel (a):} each point is one instance, plotted by two features $x_1,x_2$. Blue circles belong to class~A and orange triangles to class~B. The dashed green line is the \emph{decision boundary} the classifier has learned: points on one side are predicted A, points on the other side B. The \emph{output is a category}.\par
+\textbf{Panel (b):} each dot is a house. The horizontal axis is the feature (size) and the vertical axis is the target (price). The green line is the fitted model; to predict the price of a new house, find its size on the horizontal axis and read the height of the line. The \emph{output is a number}.
+\end{explain}
+
+%--------------------------------------------------------------------
+
+\procon{Supervised learning}
+{\item Clear goal; accuracy can be measured directly
+ \item Many mature and well-understood algorithms}
+{\item Labelled data is expensive and slow to obtain
+ \item Poor labels (noise) lead to poor models
+ \item Does not generalise beyond the training distribution}
+{\item Spam detection and credit scoring
+ \item House-price and sales prediction
+ \item Disease diagnosis from tests or images}
 
 \subsection{Unsupervised Learning}
 
-The training data is \textbf{unlabelled}; the system must find structure on its own, like sorting a pile of unknown coins into groups.
+The training data is \textbf{unlabelled}. The system must discover structure on its own, like sorting a heap of unfamiliar coins into groups by size and colour without anyone naming them.
+
+\begin{definition}[: Unsupervised Learning]
+Given only inputs $\{\vect{x}_i\}_{i=1}^n$ with no labels, discover hidden structure, such as groups, directions of variation or unusual points, in the data.
+\end{definition}
 
 \begin{itemize}
-  \item \textbf{Clustering:} group similar customers (e.g.\ K-Means, DBSCAN) --- Unit IV.
-  \item \textbf{Dimensionality reduction:} compress many features into few (e.g.\ PCA) --- Unit IV.
-  \item \textbf{Anomaly detection:} spot unusual credit-card transactions.
-  \item \textbf{Association rules:} ``people who buy bread also buy butter''.
+  \item \textbf{Clustering:} group similar instances, e.g.\ segment customers by buying behaviour (K-Means, DBSCAN; Chapter~7).
+  \item \textbf{Dimensionality reduction:} compress many features into a few while keeping the information (PCA; Chapter~8). Useful for visualisation and for speeding up learning.
+  \item \textbf{Anomaly (outlier) detection:} flag unusual instances, e.g.\ a suspicious credit-card transaction.
+  \item \textbf{Association rule learning:} find relations such as ``people who buy bread also buy butter''.
 \end{itemize}
+
+%--------------------------------------------------------------------
+
+\procon{Unsupervised learning}
+{\item No labels needed; works on cheap raw data
+ \item Reveals patterns humans did not expect
+ \item Useful as preprocessing for supervised learning}
+{\item No ground truth, so results are hard to evaluate
+ \item Results can be subjective and depend on parameters
+ \item Sensitive to feature scaling and noise}
+{\item Customer segmentation
+ \item Fraud and fault detection
+ \item Topic discovery in documents
+ \item Data compression and visualisation}
 
 \subsection{Semi-supervised Learning}
 
-Labelling data is expensive, so we label \emph{a little} and leave most unlabelled. Google Photos is a classic case: it clusters faces automatically (unsupervised) and you type a name once per person (supervised).
+
+\begin{definition}[: Semi-supervised learning]
+\textbf{Semi-supervised learning} trains a model using a \emph{small amount of labelled data together with a large amount of unlabelled data}.
+\end{definition}
+
+
+Labelling is slow and costly (a doctor must label every X-ray), but unlabelled data is cheap. \textbf{Semi-supervised} algorithms use a \emph{small labelled} set and a \emph{large unlabelled} set. A typical method is \textbf{self-training}: train on the labelled data, predict labels for the unlabelled data, keep the most confident predictions as new labels, and retrain.
+
+\textbf{Example.} Photo apps first cluster faces automatically (unsupervised), then ask you to name each person once (supervised); the name then spreads to every photo in the cluster.
+
+%--------------------------------------------------------------------
+
+\procon{Semi-supervised learning}
+{\item Greatly reduces the cost of labelling
+ \item Usually more accurate than using the few labels alone}
+{\item Early wrong pseudo-labels can reinforce themselves
+ \item Assumes labelled and unlabelled data come from the same distribution}
+{\item Photo tagging and face grouping
+ \item Speech recognition
+ \item Medical image analysis}
 
 \subsection{Reinforcement Learning}
 
-An \textbf{agent} observes an environment, takes \textbf{actions}, and receives \textbf{rewards} or penalties. It learns a \emph{policy} that maximises total reward, as when a robot learns to walk or AlphaGo learns Go.
+
+\begin{definition}[: Reinforcement learning]
+In \textbf{reinforcement learning (RL)} an \emph{agent} interacts with an \emph{environment}: it observes a state, takes an action, and receives a reward or penalty. It learns a \emph{policy} that maximises the total discounted reward $G_t=\sum_k\gamma^k r_{t+k+1}$.
+\end{definition}
+
+
+There are no labelled examples. An \textbf{agent} observes the \textbf{state} of an \textbf{environment}, chooses an \textbf{action}, and receives a \textbf{reward} (positive) or \textbf{penalty} (negative). It learns a \textbf{policy}, a rule that says which action to take in each state, that maximises the total reward over time.
 
 \begin{center}
-\begin{tikzpicture}[node distance=3.4cm,
-  box/.style={draw,rounded corners,thick,minimum width=2.6cm,minimum height=1cm,align=center},
-  arr/.style={-{Stealth},thick}]
-\node[box,fill=mlblue!12,draw=mlblue] (a) {Agent};
-\node[box,fill=mlgreen!15,draw=mlgreen,right=of a] (e) {Environment};
-\draw[arr] (a.north) to[bend left=35] node[above,font=\small]{action} (e.north);
-\draw[arr] (e.south) to[bend left=35] node[below,font=\small]{state, reward} (a.south);
-\end{tikzpicture}
-\end{center}
-
-\begin{center}
-\begin{tabular}{@{}lccc@{}}
+\begin{tabular}{@{}ll@{}}
 \toprule
-\textbf{Type} & \textbf{Labels?} & \textbf{Feedback} & \textbf{Typical use}\\
+\textbf{Term} & \textbf{Example: robot learning to walk}\\
 \midrule
-Supervised & Yes & Correct answer & Spam detection, price prediction\\
-Unsupervised & No & None & Customer segmentation\\
-Semi-supervised & Few & Partial & Photo tagging\\
-Reinforcement & No & Reward / penalty & Games, robotics\\
+Agent & The robot's control program\\
+Environment & The floor, gravity, the robot's body\\
+State $s$ & Joint angles, speed, whether upright\\
+Action $a$ & Move a joint motor\\
+Reward $r$ & $+1$ for moving forward, $-10$ for falling\\
+Policy $\pi$ & The learned rule: state $\mapsto$ action\\
 \bottomrule
 \end{tabular}
 \end{center}
 
+Because rewards may arrive late (a chess move is only rewarded when the game ends), the agent maximises the \textbf{discounted return}
+\[
+  G_t = r_{t+1} + \gamma\, r_{t+2} + \gamma^2 r_{t+3} + \cdots = \sum_{k=0}^{\infty}\gamma^{k}\, r_{t+k+1},\qquad 0\le\gamma\le 1,
+\]
+where the \emph{discount factor} $\gamma$ says how much we value future rewards. With $\gamma=0$ the agent is short-sighted (only the next reward matters); with $\gamma$ close to 1 it is far-sighted. Famous examples are DeepMind's AlphaGo, which beat the world Go champion, and robots that learn to walk.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[node distance=4.2cm,
+  box/.style={draw,rounded corners,thick,minimum width=2.8cm,minimum height=1.1cm,align=center},
+  arr/.style={-{Stealth},thick}]
+\node[box,fill=mlblue!12,draw=mlblue] (a) {Agent\\(has a policy $\pi$)};
+\node[box,fill=mlgreen!15,draw=mlgreen,right=of a] (e) {Environment};
+\draw[arr] (a.north) to[bend left=40] node[above,font=\small]{action $a_t$} (e.north);
+\draw[arr] (e.south) to[bend left=40] node[below,font=\small]{new state $s_{t+1}$, reward $r_{t+1}$} (a.south);
+\end{tikzpicture}
+\caption{The reinforcement-learning loop.}\label{fig:rl}
+\end{figure}
+
+\begin{explain}
+The picture shows a \textbf{closed loop} that repeats at every time step $t$. (1)~The agent looks at the current state and uses its policy to pick an action $a_t$ (top arrow). (2)~The environment reacts and sends back the next state $s_{t+1}$ and a reward $r_{t+1}$ (bottom arrow). (3)~The agent uses that feedback to improve its policy, and the loop repeats. Learning happens by \emph{trial and error}: actions that lead to high reward become more likely.
+\end{explain}
+
+\begin{center}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Type} & \textbf{Labels?} & \textbf{Feedback} & \textbf{Typical task} & \textbf{Example}\\
+\midrule
+Supervised & Yes & Correct answer & Classification, regression & Spam, prices\\
+Unsupervised & No & None & Clustering, PCA & Customer groups\\
+Semi-supervised & Few & Partial & Mixed & Photo tagging\\
+Reinforcement & No & Reward/penalty & Sequential decisions & Games, robots\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%--------------------------------------------------------------------
+
+\procon{Reinforcement learning}
+{\item Needs no labelled data
+ \item Can learn long-term strategies for sequential decisions
+ \item Adapts to a changing environment}
+{\item Needs very many trials (sample inefficient)
+ \item Designing a good reward function is difficult
+ \item Exploration can be unsafe or costly}
+{\item Game playing (AlphaGo, chess)
+ \item Robotics and self-driving control
+ \item Resource scheduling and recommendation}
+
 \subsection{Batch vs.\ Online Learning}
 
 \begin{description}
-  \item[Batch (offline):] trained once on \emph{all} the data, then deployed. To learn new data you retrain from scratch.
-  \item[Online (incremental):] learns continuously from small mini-batches as data arrives, so it suits stock prices or streaming data and needs less memory. Its \emph{learning rate} controls how fast it forgets old data.
+  \item[Batch (offline) learning.] The system is trained once on \emph{all} available data, then deployed and no longer learns. To include new data it must be retrained from scratch on old + new data. This is simple but can take hours and a lot of memory.
+  \item[Online (incremental) learning.] The system is trained continuously on single instances or small \emph{mini-batches} as they arrive. Each step is cheap, so it suits streaming data (stock prices) and limited memory; it can even handle datasets too large for memory (\emph{out-of-core learning}).
 \end{description}
+
+The key hyperparameter of online learning is the \textbf{learning rate}: a \emph{high} rate adapts quickly but forgets old data fast and is sensitive to noise; a \emph{low} rate is stable but slow to adapt. A risk is that \emph{bad data} (a faulty sensor) can quickly degrade a live system, so its performance must be monitored.
+
+%--------------------------------------------------------------------
+
+
+\procon{Batch (offline) learning}
+{\item Simple, stable and reproducible
+ \item Any algorithm can be used}
+{\item Cannot learn incrementally; retraining is slow and memory-hungry
+ \item The model becomes outdated as data changes (concept drift)
+ \item Unsuitable for huge or streaming datasets}
+{\item Credit-scoring models retrained monthly
+ \item Offline image classifiers}
+
+\procon{Online (incremental) learning}
+{\item Fast, cheap updates; low memory use
+ \item Adapts quickly to changing data
+ \item Handles very large datasets (out-of-core learning) and streams}
+{\item Sensitive to the choice of learning rate
+ \item Bad data can quickly degrade the live model
+ \item Needs continuous monitoring}
+{\item Stock-price prediction
+ \item Daily-updated spam filters
+ \item Sensor and news-feed streams}
 
 \subsection{Instance-based vs.\ Model-based Learning}
 
 \begin{description}
-  \item[Instance-based:] memorises the training examples and predicts for a new point by comparing it with similar ones (e.g.\ k-Nearest Neighbours).
-  \item[Model-based:] builds a mathematical model from the examples and then uses \emph{only the model} to predict (e.g.\ linear regression).
+  \item[Instance-based learning.] The system \emph{memorises} the training examples and, for a new point, finds the most \emph{similar} stored ones and copies their answer. \emph{Example:} k-Nearest Neighbours (Chapter~3). No explicit model is built.
+  \item[Model-based learning.] The system builds a \emph{mathematical model} from the examples, then uses only the model (the training data may be thrown away) to predict. \emph{Example:} linear regression.
 \end{description}
 
-\begin{example}[: Does money make people happy?]
-Suppose we have data on GDP per capita $x$ and life satisfaction $y$ for several countries, and the points look roughly linear. A model-based approach assumes
+\begin{center}
+\begin{tabular}{@{}p{3.5cm}p{5.2cm}p{5.2cm}@{}}
+\toprule
+ & \textbf{Instance-based} & \textbf{Model-based}\\
+\midrule
+Stores & All training data & Only parameters\\
+Prediction by & Similarity to stored data & Evaluating the learned formula\\
+Training cost & Low (just store) & Higher (fit parameters)\\
+Prediction cost & High (compare to many points) & Low\\
+Example & k-NN & Linear regression\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+
+
+\procon{Instance-based learning}
+{\item No training phase
+ \item Flexible; can fit complex local patterns
+ \item Immediately uses new data}
+{\item Slow prediction and large memory use
+ \item Sensitive to feature scaling and irrelevant features}
+{\item k-Nearest Neighbours
+ \item Recommender systems and pattern recognition}
+
+\procon{Model-based learning}
+{\item Fast prediction; compact model
+ \item Often interpretable}
+{\item A wrong model form causes high bias
+ \item Training can be costly}
+{\item Linear and logistic regression
+ \item SVMs and neural networks}
+
+\subsubsection*{Worked example: a model-based learner by hand}
+
+Suppose we believe that house price $y$ depends linearly on size $x$:
 \[
-  y = \theta_0 + \theta_1 x
+  \hat y = \theta_0 + \theta_1 x .
 \]
-and \emph{learns} the best parameters $\theta_0,\theta_1$ from the data. For a new country with GDP $x_{\text{new}}$ we predict $\hat y=\theta_0+\theta_1x_{\text{new}}$ and never look at the training data again.
+\textbf{Learning} means choosing $\theta_0,\theta_1$ so that predictions are close to the data. For simple linear regression the least-squares solution is
+\[
+  \theta_1=\frac{\sum_i (x_i-\bar x)(y_i-\bar y)}{\sum_i (x_i-\bar x)^2},\qquad
+  \theta_0=\bar y-\theta_1\bar x .
+\]
+
+\begin{example}[: Fit a line by hand]
+Data: size $x$ (100 m$^2$) and price $y$ (lakh \rupee{}).
+
+\begin{center}
+\begin{tabular}{@{}c|ccccc|c@{}}
+\toprule
+$x$ & 1 & 2 & 3 & 4 & 5 & $\bar x=3$\\
+$y$ & 15 & 26 & 29 & 44 & 46 & $\bar y=32$\\
+\midrule
+$x-\bar x$ & $-2$ & $-1$ & $0$ & $1$ & $2$ & \\
+$y-\bar y$ & $-17$ & $-6$ & $-3$ & $12$ & $14$ & \\
+$(x-\bar x)(y-\bar y)$ & $34$ & $6$ & $0$ & $12$ & $28$ & $\Sigma=80$\\
+$(x-\bar x)^2$ & $4$ & $1$ & $0$ & $1$ & $4$ & $\Sigma=10$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Step 1:} $\theta_1 = 80/10 = 8$.\quad \textbf{Step 2:} $\theta_0 = 32 - 8\times 3 = 8$.\\
+\textbf{Model:} $\hat y = 8 + 8x$. For a new house of size $x=6$: $\hat y = 8+8\times 6 = 56$ lakh \rupee{}.
 \end{example}
 
 \begin{tryit}
-Your first model, using the \texttt{scikit-learn} library:
+Check the hand calculation with \texttt{scikit-learn}. The output should be intercept $8$, coefficient $8$ and prediction $56$.
 \begin{lstlisting}
 from sklearn.linear_model import LinearRegression
 
-# Experience E: house size (100 m^2) and price (lakh Rs)
-X = [[1], [2], [3], [4], [5]]
-y = [15, 26, 29, 44, 46]
+X = [[1], [2], [3], [4], [5]]      # feature: size (100 m^2)
+y = [15, 26, 29, 44, 46]           # label: price (lakh Rs)
 
-model = LinearRegression()       # choose the model
-model.fit(X, y)                  # learn theta_0 and theta_1
-print(model.intercept_, model.coef_[0])
-print(model.predict([[6]]))      # price of a 600 m^2 house?
+model = LinearRegression()         # 1. choose the model
+model.fit(X, y)                    # 2. learn theta_0 and theta_1
+print(model.intercept_, model.coef_[0])   # -> 8.0  8.0
+print(model.predict([[6]]))               # -> [56.]
 \end{lstlisting}
-\emph{Challenge:} add two more data points and see how the prediction changes.
+\emph{Challenge:} add the point $(6,\,58)$ to the data. Do the parameters change? Why?
 \end{tryit}
 
+%====================================================================
 \section{The Machine Learning Workflow}
 
-\begin{center}
+A real ML project is more than choosing an algorithm. It follows a cycle of steps.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[node distance=0.5cm,
-  s/.style={draw,rounded corners,thick,minimum width=2.1cm,minimum height=1.1cm,align=center,font=\small,fill=mlblue!8,draw=mlblue},
+  s/.style={draw,rounded corners,thick,minimum width=2.2cm,minimum height=1.1cm,align=center,font=\small,fill=mlblue!8,draw=mlblue},
   arr/.style={-{Stealth},thick}]
 \node[s] (1) {1. Collect\\data};
 \node[s,right=of 1] (2) {2. Clean \&\\prepare};
 \node[s,right=of 2] (3) {3. Choose\\model};
 \node[s,right=of 3] (4) {4. Train};
 \node[s,right=of 4] (5) {5. Evaluate};
-\foreach \a/\b in {1/2,2/3,3/4,4/5} \draw[arr] (\a)--(\b);
-\draw[arr,mlorange] (5.south) -- ++(0,-0.8) -| node[pos=0.25,below,font=\small]{not good enough? improve and repeat} (3.south);
-\end{tikzpicture}
-\end{center}
+\node[s,right=of 5,fill=mlgreen!12,draw=mlgreen] (6) {6. Deploy \&\\monitor};
+\foreach \a/\b in {1/2,2/3,3/4,4/5,5/6} \draw[arr] (\a)--(\b);
+\draw[arr,mlorange] (5.south) -- ++(0,-0.9) -| node[pos=0.25,below,font=\small]{not good enough? improve data or model, then repeat} (3.south);
+\end{tikzpicture}}
+\caption{The machine-learning workflow.}\label{fig:workflow}
+\end{figure}
 
-\section{Main Challenges of Machine Learning}
-
-``What can go wrong?'' falls into two groups: \emph{bad data} and \emph{bad algorithm}.
-
-\subsection{Problems with the data}
+\begin{explain}
+Follow the \textbf{blue boxes left to right}; they are the steps in order. The \textbf{orange arrow} is the most important part: it shows that evaluation usually sends you \emph{back} to try a different model or better data. ML is therefore iterative.
+\end{explain}
 
 \begin{enumerate}
-  \item \textbf{Insufficient training data.} Simple tasks need thousands of examples, and complex tasks like image recognition need millions. Banko \& Brill showed that, given enough data, even simple algorithms perform almost as well as sophisticated ones.
-  \item \textbf{Non-representative data.} If you survey only rich countries, your model of ``happiness vs.\ money'' fails for poor ones. This is called \textbf{sampling bias}.
-  \item \textbf{Poor-quality data.} Errors, outliers and missing values make it hard for the system to see patterns, so data cleaning takes a large share of every ML project.
-  \item \textbf{Irrelevant features.} ``Garbage in, garbage out.'' \textbf{Feature engineering} means selecting useful features, extracting new ones by combining old ones, and creating new ones by collecting more data.
+  \item \textbf{Collect data:} from databases, sensors, web, surveys.
+  \item \textbf{Clean and prepare:} handle missing values, remove duplicates and outliers, encode text categories as numbers, and \emph{scale} features to comparable ranges. This step often takes most of the project time.
+  \item \textbf{Choose a model} that suits the task (classifier, regressor, clusterer).
+  \item \textbf{Train:} the algorithm finds the parameters that fit the training set.
+  \item \textbf{Evaluate} on data \emph{not} used for training, using the performance measure $P$.
+  \item \textbf{Deploy and monitor:} use the model on real inputs and watch for performance decay.
 \end{enumerate}
 
-\subsection{Problems with the algorithm}
+%====================================================================
+\section{Main Challenges of Machine Learning}
 
-\paragraph{Overfitting.} The model performs great on training data but poorly on new data, because it has \emph{memorised the noise} instead of learning the pattern. It is like a student who memorises last year's paper but cannot solve a new question.
+Two things can go wrong: \emph{bad data} and \emph{bad algorithm}.
 
-\paragraph{Underfitting.} The model is too simple to capture the underlying pattern, so it does badly even on the training data. It is like a student who read only the chapter titles.
+\subsection{Problems with the Data}
 
-\begin{center}
+\begin{enumerate}
+  \item \textbf{Insufficient training data.} A toddler needs to be shown a ball once or twice; ML systems need thousands or millions of examples. Banko and Brill (2001) showed that, given enough data, even simple algorithms perform almost as well as sophisticated ones: \emph{data matters more than the algorithm}.
+  \item \textbf{Non-representative training data.} The training data must represent the cases the model will meet. If you build a ``happiness vs.\ income'' model using only rich countries, it will predict poorly for poor countries. This is \textbf{sampling bias}. A famous case is the 1936 \emph{Literary Digest} poll: it surveyed 2.4 million people drawn from telephone and car owners, who were mostly wealthy, and wrongly predicted that Landon would beat Roosevelt. A small \emph{sampling noise} (by chance) arises when the sample is too small; \emph{sampling bias} arises when the method of sampling is flawed, even if the sample is large.
+  \item \textbf{Poor-quality data.} Errors, outliers, noise and missing values hide the patterns. Cleaning (discard outliers, fill or drop missing values) is essential.
+  \item \textbf{Irrelevant features.} ``Garbage in, garbage out.'' \textbf{Feature engineering} has three parts: \emph{feature selection} (choose the most useful features), \emph{feature extraction} (combine features, e.g.\ dimensionality reduction) and \emph{creating new features} by collecting new data.
+\end{enumerate}
+
+\subsection{Problems with the Algorithm}
+
+\paragraph{Overfitting.} The model performs very well on the training data but badly on new data, because it has \emph{memorised the noise} instead of learning the pattern. It is like a student who memorises last year's paper word for word and then cannot answer a new question. Overfitting happens when the model is \emph{too complex} relative to the amount and noisiness of the data.
+
+\paragraph{Underfitting.} The model is too simple to capture the structure of the data, so it does badly even on the training set (like a student who read only the chapter titles).
+
+\begin{figure}[!htbp]
+\centering
 \begin{tikzpicture}
-\begin{groupplot}[group style={group size=3 by 1,horizontal sep=0.6cm},width=5.2cm,height=4.4cm,
+\begin{groupplot}[group style={group size=3 by 1,horizontal sep=0.5cm},width=5.2cm,height=4.5cm,
   xmin=0,xmax=10,ymin=0,ymax=10,ticks=none,title style={font=\small\bfseries}]
-\nextgroupplot[title={Underfitting}]
+\nextgroupplot[title={(a) Underfitting}]
 \addplot[only marks,mark=*,mlblue,mark size=1.6pt] coordinates {(1,2)(2,4.6)(3,5.8)(4,7.6)(5,8.1)(6,8.0)(7,6.5)(8,5.2)(9,2.8)};
 \addplot[thick,mlred,domain=0.5:9.5]{5};
-\nextgroupplot[title={Good fit}]
+\nextgroupplot[title={(b) Good fit}]
 \addplot[only marks,mark=*,mlblue,mark size=1.6pt] coordinates {(1,2)(2,4.6)(3,5.8)(4,7.6)(5,8.1)(6,8.0)(7,6.5)(8,5.2)(9,2.8)};
 \addplot[thick,mlgreen,domain=0.5:9.5,smooth]{-0.45*(x-5)^2+8.6};
-\nextgroupplot[title={Overfitting}]
+\nextgroupplot[title={(c) Overfitting}]
 \addplot[only marks,mark=*,mlblue,mark size=1.6pt] coordinates {(1,2)(2,4.6)(3,5.8)(4,7.6)(5,8.1)(6,8.0)(7,6.5)(8,5.2)(9,2.8)};
 \addplot[thick,mlred,smooth] coordinates {(1,2)(2,4.6)(3,5.8)(4,8.6)(4.5,6.4)(5,8.1)(6,8.0)(6.5,9.4)(7,6.5)(8,5.2)(8.5,3.2)(9,2.8)};
 \end{groupplot}
 \end{tikzpicture}
-\end{center}
+\caption{The same nine data points fitted by three models of different complexity.}\label{fig:fits}
+\end{figure}
 
-The classic picture below shows what happens as we make the model more complex.
+\begin{explain}
+All three panels show the \emph{same} blue data points; only the fitted curve (red or green) changes.\par
+\textbf{(a)} The model is a flat horizontal line. It ignores the rise-and-fall pattern, so errors are large for \emph{every} point: \textbf{high training error} $\Rightarrow$ underfitting.\par
+\textbf{(b)} A smooth curve passes close to all points without chasing each one: this is the \textbf{right complexity} and will generalise well.\par
+\textbf{(c)} The wiggly curve passes \emph{exactly} through every point, including the random noise. Training error is almost zero, but the zig-zags will mispredict new points: \textbf{low training error, high test error} $\Rightarrow$ overfitting.
+\end{explain}
 
-\begin{center}
+\begin{figure}[!htbp]
+\centering
 \begin{tikzpicture}
-\begin{axis}[width=10cm,height=6cm,xlabel={Model complexity},ylabel={Error},
-  xmin=0,xmax=10,ymin=0,ymax=10,ticks=none,legend style={at={(0.5,1.04)},anchor=south,legend columns=2},axis lines=left]
+\begin{axis}[width=10.5cm,height=6.2cm,xlabel={Model complexity},ylabel={Error},
+  xmin=0,xmax=10,ymin=0,ymax=10,ticks=none,
+  legend style={at={(0.5,1.04)},anchor=south,legend columns=2},axis lines=left]
 \addplot[thick,mlblue,smooth,domain=0.3:10]{8*exp(-0.5*x)+0.5+0.025*x^2};
 \addplot[thick,mlred,smooth,domain=0.3:10]{8*exp(-0.5*x)+0.2};
 \legend{Test error, Training error}
@@ -315,53 +668,193 @@ The classic picture below shows what happens as we make the model more complex.
 \node[font=\small,mlgreen!60!black] at (axis cs:5.3,3.6) {sweet spot};
 \end{axis}
 \end{tikzpicture}
-\end{center}
+\caption{Training and test error as model complexity increases.}\label{fig:complexity}
+\end{figure}
+
+\begin{explain}
+The horizontal axis is how \emph{flexible} the model is (e.g.\ the degree of a polynomial). The vertical axis is the error.
+\begin{itemize}
+  \item \textbf{Red curve (training error)} always \emph{falls}: a more flexible model can always fit the training data better.
+  \item \textbf{Blue curve (test error)} falls at first and then \emph{rises again}. Beyond the dashed line the model starts fitting noise, so it gets worse on unseen data.
+  \item \textbf{Left of the dashed line:} both errors are high $\Rightarrow$ underfitting. \textbf{Right of it:} a growing gap between training and test error $\Rightarrow$ overfitting.
+  \item \textbf{The dashed line} marks the minimum of the test error, the best complexity.
+\end{itemize}
+\textbf{Rule of thumb:} judge a model by the \emph{test} curve, never by the training curve.
+\end{explain}
 
 \begin{warning}
-A very high accuracy on training data does \textbf{not} mean the model is good. Always evaluate on data the model has \emph{never seen} (the test set, Chapter 2).
+Very high accuracy on training data does \textbf{not} mean the model is good. Always evaluate on data the model has never seen (Chapter~2).
 \end{warning}
 
 \begin{center}
-\begin{tabular}{@{}p{4cm}p{4.6cm}p{4.6cm}@{}}
+\begin{tabular}{@{}p{3.2cm}p{5.2cm}p{5.2cm}@{}}
 \toprule
  & \textbf{Overfitting} & \textbf{Underfitting}\\
 \midrule
 Model is & too complex & too simple\\
 Training error & very low & high\\
 Test error & high & high\\
-Fixes & more data, simpler model, regularisation, remove noise & more complex model, better features, train longer\\
+Also called & high variance & high bias\\
+Remedies & more training data; simpler model or fewer features; \textbf{regularisation}; remove noise/outliers; early stopping & more complex model; better or more features; reduce regularisation; train longer\\
 \bottomrule
 \end{tabular}
 \end{center}
 
+\begin{definition}[: Regularisation]
+\textbf{Regularisation} means deliberately \emph{constraining} a model to make it simpler and so reduce overfitting, for example by adding a penalty on large parameter values to the loss (Chapter~4). The amount of regularisation is a hyperparameter.
+\end{definition}
+
+
+
+\paragraph{Why do they happen and how can we spot them?}
+\begin{itemize}
+  \item \textbf{Overfitting} is caused by model too complex for the amount of data; too little or noisy training data; too many irrelevant features; training for too long. \emph{How to spot it:} Very low training error but much higher validation or test error.
+  \item \textbf{Underfitting} is caused by model too simple (e.g.\ a straight line for curved data); too few or poorly chosen features; too much regularisation; insufficient training. \emph{How to spot it:} High training error and high test error, close to each other.
+\end{itemize}
+
+\subsection{Testing and Validating}
+
+The only reliable way to know how well a model generalises is to try it on new cases. So we split the data:
+
+\begin{itemize}
+  \item \textbf{Training set} (e.g.\ 60--80\%): used to fit the parameters.
+  \item \textbf{Validation set} (e.g.\ 10--20\%): used to compare models and tune \emph{hyperparameters}.
+  \item \textbf{Test set} (e.g.\ 10--20\%): used \emph{once}, at the very end, to estimate the \textbf{generalisation error}.
+\end{itemize}
+
+\begin{warning}
+If you tune hyperparameters on the \emph{test} set, the test set is no longer ``unseen'': your reported error will be optimistic. Use the validation set (or cross-validation) for tuning and keep the test set locked away.
+\end{warning}
+
+\subsection{No Free Lunch Theorem}
+
+Wolpert (1996) proved that, averaged over \emph{all possible problems}, no learning algorithm is better than any other. If we make \emph{no assumption} about the data, there is no reason to prefer a linear model over a neural network. In practice we must therefore (i) make reasonable \textbf{assumptions} about the data and (ii) \emph{try several models} and compare them on a validation set.
+
 \begin{keyidea}
-The goal of ML is \textbf{generalisation}: performing well on \emph{new} data, not on the data we trained with.
+The goal of ML is \textbf{generalisation}: performing well on \emph{new} data, not on the data used for training.
 \end{keyidea}
 
+%====================================================================
 \begin{summary}
 \begin{itemize}
-  \item AI $\supset$ ML $\supset$ Deep Learning.
-  \item ML learns the \emph{rules} from \emph{data}; Mitchell's definition uses $(T,P,E)$.
-  \item Systems are classified as supervised, unsupervised, semi-supervised or reinforcement; batch or online; instance-based or model-based.
-  \item Challenges: little data, non-representative data, poor quality, irrelevant features, overfitting, underfitting.
-  \item The aim is good \textbf{generalisation} to unseen data.
+  \item $\text{DL}\subset\text{ML}\subset\text{AI}$. ML learns \emph{rules from data}; Mitchell's definition uses $(T,P,E)$.
+  \item Vocabulary: instance, feature, label, training/test set, model, parameters (learned) vs.\ hyperparameters (set by us).
+  \item By supervision: supervised (labels), unsupervised (no labels), semi-supervised (few labels), reinforcement (rewards).
+  \item Supervised tasks: classification (category) and regression (number). Unsupervised tasks: clustering, dimensionality reduction, anomaly detection.
+  \item Batch learns offline from all data; online learns incrementally (learning rate matters). Instance-based memorises; model-based fits parameters.
+  \item Challenges: insufficient data, non-representative data (sampling bias), poor quality, irrelevant features, overfitting, underfitting.
+  \item Fix overfitting by more data, simpler models and regularisation; fix underfitting by richer models and better features.
+  \item Split data into training, validation and test sets; never tune on the test set.
 \end{itemize}
 \end{summary}
 
-\section*{Review Questions}
+%====================================================================
+\section*{Exam Corner}
+\addcontentsline{toc}{section}{Exam Corner}
+
+\subsection*{A.\ Very Short Answer Questions (2 marks each)}
 \begin{enumerate}
-  \item Define Machine Learning. State Mitchell's definition with an example.
-  \item Differentiate between AI, ML and Deep Learning with a diagram.
-  \item Compare supervised and unsupervised learning with two examples each.
-  \item What is the difference between batch and online learning?
-  \item Distinguish instance-based and model-based learning.
-  \item Explain overfitting and underfitting. How can each be reduced?
-  \item List any four challenges of machine learning.
+  \item Define machine learning. \qmarks{2}
+  \item What is meant by $(T,P,E)$ in Mitchell's definition? \qmarks{2}
+  \item Differentiate between a feature and a label. \qmarks{2}
+  \item Differentiate a parameter from a hyperparameter. \qmarks{2}
+  \item Name two applications each of classification and regression. \qmarks{2}
+  \item What is semi-supervised learning? Give one example. \qmarks{2}
+  \item Define overfitting. \qmarks{2}
+  \item What is the purpose of the test set? \qmarks{2}
 \end{enumerate}
 
-\section*{Practice Problems}
+\begin{modelans}[: Q2 and Q4]
+\textbf{Q2.} $T$ is the \emph{task} the program must perform, $P$ is the \emph{performance measure} used to judge it, and $E$ is the \emph{experience} (data) it learns from. A program learns if its $P$ on $T$ improves with $E$.\par
+\textbf{Q4.} A \emph{parameter} (e.g.\ $\theta_1$ in linear regression) is learned automatically from the training data. A \emph{hyperparameter} (e.g.\ $k$ in k-NN or the learning rate) is set by the user before training and tuned using a validation set.
+\end{modelans}
+
+\subsection*{B.\ Short Answer Questions (5 marks each)}
 \begin{enumerate}
-  \item Identify whether each task is classification, regression or clustering: (a) predicting tomorrow's temperature, (b) deciding if a tumour is benign, (c) grouping news articles by topic.
-  \item Write the $(T,P,E)$ description for a handwriting-recognition program.
-  \item \textbf{Coding:} extend the \texttt{LinearRegression} example to print the predicted price for sizes 6, 7 and 8.
+  \item Differentiate between AI, machine learning and deep learning with a suitable diagram. \qmarks{5}
+  \item Compare supervised and unsupervised learning with examples. \qmarks{5}
+  \item Explain batch and online learning. What is the role of the learning rate? \qmarks{5}
+  \item Differentiate between instance-based and model-based learning with examples. \qmarks{5}
+  \item Explain reinforcement learning with a diagram. Define agent, state, action, reward and policy. \qmarks{5}
+  \item Explain the bias in training data (sampling bias) with an example. \qmarks{5}
 \end{enumerate}
+
+\begin{modelans}[: B2 (outline for 5 marks)]
+\textbf{Supervised learning} uses \emph{labelled} data $(\vect{x},y)$ and learns a mapping $f(\vect{x})\approx y$; tasks are classification and regression (e.g.\ spam detection, house-price prediction); feedback is the correct answer. \textbf{Unsupervised learning} uses \emph{unlabelled} data $\vect{x}$ and finds hidden structure; tasks are clustering, dimensionality reduction, anomaly detection (e.g.\ customer segmentation); there is no feedback.\par
+\begin{center}\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Basis} & \textbf{Supervised} & \textbf{Unsupervised}\\
+\midrule
+Data & Labelled & Unlabelled\\
+Goal & Predict output & Discover structure\\
+Algorithms & k-NN, SVM, linear regression & K-Means, PCA, DBSCAN\\
+Evaluation & Direct (compare with labels) & Indirect\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{modelans}
+
+\subsection*{C.\ Long Answer Questions (10 marks each)}
+\begin{enumerate}
+  \item Explain the different types of machine-learning systems based on the amount of supervision, with diagrams and examples. \qmarks{10}
+  \item Describe the main challenges of machine learning. \qmarks{10}
+  \item What are overfitting and underfitting? Explain with diagrams, state the causes and the remedies for each. \qmarks{10}
+  \item Using the data $(1,15),(2,26),(3,29),(4,44),(5,46)$, fit a straight line $\hat y=\theta_0+\theta_1x$ by least squares and predict $y$ for $x=7$. \qmarks{10}
+\end{enumerate}
+
+\begin{modelans}[: C4 (numerical)]
+$\bar x=3,\ \bar y=32$. $\sum(x-\bar x)(y-\bar y)=34+6+0+12+28=80$; $\sum(x-\bar x)^2=4+1+0+1+4=10$.\par
+$\theta_1=80/10=8$, $\ \theta_0=32-8(3)=8$. Model: $\hat y = 8+8x$.\par
+For $x=7$: $\hat y = 8+8(7)=\mathbf{64}$.
+\end{modelans}
+
+\subsection*{D.\ Multiple-Choice Questions}
+\begin{enumerate}
+  \item Which of the following is \emph{not} a type of ML system by supervision? \\
+  (a) Supervised \quad (b) Unsupervised \quad (c) Reinforcement \quad (d) \textbf{Compiled}
+  \item Grouping customers by buying behaviour without predefined labels is: \\
+  (a) classification \quad (b) regression \quad (c) clustering \quad (d) reinforcement
+  \item A model with very low training error but high test error is: \\
+  (a) underfitting \quad (b) overfitting \quad (c) well fitted \quad (d) unbiased
+  \item In Mitchell's definition, accuracy of a spam filter is an example of: \\
+  (a) task \quad (b) experience \quad (c) performance measure \quad (d) model
+  \item k-Nearest Neighbours is an example of: \\
+  (a) model-based learning \quad (b) instance-based learning \quad (c) online learning \quad (d) RL
+  \item The discount factor $\gamma$ is used in: \\
+  (a) clustering \quad (b) regression \quad (c) reinforcement learning \quad (d) PCA
+  \item Hyperparameters are tuned using the: \\
+  (a) training set \quad (b) validation set \quad (c) test set \quad (d) none
+\end{enumerate}
+\textbf{Answers:} 1-d,\ 2-c,\ 3-b,\ 4-c,\ 5-b,\ 6-c,\ 7-b.
+
+\subsection*{E.\ Practice Problems}
+\begin{enumerate}
+  \item Label each as classification, regression or clustering: (a) predicting tomorrow's temperature, (b) deciding whether a tumour is benign, (c) grouping news articles by topic.
+  \item Write the $(T,P,E)$ description for a handwriting-recognition program.
+  \item A robot has $\gamma=0.9$ and receives rewards $1,\,0,\,5$ at the next three steps (and none afterwards). Compute $G_t$. \textit{(Answer: $1+0.9\cdot0+0.81\cdot5=5.05$.)}
+  \item \textbf{Coding:} extend the \texttt{LinearRegression} program to print predictions for sizes 6, 7 and 8. Plot the data and the fitted line with \texttt{matplotlib}.
+\end{enumerate}
+
+\begin{revision}
+\begin{center}\small
+\begin{tabular}{@{}p{3.6cm}p{9.6cm}@{}}
+\toprule
+\textbf{Topic} & \textbf{One-line recall}\\
+\midrule
+Samuel (1959) & Learning without being explicitly programmed.\\
+Mitchell (1997) & Performance $P$ at task $T$ improves with experience $E$.\\
+Supervised & Labelled data; classification (category) / regression (number).\\
+Unsupervised & No labels; clustering, PCA, anomaly detection.\\
+Semi-supervised & Few labels + many unlabelled (self-training).\\
+Reinforcement & Agent--environment loop; maximise $G_t=\sum\gamma^k r_{t+k+1}$.\\
+Batch / Online & All data once / incremental; learning rate.\\
+Instance / Model-based & Memorise and compare / fit parameters.\\
+Overfitting & Low train error, high test error $\to$ more data, regularise, simplify.\\
+Underfitting & High train and test error $\to$ richer model, better features.\\
+Data splits & Train: fit. Validation: tune. Test: final estimate.\\
+No Free Lunch & No best algorithm for all problems; make assumptions and compare.\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{revision}

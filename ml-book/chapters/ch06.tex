@@ -1,0 +1,1117 @@
+\chapter{Support Vector Machines and Naive Bayes Classifiers}
+\label{ch:svm}
+\begin{objectives}
+After studying this chapter you will be able to:
+\begin{itemize}
+  \item explain the \textbf{maximum-margin idea} of a linear SVM and the role of \textbf{support vectors};
+  \item explain the \textbf{soft margin} and the effect of the parameter $C$;
+  \item use the \textbf{dual form} to show that an SVM depends only on dot products between points;
+  \item explain the \textbf{kernel trick} and compute \textbf{polynomial} and \textbf{RBF} kernels by hand;
+  \item describe \textbf{nonlinear SVM classification} and tune $C$ and $\gamma$;
+  \item explain \textbf{SVM regression} with the $\varepsilon$-tube and the $\varepsilon$-insensitive loss;
+  \item apply \textbf{Gaussian}, \textbf{multinomial} and \textbf{Bernoulli Naive Bayes} classifiers, with Laplace smoothing, end to end;
+  \item answer 2-, 5- and 10-mark university questions on Unit~III.
+\end{itemize}
+\end{objectives}
+
+\begin{pullquote}[--- Vladimir Vapnik, inventor of the SVM]
+Nothing is more practical than a good theory.
+\end{pullquote}
+
+This chapter completes Unit~III. It has two halves:
+
+\begin{itemize}
+  \item \textbf{Support Vector Machines (SVMs):} linear classification, nonlinear classification with kernels, and regression;
+  \item \textbf{Naive Bayes classifiers:} the probabilistic family for text, medical and many other problems.
+\end{itemize}
+
+Throughout the chapter you will meet some cartoon characters who help us picture the ideas: a mayor who builds roads, a strict and a relaxed teacher, a detective who loves clues, and a tunnel full of data points.
+
+%====================================================================
+\section{Linear SVM Classification}
+
+\subsection{The Idea: Build the Widest Road}
+
+Imagine two colonies of houses, the \textbf{Blue Colony} and the \textbf{Orange Colony}. The mayor wants to build a road between them so that the two colonies are kept apart. Many roads would do the job, but a good mayor builds the \textbf{widest road possible}, so that no house is ever too close to the traffic. The houses that end up right at the \emph{edge} of the road are the ones that decide where the road can go.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{0.82\linewidth}{!}{%
+\begin{tikzpicture}
+\begin{scope}
+\clip (-1.4,-1.3) rectangle (7.6,6.6);
+\draw[line width=80.5pt,gray!35] (-1,5)--(5,-1);
+\draw[white,dashed,very thick] (-1,5)--(5,-1);
+\draw[mlred,dashed,thick] (-1,3)--(3,-1);
+\draw[mlred,dashed,thick] (-1,7)--(7,-1);
+\end{scope}
+\foreach \x/\y in {0/0,1/0,0.4/1.4}  \pic[scale=1.5] at (\x,\y) {house=mlblue};
+\foreach \x/\y in {4/4,4/3,3.3/4.6} \pic[scale=1.5] at (\x,\y) {house=mlorange};
+\pic[scale=1.5] at (1,1) {house=mlblue};
+\pic[scale=1.5] at (3,3) {house=mlorange};
+\draw[mlpurple,very thick] (1,1) circle (0.42);
+\draw[mlpurple,very thick] (3,3) circle (0.42);
+\draw[{Stealth}-{Stealth},very thick,mlpurple] (1.3,1.3)--(2.7,2.7);
+\node[font=\scriptsize\bfseries,mlpurple,fill=white,inner sep=2pt,rounded corners] at (2.5,1.55) {margin = road width};
+\node[font=\small\bfseries,mlblue] at (-0.5,-0.8) {Blue Colony};
+\node[font=\small\bfseries,mlorange!80!black] at (5.9,4.5) {Orange Colony};
+\node[font=\scriptsize,align=center,fill=white,rounded corners,inner sep=2pt] at (-0.6,2.75) {support vector\\(house on the road edge)};
+\draw[->,thick,mlpurple] (-0.15,2.4)--(0.7,1.4);
+\node[font=\scriptsize,align=center,fill=white,rounded corners,inner sep=2pt] at (5.9,1.6) {support vector\\(house on the road edge)};
+\draw[->,thick,mlpurple] (5.2,2.0)--(3.4,2.85);
+\node[font=\scriptsize,fill=white,rounded corners,inner sep=2pt] at (4.6,0.2) {centre line = decision boundary};
+\pic[scale=1.6] at (6.7,5.6) {smile};
+\bubble[text width=3.7cm]{2.3,5.75}{6.3,5.65}{Build the \textbf{widest} road between the colonies!}
+\end{tikzpicture}}
+\caption{A cartoon of the maximum-margin classifier: the widest road between two colonies.}\label{fig:road}
+\end{figure}
+
+\begin{explain}
+\textbf{Houses} are data points: blue houses are one class and orange houses are the other. The \textbf{grey road} is the margin and the \textbf{white dashed centre line} is the decision boundary. The \textbf{red dashed lines} are the edges of the road.
+
+\medskip
+The two \textbf{purple circled houses} sit exactly on the edge of the road. They are the \textbf{support vectors}. If you moved or removed any \emph{other} house (without letting it cross the edge) the road would stay exactly where it is; but if you moved a circled house, the whole road would shift. The \textbf{purple arrow} shows the road width, the \textbf{margin}, which the SVM tries to make as large as possible. A wide road means the classifier keeps a safe distance from both classes, so new houses (new data) are less likely to be misclassified.
+\end{explain}
+
+\subsection{Definitions}
+
+\begin{definition}[: Support Vector Machine (SVM)]
+A \textbf{Support Vector Machine} is a supervised learning algorithm that classifies data by finding the \textbf{maximum-margin hyperplane}: the separating hyperplane $\vect w\cdot\vect x+b=0$ that is \emph{farthest} from the closest training points of both classes. With labels $y_i\in\{-1,+1\}$ the \textbf{hard-margin} problem is
+\[
+  \min_{\vect w,b}\ \tfrac12\|\vect w\|^2\qquad\text{subject to}\qquad y_i(\vect w\cdot\vect x_i+b)\ge1\ \ \text{for all }i,
+\]
+and a new point is classified by $\hat y=\operatorname{sign}(\vect w\cdot\vect x+b)$.
+\end{definition}
+
+\begin{definition}[: Margin and support vectors]
+The \textbf{margin} is the width $2/\|\vect w\|$ of the empty strip between the two parallel hyperplanes $\vect w\cdot\vect x+b=\pm1$. The \textbf{support vectors} are the training points that lie \emph{on} these hyperplanes (or, for a soft margin, inside them or on the wrong side); they alone determine $\vect w$ and $b$.
+\end{definition}
+
+In Chapter~4 we solved a small SVM by hand. Here is a quick reminder of its answer, which we will reuse: for the spam data the support vectors were $(1,1)$ with $y=-1$ and $(3,3)$ with $y=+1$, giving $\vect w=(0.5,0.5)$, $b=-2$ and margin $2/\|\vect w\|=2.83$.
+
+\subsection{Soft-Margin SVM: Strict and Relaxed Teachers}
+
+Real data usually overlap, so no road can perfectly separate the colonies. A \textbf{soft margin} lets a few houses stand on the road or even on the wrong side, but each such house is fined.
+
+\begin{definition}[: Soft-margin SVM]
+Introduce a \textbf{slack variable} $\xi_i\ge0$ for each point that measures how far it violates the margin, and solve
+\[
+  \min_{\vect w,b,\vect\xi}\ \tfrac12\|\vect w\|^2+C\sum_{i=1}^{n}\xi_i\qquad\text{s.t.}\qquad y_i(\vect w\cdot\vect x_i+b)\ge1-\xi_i,\ \ \xi_i\ge0 .
+\]
+The hyperparameter $C>0$ controls the trade-off. Equivalently the SVM minimises the \textbf{hinge loss} $\max(0,1-y_if(\vect x_i))$ plus the penalty $\frac1{2C}\|\vect w\|^2$.
+\end{definition}
+
+Think of $C$ as the \textbf{strictness of a teacher}.
+
+\begin{itemize}
+  \item \textbf{Large $C$ = strict teacher:} ``No student may break the rules!'' The road becomes narrow and twists to avoid every violation: low bias, \emph{high variance}, risk of overfitting.
+  \item \textbf{Small $C$ = relaxed teacher:} ``A few mistakes are fine.'' The road stays wide and smooth: higher bias, \emph{low variance}, risk of underfitting.
+\end{itemize}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1,horizontal sep=1.1cm,group name=G},width=7.2cm,height=7.2cm,
+  xmin=-1,xmax=6,ymin=-1.5,ymax=6.5,grid=both,grid style={gray!15},ticks=none,title style={font=\small\bfseries,align=center}]
+\nextgroupplot[title={(a) $C=0.01$: relaxed teacher\\wide road, margin $5.0$}]
+\addplot[only marks,mark=*,mlblue,mark size=2pt] coordinates {(0.38,2.25)(0.44,0.97)(1.26,1.20)(0.85,1.30)(2.46,1.39)(1.43,0.97)(0.71,0.63)(2.25,2.95)(2.76,1.70)(2.13,3.18)(1.58,-0.08)(3.02,1.87)(0.63,0.89)(1.04,0.19)(0.49,1.33)(1.46,1.09)(1.54,1.16)(2.03,1.36)(2.34,0.56)(0.82,-0.56)};
+\addplot[only marks,mark=triangle*,mlorange,mark size=2.6pt] coordinates {(3.87,5.15)(4.39,4.63)(2.76,3.53)(2.63,4.26)(4.05,3.71)(2.99,3.00)(4.76,2.55)(3.37,5.00)(3.20,2.02)(3.63,2.60)(4.36,4.22)(3.91,4.07)(2.31,4.68)(1.59,3.27)(4.44,4.45)(2.99,1.87)(4.22,1.92)(2.93,3.63)(3.33,5.01)(2.12,4.05)};
+\addplot[very thick,mlgreen,domain=-1:6]{(1.408-0.253*x)/0.310};
+\addplot[dashed,mlred,thick,domain=-1:6]{(2.408-0.253*x)/0.310};
+\addplot[dashed,mlred,thick,domain=-1:6]{(0.408-0.253*x)/0.310};
+\nextgroupplot[title={(b) $C=100$: strict teacher\\narrow road, margin $0.53$}]
+\addplot[only marks,mark=*,mlblue,mark size=2pt] coordinates {(0.38,2.25)(0.44,0.97)(1.26,1.20)(0.85,1.30)(2.46,1.39)(1.43,0.97)(0.71,0.63)(2.25,2.95)(2.76,1.70)(2.13,3.18)(1.58,-0.08)(3.02,1.87)(0.63,0.89)(1.04,0.19)(0.49,1.33)(1.46,1.09)(1.54,1.16)(2.03,1.36)(2.34,0.56)(0.82,-0.56)};
+\addplot[only marks,mark=triangle*,mlorange,mark size=2.6pt] coordinates {(3.87,5.15)(4.39,4.63)(2.76,3.53)(2.63,4.26)(4.05,3.71)(2.99,3.00)(4.76,2.55)(3.37,5.00)(3.20,2.02)(3.63,2.60)(4.36,4.22)(3.91,4.07)(2.31,4.68)(1.59,3.27)(4.44,4.45)(2.99,1.87)(4.22,1.92)(2.93,3.63)(3.33,5.01)(2.12,4.05)};
+\addplot[very thick,mlgreen,domain=-1:6]{(13.175-3.322*x)/1.761};
+\addplot[dashed,mlred,thick,domain=-1:6]{(14.175-3.322*x)/1.761};
+\addplot[dashed,mlred,thick,domain=-1:6]{(12.175-3.322*x)/1.761};
+\end{groupplot}
+\pic[scale=1.1] at ([shift={(-0.75,-0.75)}]G c1r1.north east) {smile};
+\pic[scale=1.1] at ([shift={(-0.75,-0.75)}]G c2r1.north east) {angry};
+\end{tikzpicture}
+\caption{The same 40 points fitted with a very small and a very large $C$ (real SVM fits).}\label{fig:Ceffect}
+\end{figure}
+
+\begin{explain}
+Both panels show the \emph{same} 40 houses (blue circles and orange triangles; the two colonies overlap a little in the middle). The \textbf{green line} is the decision boundary and the \textbf{red dashed lines} are the road edges.
+
+\medskip
+\textbf{(a) Relaxed teacher ($C=0.01$):} the road is very wide (margin $5.0$) and covers many houses, so many of them are support vectors. The model pays little attention to the individual rule-breakers and looks only at the overall pattern.
+
+\textbf{(b) Strict teacher ($C=100$):} the road is narrow (margin $0.53$) and the line is tilted to squeeze between the points, because every violation is expensive. The model follows the training data closely.
+\end{explain}
+
+\medskip
+\begin{center}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{$C$} & \textbf{Support vectors} & \textbf{Margin} & \textbf{Train accuracy} & \textbf{Test accuracy (400 pts)}\\
+\midrule
+0.01 (relaxed) & 32 & 5.00 & 0.925 & 0.953\\
+1 & 11 & 1.63 & 0.900 & 0.948\\
+100 (strict) & 8 & 0.53 & 0.950 & 0.940\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Read the table:} as $C$ grows, the margin shrinks (5.00 $\to$ 0.53), fewer points are support vectors (32 $\to$ 8) and the \emph{training} accuracy rises slightly ($0.925\to0.950$) while the \emph{test} accuracy drifts down ($0.953\to0.940$): the strict teacher fits the training set better but generalises a little worse. (The differences in accuracy are small here, since the two classes are only mildly overlapping and 400 test points is a small sample; the large change in margin and support vectors is the main lesson.)
+
+\subsection{The Dual Form and Support Vectors}
+
+The SVM optimisation problem can be rewritten in an equivalent \emph{dual} form using Lagrange multipliers $\alpha_i\ge0$, one per training point.
+
+\begin{definition}[: Dual form of the SVM]
+\[
+  \max_{\vect\alpha}\ \sum_{i}\alpha_i-\frac12\sum_{i}\sum_{j}\alpha_i\alpha_j\,y_iy_j\,(\vect x_i\cdot\vect x_j)
+  \quad\text{s.t.}\quad \sum_i\alpha_iy_i=0,\ \ 0\le\alpha_i\le C .
+\]
+The weights are $\vect w=\sum_i\alpha_iy_i\vect x_i$ and a new point is classified by
+\[
+  f(\vect x)=\sum_{i}\alpha_i\,y_i\,(\vect x_i\cdot\vect x)+b .
+\]
+Only the \textbf{support vectors} have $\alpha_i>0$; all other points have $\alpha_i=0$.
+\end{definition}
+
+\textbf{Two important facts:}
+\begin{enumerate}
+  \item The prediction needs only the \emph{support vectors}, which makes it compact.
+  \item The data enter \emph{only through dot products} $\vect x_i\cdot\vect x_j$. This is the key to the \textbf{kernel trick} in the next section.
+\end{enumerate}
+
+\begin{example}[: The dual form on the spam data]
+Support vectors: $(1,1)$ with $y=-1$ and $(3,3)$ with $y=+1$; all other points have $\alpha=0$.
+
+\medskip
+\textbf{Solving for $\alpha$:} by symmetry $\alpha_1=\alpha_2=\alpha$. Then
+\[
+  \vect w=\alpha(-1)(1,1)+\alpha(+1)(3,3)=\alpha(2,2)=(0.5,0.5)\ \Rightarrow\ \alpha=0.25 .
+\]
+Check $\sum\alpha_iy_i=0.25(-1)+0.25(+1)=0$ \checkmark. The bias is $b=-2$ as before.
+
+\medskip
+\textbf{Predicting the new e-mail $(4,1)$} using only dot products with the support vectors:
+\[
+  f=\underbrace{0.25(-1)(1\cdot4+1\cdot1)}_{=-1.25}+\underbrace{0.25(+1)(3\cdot4+3\cdot1)}_{=+3.75}-2=\mathbf{0.5}>0\ \Rightarrow\ \text{spam}.
+\]
+This matches the value $f(4,1)=0.5$ found in Chapter~4 directly from $\vect w$.
+
+\medskip
+\textbf{Dual objective value:} $\sum\alpha_i-\frac12\sum_{i,j}\ldots=0.5-0.25=0.25=\frac12\|\vect w\|^2$, equal to the primal value: the primal and dual give the same answer.
+\end{example}
+
+\subsection{Practical Points}
+
+\begin{itemize}
+  \item \textbf{Scale the features.} The margin is measured with distances, so a feature with a huge range (salary in rupees) would dominate one with a tiny range (age in years). Standardise first.
+  \item \textbf{Choose $C$ by cross-validation} on a grid such as $10^{-2},10^{-1},\dots,10^{3}$.
+  \item \textbf{More than two classes:} SVMs are binary. For $K$ classes use \emph{one-vs-rest} ($K$ classifiers, pick the highest score) or \emph{one-vs-one} ($K(K-1)/2$ classifiers that vote).
+  \item \textbf{No probabilities by default.} The SVM output $f(\vect x)$ is a signed distance, not a probability (scikit-learn can fit one afterwards with \texttt{probability=True}).
+\end{itemize}
+
+\procon{Linear SVM classification}
+{\item Wide margin gives good generalisation
+ \item Effective with many features (text)
+ \item Only support vectors matter, so it is compact
+ \item Convex problem: a single global optimum}
+{\item No probabilities by default
+ \item Needs scaled features
+ \item Sensitive to the choice of $C$
+ \item Slow for very large datasets
+ \item Hard margin fails if classes overlap}
+{\item Spam and news-article classification
+ \item Handwritten digit recognition
+ \item Gene-expression and cancer classification
+ \item Image classification}
+
+%====================================================================
+\section{Nonlinear SVM Classification}
+
+\subsection{When a Straight Line Is Not Enough}
+
+Many real problems cannot be solved by a straight line. For instance, if the ``blue'' houses are in the \emph{middle} of a village and the ``orange'' houses are all around them, no straight road can separate them.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}
+% ---------- left panel : 1-D ----------
+\node[font=\small\bfseries] at (2.3,3.5) {(a) Original data: 1 feature $x$};
+\draw[-{Stealth},thick] (-1.5,0)--(6.2,0) node[below,font=\small]{$x$};
+\foreach \x in {-3,-2,-1,0,1,2,3} \draw (2.3+0.8*\x,0.07)--(2.3+0.8*\x,-0.07) node[below,font=\scriptsize]{\x};
+\foreach \x in {-1,0,1} \fill[mlblue] (2.3+0.8*\x,0) circle (0.12);
+\foreach \x in {-3,-2.5,2.5,3} \node[mlorange,font=\Large] at (2.3+0.8*\x,0) {$\blacktriangle$};
+\pic[scale=1.3] at (2.3,2.2) {sad};
+\bubble[text width=3.1cm]{2.3,1.15}{2.3,0.9}{No single cut separates them!}
+% arrow between panels
+\draw[-{Stealth},ultra thick,mlpurple] (6.5,1.5)--(8.3,1.5) node[midway,above,font=\small,align=center]{lift\\$\varphi(x)=(x,x^2)$};
+% ---------- right panel : 2-D ----------
+\begin{scope}[xshift=9.8cm]
+\node[font=\small\bfseries] at (2.3,3.5) {(b) After the lift: 2 features $(x,x^2)$};
+\draw[-{Stealth},thick] (-1.5,0)--(6.2,0) node[below,font=\small]{$x$};
+\draw[-{Stealth},thick] (2.3,0)--(2.3,3.3) node[right,font=\small]{$x^2$};
+\foreach \x/\y in {-1/1,0/0,1/1} \fill[mlblue] (2.3+0.8*\x,0.3*\y) circle (0.12);
+\foreach \x/\y in {-3/9,3/9,-2.5/6.25,2.5/6.25} \node[mlorange,font=\Large] at (2.3+0.8*\x,0.3*\y) {$\blacktriangle$};
+\draw[very thick,mlgreen] (-1.4,1.0875)--(6.0,1.0875);
+\draw[dashed,mlred] (-1.4,0.3)--(6.0,0.3);
+\draw[dashed,mlred] (-1.4,1.875)--(6.0,1.875);
+\node[font=\scriptsize,mlgreen!50!black,fill=white,inner sep=1pt] at (5.2,1.0875) {a straight line works!};
+\pic[scale=1.3] at (-0.2,2.7) {smile};
+\end{scope}
+\end{tikzpicture}}
+\caption{The lifting trick: data that cannot be separated in one dimension become separable after adding the feature $x^2$.}\label{fig:lift}
+\end{figure}
+
+\begin{explain}
+\textbf{Panel (a):} the data live on a single number line. The blue circles are in the middle ($x=-1,0,1$) and the orange triangles are on both outsides ($x=\pm2.5,\pm3$). Wherever we put \emph{one} cut-point on the line, some blue and some orange end up on the same side. The sad face is right: no straight cut works.
+
+\medskip
+\textbf{Panel (b):} we \emph{lift} every point into two dimensions by adding the new feature $x^2$ (the purple arrow). A point $x=3$ becomes $(3,9)$, and $x=1$ becomes $(1,1)$. Now the orange points have large $x^2$ values and the blue points have small ones, so a \emph{horizontal straight line} (green) separates them perfectly, with red dashed lines marking the margin. Going back to the original line, this horizontal cut corresponds to \emph{two} cut-points, $x\approx-1.9$ and $x\approx+1.9$: a \textbf{nonlinear} boundary in $x$ is a \textbf{linear} boundary in the lifted space.
+\end{explain}
+
+\begin{keyidea}
+\textbf{A linear model in a higher-dimensional feature space is a nonlinear model in the original space.} The SVM can therefore learn curved boundaries by first mapping the data with a function $\varphi$ and then finding the maximum-margin hyperplane there.
+\end{keyidea}
+
+\begin{example}[: Solving the lifted problem end to end]
+\textbf{Data:} $x=-1,0,1$ are class $-1$ (blue); $x=\pm2.5,\pm3$ are class $+1$ (orange). Map $\varphi(x)=(x,x^2)$.
+
+\begin{center}
+\begin{tabular}{@{}c|ccc|cccc@{}}
+\toprule
+$x$ & $-1$ & $0$ & $1$ & $-2.5$ & $2.5$ & $-3$ & $3$\\
+$\varphi(x)=(x,x^2)$ & $(-1,1)$ & $(0,0)$ & $(1,1)$ & $(-2.5,6.25)$ & $(2.5,6.25)$ & $(-3,9)$ & $(3,9)$\\
+Class & $-$ & $-$ & $-$ & $+$ & $+$ & $+$ & $+$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Step 1: closest opposite points.} In the lifted space the blue points $(\pm1,1)$ have $x^2=1$ and the orange points $(\pm2.5,6.25)$ have $x^2=6.25$. These four are the support vectors. The separating line is horizontal, $\vect w=(0,a)$.
+
+\medskip
+\textbf{Step 2: margin conditions.} $a(6.25)+b=+1$ and $a(1)+b=-1$. Subtracting, $5.25\,a=2$ so
+\[
+  a=0.381,\qquad b=-1-0.381=-1.381,\qquad f(x)=0.381\,x^2-1.381 .
+\]
+
+\textbf{Step 3: boundary.} $f(x)=0\iff x^2=3.625\iff x=\pm1.90$. The margin is $2/0.381=5.25$ units in the $x^2$ direction.
+
+\medskip
+\textbf{Step 4: check the others.} $f(0)=-1.381\le-1$ \checkmark; $f(\pm3)=0.381(9)-1.381=2.05\ge1$ \checkmark.
+
+\medskip
+\textbf{Step 5: predict.} $x=2$: $f=0.381(4)-1.381=0.143>0\Rightarrow$ \textbf{orange}. $x=1.5$: $f=0.381(2.25)-1.381=-0.524<0\Rightarrow$ \textbf{blue}.
+\end{example}
+
+\paragraph{The cost of lifting.} Adding more and more features (polynomial features of degree 3, 10, \dots) quickly produces an enormous number of columns: $d$ features and degree $p$ give about $\binom{d+p}{p}$ new features. Computing with them directly becomes very slow. The \textbf{kernel trick} avoids this cost.
+
+\subsection{The Kernel Trick}
+
+Remember that the dual SVM uses the data only through dot products $\vect x_i\cdot\vect x_j$. After the lift we would need $\varphi(\vect x_i)\cdot\varphi(\vect x_j)$. A kernel computes that number \emph{without ever building} $\varphi$.
+
+\begin{definition}[: Kernel function]
+A \textbf{kernel} is a function $K(\vect a,\vect b)$ that equals a dot product in some (possibly very high-dimensional) feature space: $K(\vect a,\vect b)=\varphi(\vect a)\cdot\varphi(\vect b)$. The \textbf{kernel trick} replaces every dot product $\vect x_i\cdot\vect x_j$ in the SVM by $K(\vect x_i,\vect x_j)$, so the SVM works in the high-dimensional space \emph{at the cost of computing a simple formula}:
+\[
+  f(\vect x)=\sum_i\alpha_i\,y_i\,K(\vect x_i,\vect x)+b .
+\]
+\end{definition}
+
+\begin{center}
+\begin{tabular}{@{}p{3.1cm}p{5.5cm}p{4.9cm}@{}}
+\toprule
+\textbf{Kernel} & \textbf{Formula} & \textbf{Parameters}\\
+\midrule
+Linear & $K(\vect a,\vect b)=\vect a\cdot\vect b$ & none\\
+Polynomial & $K(\vect a,\vect b)=(\gamma\,\vect a\cdot\vect b+r)^{d}$ & degree $d$, $\gamma$, $r$\\
+RBF (Gaussian) & $K(\vect a,\vect b)=\exp\!\big(-\gamma\|\vect a-\vect b\|^2\big)$ & $\gamma>0$\\
+Sigmoid & $K(\vect a,\vect b)=\tanh(\gamma\,\vect a\cdot\vect b+r)$ & $\gamma$, $r$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{example}[: The polynomial kernel really equals a dot product]
+Let $\vect a=(1,2)$ and $\vect b=(3,1)$ and take the kernel $K(\vect a,\vect b)=(\vect a\cdot\vect b)^2$.
+
+\medskip
+\textbf{Using the kernel (one cheap step):} $\vect a\cdot\vect b=3+2=5$, so $K=5^2=\mathbf{25}$.
+
+\medskip
+\textbf{Using the explicit feature map} $\varphi(\vect x)=(x_1^2,\ \sqrt2\,x_1x_2,\ x_2^2)$ (three features):
+\[
+  \varphi(\vect a)=(1,\ 2.828,\ 4),\qquad \varphi(\vect b)=(9,\ 4.243,\ 1),
+\]
+\[
+  \varphi(\vect a)\cdot\varphi(\vect b)=1(9)+2.828(4.243)+4(1)=9+12+4=\mathbf{25}.
+\]
+Both ways give $25$, but the kernel never needed the three-dimensional vectors.
+\end{example}
+
+\begin{example}[: The RBF kernel as a similarity score]
+For $\vect a=(1,2)$ and $\vect b=(3,1)$: $\|\vect a-\vect b\|^2=2^2+1^2=5$.
+\begin{center}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+$\gamma$ & $0.1$ & $0.5$ & $2$\\
+\midrule
+$K=e^{-5\gamma}$ & $e^{-0.5}=0.607$ & $e^{-2.5}=0.082$ & $e^{-10}=0.00005$\\
+\bottomrule
+\end{tabular}
+\end{center}
+Also $K(\vect a,\vect a)=e^{0}=1$ (identical points are maximally similar). The RBF kernel is a \textbf{similarity between $0$ and $1$} that falls as the points move apart, and $\gamma$ says \emph{how fast}. The feature space of the RBF kernel has infinitely many dimensions, yet each $K$ is one cheap calculation.
+\end{example}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=11cm,height=6cm,xlabel={distance $\|\vect a-\vect b\|$},ylabel={similarity $K=e^{-\gamma\,\|\vect a-\vect b\|^2}$},
+  xmin=0,xmax=3,ymin=0,ymax=1.05,samples=100,grid=both,grid style={gray!18},
+  legend style={at={(0.98,0.97)},anchor=north east,font=\small}]
+\addplot[very thick,mlgreen,domain=0:3]{exp(-0.1*x^2)};
+\addplot[very thick,mlblue,domain=0:3]{exp(-1*x^2)};
+\addplot[very thick,mlred,domain=0:3]{exp(-10*x^2)};
+\legend{$\gamma=0.1$ (wide hill),$\gamma=1$,$\gamma=10$ (narrow spike)}
+\end{axis}
+\end{tikzpicture}
+\caption{The RBF kernel as a function of distance, for three values of $\gamma$.}\label{fig:rbfgamma}
+\end{figure}
+
+\begin{explain}
+The horizontal axis is the \textbf{distance} between two points and the vertical axis is their \textbf{similarity} (1 = identical, 0 = completely unrelated). Each curve is a different $\gamma$.
+
+\begin{itemize}
+  \item \textbf{Green ($\gamma=0.1$):} a wide, gentle hill. Even points that are $2$ units apart are still considered fairly similar. Every training point influences a large neighbourhood, so the model is \emph{smooth} (risk of underfitting).
+  \item \textbf{Blue ($\gamma=1$):} a medium hill.
+  \item \textbf{Red ($\gamma=10$):} a narrow spike. Only points very close together are similar. Each training point influences just its immediate surroundings, so the boundary becomes wiggly and tightly follows the data (risk of overfitting).
+\end{itemize}
+\end{explain}
+
+\subsection{How an RBF SVM Decides: Hills of Influence}
+
+Here is a cartoon way to see the RBF-kernel SVM. Each support vector builds a \textbf{hill of influence} around itself: a positive hill for an orange support vector (it ``pulls'' nearby points to the orange class) and a negative hill (a pit) for a blue one. The decision value $f(\vect x)$ at any point is the \emph{sum} of all the hills and pits there.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=11.5cm,height=6.5cm,xlabel={position $x$},ylabel={decision value $f(x)$},
+  xmin=-1,xmax=5,ymin=-1.3,ymax=1.3,samples=120,axis lines=middle,
+  legend style={at={(0.5,1.04)},anchor=south,legend columns=3,font=\small},xtick={1,2,3},xticklabels={blue SV,boundary,orange SV},ytick=\empty]
+\addplot[thick,mlorange,domain=-1:5]{exp(-(x-3)^2)};
+\addplot[thick,mlblue,domain=-1:5]{-exp(-(x-1)^2)};
+\addplot[very thick,black,domain=-1:5]{exp(-(x-3)^2)-exp(-(x-1)^2)};
+\legend{orange SV hill,blue SV pit,sum $=f(x)$}
+\fill[mlblue] (axis cs:1,0) circle (3pt);
+\fill[mlorange] (axis cs:3,0) circle (3pt);
+\fill[mlgreen] (axis cs:2,0) circle (3.5pt);
+\node[font=\small,mlgreen!50!black,above] at (axis cs:2,0.12) {$f=0$};
+\node[font=\small,mlorange!80!black] at (axis cs:4.3,0.75) {$f>0$: orange};
+\node[font=\small,mlblue] at (axis cs:-0.2,-0.75) {$f<0$: blue};
+\end{axis}
+\end{tikzpicture}
+\caption{Hills of influence: two RBF support vectors ($\gamma=1$) and the resulting decision value.}\label{fig:hills}
+\end{figure}
+
+\begin{explain}
+We work in one dimension for clarity, with one blue support vector at $x=1$ and one orange at $x=3$.
+
+\begin{itemize}
+  \item The \textbf{orange curve} is the positive hill $e^{-(x-3)^2}$ centred on the orange support vector.
+  \item The \textbf{blue curve} is the negative pit $-e^{-(x-1)^2}$ centred on the blue support vector.
+  \item The \textbf{black curve} is their sum, the decision value $f(x)$. It is positive on the right (the orange hill wins), negative on the left (the blue pit wins), and crosses \textbf{zero at $x=2$} (green dot), exactly midway, where both influences are equal.
+\end{itemize}
+In more dimensions it is the same picture: the decision boundary is where the hills and pits cancel, which can be a curve of any shape.
+\end{explain}
+
+\subsection{Choosing $C$ and $\gamma$: Real Results}
+
+We trained RBF SVMs on the \texttt{moons} data (two interleaving half-circles with noise): 180 points to train and 120 to test.
+
+\begin{center}
+\begin{tabular}{@{}ccccl@{}}
+\toprule
+\textbf{$\gamma$} & \textbf{Train accuracy} & \textbf{Test accuracy} & \textbf{Support vectors} & \textbf{Diagnosis}\\
+\midrule
+0.1 & 0.839 & 0.867 & 79 & too smooth: underfits\\
+1 & 0.950 & \textbf{0.992} & 54 & good\\
+10 & 0.961 & 0.975 & 115 & starting to overfit\\
+100 & \textbf{1.000} & 0.850 & 173 & overfits (memorises)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{@{}ccc@{\qquad\qquad}ccc@{}}
+\toprule
+\textbf{$C$} ($\gamma=1$) & \textbf{Train} & \textbf{Test} & \textbf{Kernel} ($C=1$) & \textbf{Train} & \textbf{Test}\\
+\midrule
+0.1 & 0.928 & 0.950 & Linear & 0.817 & 0.883\\
+1 & 0.950 & \textbf{0.992} & Polynomial (degree 3) & 0.944 & 0.983\\
+10 & 0.950 & 0.975 & RBF & 0.950 & \textbf{0.992}\\
+1000 & 0.967 & 0.933 & & &\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Interpretation.} (i)~With $\gamma=100$ the training accuracy is a perfect $1.000$ but the test accuracy falls to $0.850$: the classic overfitting signature. (ii)~Too small a $\gamma$ underfits. (iii)~Very large $C$ (1000) also overfits ($0.967$ train, $0.933$ test). (iv)~On this curved data the linear SVM is clearly worse ($0.883$) than the polynomial and RBF kernels. (Test accuracies are based on 120 points, so one point is $0.8\%$.)
+
+\begin{tryit}
+Reproduce the experiment with \texttt{scikit-learn}:
+\begin{lstlisting}
+from sklearn.datasets import make_moons
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.svm import SVC
+
+X, y = make_moons(n_samples=300, noise=0.25, random_state=0)
+Xa, Xb, ya, yb = train_test_split(X, y, test_size=0.4,
+                                  random_state=0)
+
+for g in [0.1, 1, 10, 100]:
+    model = make_pipeline(StandardScaler(),
+                          SVC(kernel="rbf", gamma=g, C=1))
+    model.fit(Xa, ya)
+    print(g, model.score(Xa, ya), model.score(Xb, yb))
+\end{lstlisting}
+\emph{Challenge:} replace the loop by \texttt{GridSearchCV} over $C\in\{0.1,1,10,100\}$ and $\gamma\in\{0.1,1,10\}$ and report the best pair.
+\end{tryit}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=8.5cm,height=8.5cm,axis equal image,xmin=-1.3,xmax=1.3,ymin=-1.3,ymax=1.3,grid=both,grid style={gray!15},
+  xlabel={$x_1$},ylabel={$x_2$},legend style={at={(1.04,0.5)},anchor=west,font=\small}]
+\addplot[only marks,mark=*,mlblue,mark size=2.4pt] coordinates {(0.16,0.25)(0.38,-0.02)(0.16,0.37)(0.37,-0.19)(-0.19,0.37)(0.47,-0.05)(-0.26,0.33)(0.33,0.31)(-0.37,0.12)(-0.27,-0.32)(0.39,0.06)(-0.20,-0.27)(-0.25,0.27)(0.08,-0.49)(0.20,-0.32)(0.41,0.14)(-0.10,-0.38)(0.08,-0.46)(0.00,0.30)(-0.27,-0.02)};
+\addlegendentry{inner ring}
+\addplot[only marks,mark=triangle*,mlorange,mark size=3pt] coordinates {(0.61,-0.77)(0.97,-0.39)(-0.74,0.78)(1.00,0.36)(-0.23,-0.88)(0.83,0.71)(-0.41,0.78)(0.10,1.00)(-0.84,0.19)(0.96,-0.24)(-0.90,-0.57)(0.93,-0.55)(-1.04,-0.12)(0.46,0.97)(-0.96,-0.16)(-0.48,-0.90)(-0.16,0.92)(-0.91,0.44)(0.53,-0.72)(-0.95,-0.24)};
+\addlegendentry{outer ring}
+\addplot[very thick,mlgreen,domain=0:360,samples=100,variable=\t]({0.676*cos(t)},{0.676*sin(t)});
+\addlegendentry{RBF boundary}
+\end{axis}
+\end{tikzpicture}
+\caption{An RBF SVM separates two concentric rings that no straight line can (a real fit, 20 points of each class shown).}\label{fig:circles}
+\end{figure}
+
+\begin{explain}
+The blue circles form an \textbf{inner ring} and the orange triangles an \textbf{outer ring}. A straight line cannot separate them: a linear SVM got only $58\%$ of these points right. The \textbf{RBF SVM} ($\gamma=2$, $C=10$) classified all of them correctly, and its decision boundary (green) is an almost perfect \textbf{circle of radius $\approx0.68$} lying in the gap between the rings. The curved boundary was never specified by us: the kernel allowed the SVM to find it.
+\end{explain}
+
+\begin{keyidea}
+\textbf{Choosing a kernel:} start with a \emph{linear} kernel (fast, good for many features and text). If the data look nonlinear, try the \emph{RBF} kernel, which is a good default, and tune $C$ and $\gamma$ by cross-validation on \emph{scaled} features. Use a polynomial kernel when you believe interactions between features of a known degree matter.
+\end{keyidea}
+
+\procon{Nonlinear (kernel) SVM}
+{\item Learns nonlinear boundaries without building features by hand
+ \item Flexible: many kernels
+ \item Works well in high dimensions
+ \item Strong generalisation with the margin}
+{\item Needs careful tuning of $C$, $\gamma$ and the kernel
+ \item Training cost grows roughly as $n^2$ to $n^3$: slow for $n\gg10^5$
+ \item Hard to interpret
+ \item Needs feature scaling}
+{\item Face and object recognition
+ \item Handwritten digit recognition
+ \item Protein and DNA classification
+ \item Remote-sensing image classification}
+
+%====================================================================
+\section{SVM Regression}
+
+\subsection{The Idea: Points Inside the Tunnel Are Free}
+
+The SVM idea also works for \textbf{regression}. In classification we wanted a road that keeps points \emph{off} the road. In SVM regression we reverse it: we fit a \textbf{tunnel} (tube) around the regression line and try to get \textbf{as many points as possible inside}. Points inside the tunnel cost nothing; only points \emph{outside} are penalised.
+
+\begin{definition}[: $\varepsilon$-insensitive loss]
+\[
+  L_\varepsilon(y,f(\vect x))=\max\big(0,\ |y-f(\vect x)|-\varepsilon\big).
+\]
+Errors smaller than $\varepsilon$ are ignored (loss $0$); larger errors cost the amount \emph{by which they exceed $\varepsilon$}.
+\end{definition}
+
+\begin{definition}[: Support vector regression (SVR)]
+\textbf{SVR} fits a function $f(\vect x)=\vect w\cdot\vect x+b$ (or its kernelised version) that is as \emph{flat} as possible while keeping most training points within a tube of half-width $\varepsilon$:
+\[
+  \min_{\vect w,b,\vect\xi,\vect\xi^*}\ \tfrac12\|\vect w\|^2+C\sum_i(\xi_i+\xi_i^*)
+  \quad\text{s.t.}\quad
+  \begin{cases}y_i-f(\vect x_i)\le\varepsilon+\xi_i\\ f(\vect x_i)-y_i\le\varepsilon+\xi_i^*\\ \xi_i,\xi_i^*\ge0.\end{cases}
+\]
+The slack variables $\xi_i,\xi_i^*$ measure how far a point lies above or below the tube. The \textbf{support vectors} are the points on or outside the tube; points strictly inside have no influence. With a kernel the prediction is $f(\vect x)=\sum_i(\alpha_i-\alpha_i^*)K(\vect x_i,\vect x)+b$.
+\end{definition}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=11.5cm,height=7cm,xlabel={$x$},ylabel={$y$},xmin=0,xmax=10,ymin=0,ymax=10,grid=both,grid style={gray!15},ticks=none]
+\addplot[dashed,mlred,thick,domain=0:10]{0.8*x+0.5+0.8};
+\addplot[dashed,mlred,thick,domain=0:10]{0.8*x+0.5-0.8};
+\addplot[very thick,mlgreen,domain=0:10]{0.8*x+0.5};
+\fill[mlgreen!10,opacity=0.5] (axis cs:0,0.5-0.8+0) -- (axis cs:10,8.5-0.8+0) -- (axis cs:10,8.5+0.8) -- (axis cs:0,0.5+0.8) -- cycle;
+\addplot[only marks,mark=*,mlgreen!70!black,mark size=3pt] coordinates {(1,1.5)(3,2.6)(5,4.2)(6,4.8)(7,5.4)(9,7.9)};
+\addplot[only marks,mark=square*,mlred,mark size=3pt] coordinates {(4,4.9)(8,8.0)};
+\addplot[only marks,mark=diamond*,mlpurple,mark size=4pt] coordinates {(2,2.9)};
+\draw[mlred,thick] (axis cs:4,4.5)--(axis cs:4,4.9);
+\draw[mlred,thick] (axis cs:8,7.7)--(axis cs:8,8.0);
+\node[font=\scriptsize,mlred,anchor=west] at (axis cs:4.1,4.95) {$\xi>0$};
+\node[font=\scriptsize,mlred,anchor=west] at (axis cs:8.1,8.1) {$\xi>0$};
+\draw[{Stealth}-{Stealth},thick] (axis cs:9.4,7.1)--(axis cs:9.4,8.7);
+\node[font=\scriptsize,anchor=east,fill=white,inner sep=1pt] at (axis cs:9.3,8.0) {$2\varepsilon$};
+\node[font=\scriptsize,mlgreen!50!black,anchor=north west] at (axis cs:0.2,9.6) {regression line $f(x)$};
+\end{axis}
+\pic[scale=1.1] at ([shift={(2.6,-1.35)}]current axis.north west) {smile};
+\bubble[text width=3.6cm]{$(current axis.north west)+(6.2,-1.0)$}{$(current axis.north west)+(3.1,-1.3)$}{Points inside the tunnel are \textbf{free}!}
+\end{tikzpicture}
+\caption{Support vector regression: a tube of half-width $\varepsilon$ around the fitted line.}\label{fig:svr}
+\end{figure}
+
+\begin{explain}
+The \textbf{green line} is the fitted regression function and the \textbf{red dashed lines} are the tube edges, a distance $\varepsilon$ above and below the line (total width $2\varepsilon$).
+
+\begin{itemize}
+  \item The \textbf{green dots} lie \emph{inside} the tunnel. Their errors are smaller than $\varepsilon$, so they cost nothing and \emph{do not affect} the line at all (they are not support vectors).
+  \item The \textbf{red squares} lie \emph{outside} the tunnel. They are penalised by the distance $\xi$ to the nearest tube edge (the short red segments). They are support vectors.
+  \item The \textbf{purple diamond} sits exactly on the tube edge and is also a support vector.
+\end{itemize}
+A wider tunnel (large $\varepsilon$) includes more points, gives a simpler model and fewer support vectors; a narrow tunnel follows the data more closely.
+\end{explain}
+
+\begin{example}[: The $\varepsilon$-insensitive loss]
+Let $\varepsilon=0.5$. Three predictions:
+
+\begin{center}
+\begin{tabular}{@{}c|ccc|c@{}}
+\toprule
+ & \textbf{Point 1} & \textbf{Point 2} & \textbf{Point 3} & \textbf{Total}\\
+\midrule
+True $y$ & 3.0 & 4.1 & 6.5 & \\
+Predicted $f$ & 3.3 & 4.0 & 5.2 & \\
+Error $y-f$ & $-0.3$ & $0.1$ & $1.3$ & \\
+\midrule
+$L_\varepsilon=\max(0,|e|-0.5)$ & $0$ & $0$ & $0.8$ & $\mathbf{0.8}$\\
+Squared error $e^2$ & $0.09$ & $0.01$ & $1.69$ & $1.79$\\
+\bottomrule
+\end{tabular}
+\end{center}
+Points 1 and 2 lie inside the tube and are \emph{ignored}; only point~3 is charged ($1.3-0.5=0.8$). Ordinary squared error would have charged all three points.
+\end{example}
+
+\subsection{Real Results}
+
+We fitted noisy data from $y=\sin x$ (60 points: 42 train, 18 test).
+
+\begin{center}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Model} & \textbf{Train $R^2$} & \textbf{Test $R^2$} & \textbf{Support vectors}\\
+\midrule
+Linear SVR & 0.539 & 0.278 & 39\\
+RBF SVR ($C=10,\gamma=1,\varepsilon=0.1$) & \textbf{0.971} & \textbf{0.924} & 26\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{@{}cccl@{}}
+\toprule
+\textbf{$\varepsilon$} (RBF SVR) & \textbf{Support vectors} & \textbf{Test $R^2$} & \textbf{Comment}\\
+\midrule
+0.05 & 35 & 0.914 & narrow tube, many support vectors\\
+0.2 & 17 & \textbf{0.942} & good balance\\
+0.5 & 4 & 0.841 & tube too wide: underfits\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Read the tables.} A straight line cannot follow the sine curve ($R^2=0.28$ on test data), while the RBF kernel can ($0.92$). Widening the tube from $0.05$ to $0.5$ reduces the number of support vectors from $35$ to $4$, but when the tube is too wide the fit gets worse.
+
+\begin{tryit}
+\begin{lstlisting}
+import numpy as np
+from sklearn.svm import SVR
+from sklearn.model_selection import train_test_split
+
+rng = np.random.default_rng(0)
+x = np.sort(rng.uniform(0, 6, 60))
+y = np.sin(x) + rng.normal(0, 0.15, 60)
+xa, xb, ya, yb = train_test_split(x.reshape(-1, 1), y,
+                                  test_size=0.3, random_state=0)
+
+svr = SVR(kernel="rbf", C=10, gamma=1, epsilon=0.1).fit(xa, ya)
+print(svr.score(xa, ya), svr.score(xb, yb), len(svr.support_))
+\end{lstlisting}
+\emph{Challenge:} try \texttt{epsilon=0.3} and \texttt{gamma=10} and compare the train and test $R^2$.
+\end{tryit}
+
+\begin{center}
+\begin{tabular}{@{}p{3.6cm}p{4.9cm}p{5.2cm}@{}}
+\toprule
+\textbf{Parameter} & \textbf{Meaning} & \textbf{Effect when increased}\\
+\midrule
+$\varepsilon$ & Half-width of the tube & Fewer support vectors, simpler (flatter) model\\
+$C$ & Penalty for points outside the tube & Fits training data more closely (overfits)\\
+$\gamma$ (RBF) & Reach of each support vector & More wiggly curve (overfits)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\procon{SVM regression (SVR)}
+{\item Ignores small errors, so robust to noise
+ \item Sparse: only support vectors matter
+ \item Nonlinear fits through kernels
+ \item Good generalisation}
+{\item Three parameters to tune ($\varepsilon$, $C$, $\gamma$)
+ \item Slow for very large datasets
+ \item Needs feature scaling
+ \item No probabilistic prediction interval}
+{\item Stock and sales forecasting
+ \item Electricity-load and weather prediction
+ \item Estimating material or engineering properties
+ \item Travel-time estimation}
+
+%====================================================================
+\section{Naive Bayes Classifiers}
+
+In Chapter~3 we introduced Bayes' theorem and the Naive Bayes classifier. Here we study the three main \emph{variants}, one for each type of feature, and solve a full text-classification example. First recall the principle.
+
+\begin{definition}[: Naive Bayes classifier]
+A \textbf{Naive Bayes classifier} predicts the class
+\[
+  \hat y=\argmax_{c}\ P(c)\prod_{j=1}^{d}P(x_j\mid c),
+\]
+where the ``naive'' assumption is that the features are \emph{conditionally independent given the class}. It is a \textbf{generative} classifier: it models how each class generates the data, $P(\vect x\mid c)$, and then uses Bayes' theorem to get $P(c\mid\vect x)$.
+\end{definition}
+
+\subsection{The Detective Who Multiplies Clues}
+
+Think of the classifier as a \textbf{detective}. Each feature is a \emph{clue}. The detective does not worry about how the clues are connected (the naive assumption); each clue is allowed to ``speak'' separately, and the detective \textbf{multiplies the votes} of all clues together with the prior suspicion.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[card/.style={draw,rounded corners,thick,fill=mlblue!8,draw=mlblue,align=center,font=\small,inner sep=6pt,anchor=west}]
+\pic[scale=1.9] at (0,0) {detective};
+\bubble[text width=3.4cm]{0.2,2.6}{0,1.0}{Each clue speaks alone. I just \textbf{multiply}!}
+\node[card] (c1) at (3.3,2.1) {Clue 1: word ``win''\\spam $0.200$ \quad ham $0.067$};
+\node[card] (c2) at (3.3,0.45) {Clue 2: word ``free''\\spam $0.133$ \quad ham $0.067$};
+\node[card] (c3) at (3.3,-1.2) {Clue 3: word ``now''\\spam $0.133$ \quad ham $0.133$};
+\node[card,fill=mlorange!12,draw=mlorange] (pr) at (3.3,-2.85) {Prior suspicion\\spam $0.5$ \quad ham $0.5$};
+\node[draw,rounded corners,very thick,fill=mlpurple!10,draw=mlpurple,align=center,font=\small,inner sep=8pt,anchor=west] (sc) at (10.4,-0.35) {\textbf{Scoreboard}\\[3pt]spam: $0.5\times0.200\times0.133\times0.133=0.00178$\\[2pt]ham: $0.5\times0.067\times0.067\times0.133=0.00030$};
+\node[draw,rounded corners,very thick,fill=mlgreen!18,draw=mlgreen,align=center,font=\small\bfseries,inner sep=8pt,anchor=west] (vd) at (12.6,-3.0) {Verdict: SPAM\\(posterior $=85.7\%$)};
+\foreach \c in {c1,c2,c3,pr} \draw[-{Stealth},thick,gray!70!black] (\c.east)--++(0.6,0) |- (sc.west);
+\draw[-{Stealth},ultra thick,mlgreen] (sc.south)--(vd.north);
+\draw[-{Stealth},thick,gray] (1.2,0.3)--(c2.west);
+\end{tikzpicture}}
+\caption{Naive Bayes as a detective: the evidence of each word is multiplied with the prior.}\label{fig:detective}
+\end{figure}
+
+\begin{explain}
+The detective is examining the message ``\textbf{win free now}''. The three blue cards are the clues, each giving how likely the word is under \emph{spam} and under \emph{ham} (probabilities estimated from a tiny training set, worked out in detail below). The orange card is the prior: before reading the message we think spam and ham are equally likely. The \textbf{purple scoreboard} multiplies the prior with each clue. Spam scores $0.00178$ and ham only $0.00030$, so the \textbf{verdict is spam}. The word ``win'' is the strongest clue because it is three times more likely in spam; the word ``now'' is no help at all (equal probability), so it simply cancels out.
+\end{explain}
+
+\subsection{Gaussian Naive Bayes (continuous features)}
+
+\begin{definition}[: Gaussian Naive Bayes]
+For \textbf{continuous} features, $P(x_j\mid c)$ is modelled by a normal density with a \emph{class-specific} mean $\mu_{jc}$ and variance $\sigma_{jc}^2$ estimated from the training data of class $c$:
+\[
+  P(x_j\mid c)=\frac{1}{\sqrt{2\pi}\,\sigma_{jc}}\exp\!\Big(-\frac{(x_j-\mu_{jc})^2}{2\sigma_{jc}^2}\Big).
+\]
+\end{definition}
+
+\textbf{Real-life example: ripe or unripe mango.} A fruit seller measures the \emph{sweetness score} and the \emph{colour} of mangoes. From past data: ripe mangoes have sweetness $\sim\mathcal N(6,1)$ and are yellow with probability $0.9$; unripe mangoes have sweetness $\sim\mathcal N(3,1)$ and are yellow with probability $0.2$. Both classes are equally common.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=11.5cm,height=6.4cm,xlabel={sweetness score},ylabel={density},xmin=0,xmax=9,ymin=0,ymax=0.55,samples=120,axis lines=left,ytick=\empty,
+  legend style={at={(0.5,1.04)},anchor=south,legend columns=2,font=\small}]
+\addplot[very thick,mlgreen,domain=0:9]{exp(-(x-3)^2/2)/sqrt(2*pi)};
+\addplot[very thick,mlorange,domain=0:9]{exp(-(x-6)^2/2)/sqrt(2*pi)};
+\legend{{unripe $\mathcal N(3,1)$},{ripe $\mathcal N(6,1)$}}
+\draw[dashed,thick] (axis cs:4.5,0)--(axis cs:4.5,0.5);
+\node[font=\scriptsize,fill=white,inner sep=1pt] at (axis cs:4.5,0.52) {boundary $4.5$};
+\fill[mlred] (axis cs:4,0.242) circle (2.5pt); \fill[mlred] (axis cs:4,0.054) circle (2.5pt);
+\draw[mlred,thin] (axis cs:4,0) -- (axis cs:4,0.242);
+\node[font=\scriptsize,mlred,anchor=east] at (axis cs:3.9,0.30) {$0.242$};
+\node[font=\scriptsize,mlred,anchor=west] at (axis cs:4.07,0.08) {$0.054$};
+\end{axis}
+\pic[scale=0.9] at ([shift={(10.0,4.9)}]current axis.south west) {smile};
+\node[font=\small\bfseries,mlorange!80!black] at ([shift={(10.0,4.0)}]current axis.south west) {ripe};
+\pic[scale=0.9] at ([shift={(1.6,4.9)}]current axis.south west) {sad};
+\node[font=\small\bfseries,mlgreen!60!black] at ([shift={(1.6,4.0)}]current axis.south west) {unripe};
+\end{tikzpicture}
+\caption{Class-conditional densities of sweetness for ripe and unripe mangoes (Gaussian Naive Bayes in one dimension).}\label{fig:mango}
+\end{figure}
+
+\begin{explain}
+Each bell curve shows how sweetness is distributed in one class: unripe mangoes cluster around $3$ (green) and ripe ones around $6$ (orange). The curves cross at $4.5$, halfway between the means: with equal priors, a mango sweeter than $4.5$ is classified ripe and a less sweet one unripe. For a mango of sweetness $4$ (red dots) the unripe curve is higher ($0.242$) than the ripe curve ($0.054$), so the model leans towards \emph{unripe}.
+\end{explain}
+
+\begin{example}[: Mango classification, one feature]
+A mango has sweetness $x=4$. Equal priors $0.5$ each.
+\begin{align*}
+  P(4\mid\text{ripe})&=\tfrac{1}{\sqrt{2\pi}}\,e^{-(4-6)^2/2}=0.3989\,e^{-2}=0.0540,\\
+  P(4\mid\text{unripe})&=\tfrac{1}{\sqrt{2\pi}}\,e^{-(4-3)^2/2}=0.3989\,e^{-0.5}=0.2420 .
+\end{align*}
+\[
+  P(\text{ripe}\mid x=4)=\frac{0.5(0.0540)}{0.5(0.0540)+0.5(0.2420)}=\frac{0.0540}{0.2960}=\mathbf{0.182}\ \Rightarrow\ \text{unripe}.
+\]
+\textbf{Effect of the prior.} If ripe mangoes were four times as common (priors $0.8$ ripe, $0.2$ unripe): $P(\text{ripe}\mid x=4)=\frac{0.8(0.0540)}{0.8(0.0540)+0.2(0.2420)}=\frac{0.0432}{0.0916}=0.472$, much closer to $0.5$. A strong prior can move the decision.
+\end{example}
+
+\begin{example}[: Mango classification, two features (sweetness and colour)]
+A mango has sweetness $4.8$ and is \textbf{yellow}. Equal priors.
+
+\medskip
+\begin{center}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Quantity} & \textbf{Ripe} & \textbf{Unripe}\\
+\midrule
+Prior $P(c)$ & $0.5$ & $0.5$\\
+$P(\text{sweetness}=4.8\mid c)$ (Gaussian) & $\varphi(-1.2)=0.1942$ & $\varphi(1.8)=0.0790$\\
+$P(\text{yellow}\mid c)$ & $0.9$ & $0.2$\\
+\midrule
+\textbf{Score} $=P(c)\prod P(x_j\mid c)$ & $0.5(0.1942)(0.9)=0.0874$ & $0.5(0.0790)(0.2)=0.0079$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\[
+  P(\text{ripe}\mid\text{data})=\frac{0.0874}{0.0874+0.0079}=\mathbf{0.917}\ \Rightarrow\ \text{ripe}.
+\]
+\textbf{Teamwork of the clues:} sweetness $4.8$ alone is a moderately ripe-looking value ($P=0.1942/(0.1942+0.0790)=0.71$), and the yellow colour makes it much more convincing ($0.917$).
+\end{example}
+
+\subsection{Multinomial Naive Bayes (word counts)}
+
+\begin{definition}[: Multinomial Naive Bayes]
+For \textbf{count data} such as word counts in a document, a class $c$ is described by a probability $P(w\mid c)$ for each word $w$ in the vocabulary of size $V$. With Laplace smoothing $\alpha$,
+\[
+  P(w\mid c)=\frac{N_{wc}+\alpha}{N_c+\alpha V},
+\]
+where $N_{wc}$ is the number of times word $w$ appears in training documents of class $c$ and $N_c$ is the total number of word occurrences in class $c$. A document with words $w_1,\dots,w_m$ is scored by $P(c)\prod_{k=1}^{m}P(w_k\mid c)$.
+\end{definition}
+
+\textbf{Real-life example: spam or ham SMS.} A tiny training set of four messages:
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Message} & \textbf{Class} & \textbf{Words}\\
+\midrule
+``win cash now'' & spam & win, cash, now\\
+``win free prize'' & spam & win, free, prize\\
+``meet me now'' & ham & meet, me, now\\
+``lunch with me'' & ham & lunch, with, me\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{example}[: Multinomial Naive Bayes, end to end]
+\textbf{Step 1: priors.} 2 spam and 2 ham messages: $P(\text{spam})=P(\text{ham})=0.5$.
+
+\medskip
+\textbf{Step 2: counts.} The vocabulary has $V=9$ words: cash, free, lunch, me, meet, now, prize, win, with. Each class has $N_c=6$ word occurrences.
+
+\medskip
+\textbf{Step 3: smoothed probabilities} with $\alpha=1$, so every denominator is $6+9=15$:
+
+\begin{center}
+\small
+\begin{tabular}{@{}l|ccccccccc@{}}
+\toprule
+\textbf{Word} & win & cash & now & free & prize & meet & me & lunch & with\\
+\midrule
+Count in spam & 2 & 1 & 1 & 1 & 1 & 0 & 0 & 0 & 0\\
+$P(w\mid\text{spam})$ & $\frac3{15}$ & $\frac2{15}$ & $\frac2{15}$ & $\frac2{15}$ & $\frac2{15}$ & $\frac1{15}$ & $\frac1{15}$ & $\frac1{15}$ & $\frac1{15}$\\
+\midrule
+Count in ham & 0 & 0 & 1 & 0 & 0 & 1 & 2 & 1 & 1\\
+$P(w\mid\text{ham})$ & $\frac1{15}$ & $\frac1{15}$ & $\frac2{15}$ & $\frac1{15}$ & $\frac1{15}$ & $\frac2{15}$ & $\frac3{15}$ & $\frac2{15}$ & $\frac2{15}$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+\textbf{Step 4: classify ``win free now''.}
+\begin{align*}
+\text{score(spam)}&=0.5\cdot\tfrac3{15}\cdot\tfrac2{15}\cdot\tfrac2{15}=0.5\cdot\tfrac{12}{3375}=0.001778,\\
+\text{score(ham)}&=0.5\cdot\tfrac1{15}\cdot\tfrac1{15}\cdot\tfrac2{15}=0.5\cdot\tfrac{2}{3375}=0.000296 .
+\end{align*}
+\[
+P(\text{spam}\mid\text{message})=\frac{12}{12+2}=\frac{6}{7}=\mathbf{0.857}\ \Rightarrow\ \textbf{spam}.
+\]
+
+\medskip
+\textbf{Step 5: classify ``meet me now''.} spam: $0.5\cdot\frac1{15}\cdot\frac1{15}\cdot\frac2{15}\to2$ units; ham: $0.5\cdot\frac2{15}\cdot\frac3{15}\cdot\frac2{15}\to12$ units. So $P(\text{ham})=\frac{12}{14}=0.857$: \textbf{ham}.
+
+\medskip
+\textbf{Why smoothing matters.} Without smoothing, $P(\text{win}\mid\text{ham})=\frac06=0$, and any message containing ``win'' would get a ham score of exactly $0$, whatever its other words. With $\alpha=1$ it is $\frac1{15}$: small but not zero.
+\end{example}
+
+\subsection{Bernoulli Naive Bayes (word present or absent)}
+
+\begin{definition}[: Bernoulli Naive Bayes]
+For \textbf{binary} features $x_j\in\{0,1\}$ (word present or absent), each feature has a probability $p_{jc}=P(x_j=1\mid c)$ and
+\[
+  P(x_j\mid c)=p_{jc}^{\,x_j}(1-p_{jc})^{\,1-x_j},\qquad p_{jc}=\frac{n_{jc}+\alpha}{N_c^{\text{docs}}+2\alpha},
+\]
+where $n_{jc}$ is the number of documents of class $c$ containing feature $j$. Unlike the multinomial model, it \emph{explicitly uses the absence of a word} as evidence.
+\end{definition}
+
+\begin{example}[: Bernoulli Naive Bayes on the same messages]
+Each class has $2$ documents, so $p_{jc}=\frac{n_{jc}+1}{4}$.
+
+\begin{center}
+\small
+\begin{tabular}{@{}l|ccccccccc@{}}
+\toprule
+\textbf{Word} & win & cash & now & free & prize & meet & me & lunch & with\\
+\midrule
+$P(\text{present}\mid\text{spam})$ & $0.75$ & $0.5$ & $0.5$ & $0.5$ & $0.5$ & $0.25$ & $0.25$ & $0.25$ & $0.25$\\
+$P(\text{present}\mid\text{ham})$ & $0.25$ & $0.25$ & $0.5$ & $0.25$ & $0.25$ & $0.5$ & $0.75$ & $0.5$ & $0.5$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+Classify ``win free now'': present words win, free, now; \textbf{absent} words cash, prize, meet, me, lunch, with.
+\begin{align*}
+\text{spam:}\ & 0.5\times\underbrace{0.75\cdot0.5\cdot0.5}_{\text{present}}\times\underbrace{0.5\cdot0.5\cdot0.75\cdot0.75\cdot0.75\cdot0.75}_{\text{absent}}=0.01483,\\
+\text{ham:}\ & 0.5\times\underbrace{0.25\cdot0.25\cdot0.5}_{\text{present}}\times\underbrace{0.75\cdot0.75\cdot0.5\cdot0.25\cdot0.5\cdot0.5}_{\text{absent}}=0.00055 .
+\end{align*}
+$P(\text{spam})=\dfrac{0.01483}{0.01483+0.00055}=\mathbf{0.964}$: spam, with an even higher confidence than the multinomial model, because the \emph{absence} of ham-typical words (me, meet, lunch, with) is also evidence.
+\end{example}
+
+\begin{center}
+\begin{tabular}{@{}p{2.8cm}p{3.2cm}p{3.6cm}p{3.9cm}@{}}
+\toprule
+\textbf{Variant} & \textbf{Feature type} & \textbf{Models $P(x_j\mid c)$ by} & \textbf{Typical use}\\
+\midrule
+Gaussian & Continuous measurements & Normal density per class & Medical measurements, sensors\\
+Multinomial & Counts (word counts, frequencies) & Word probabilities with smoothing & Text classification, spam\\
+Bernoulli & Binary (present/absent) & Presence probability per feature & Short texts, binary indicators\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tryit}
+Confirm the hand calculations with \texttt{scikit-learn}:
+\begin{lstlisting}
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB, BernoulliNB
+
+docs = ["win cash now", "win free prize", "meet me now",
+        "lunch with me"]
+labels = [1, 1, 0, 0]                      # 1 = spam, 0 = ham
+
+cv = CountVectorizer(binary=False)
+mnb = MultinomialNB(alpha=1).fit(cv.fit_transform(docs), labels)
+print(mnb.predict_proba(cv.transform(["win free now"])))
+# -> [[0.143 0.857]]   P(ham), P(spam)
+
+cvb = CountVectorizer(binary=True)
+bnb = BernoulliNB(alpha=1).fit(cvb.fit_transform(docs), labels)
+print(bnb.predict_proba(cvb.transform(["win free now"])))
+# -> [[0.036 0.964]]
+\end{lstlisting}
+The outputs, $0.857$ (multinomial) and $0.964$ (Bernoulli) for ``spam'', agree with the hand calculation.
+\end{tryit}
+
+\subsection{Generative vs.\ Discriminative Classifiers}
+
+\begin{center}
+\begin{tabular}{@{}p{3.4cm}p{5.2cm}p{5.2cm}@{}}
+\toprule
+ & \textbf{Naive Bayes (generative)} & \textbf{Logistic regression / SVM (discriminative)}\\
+\midrule
+What is learned & $P(\vect x\mid c)$ and $P(c)$ & $P(c\mid\vect x)$ or the boundary directly\\
+Training & Counting; very fast & Optimisation; slower\\
+Data needed & Works with little data & Needs more data, but usually more accurate with plenty\\
+Feature dependence & Assumed independent & Can use correlated features\\
+Probabilities & Often over-confident & Logistic: better calibrated\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{warning}
+Naive Bayes often classifies well even when its probabilities are \emph{wrong}. If the posterior says $0.999$, do not trust that number literally: the independence assumption multiplies correlated evidence several times and makes the model over-confident. Use it to \emph{rank} or \emph{decide}, not to quote exact probabilities.
+\end{warning}
+
+\procon{Naive Bayes classifiers}
+{\item Extremely fast to train and predict
+ \item Works with little training data and many features
+ \item Handles multiple classes naturally
+ \item Excellent baseline for text}
+{\item Independence assumption is rarely true
+ \item Probabilities over-confident
+ \item Zero-frequency problem (needs smoothing)
+ \item Cannot learn feature interactions}
+{\item Spam filtering and sentiment analysis
+ \item News and document categorisation
+ \item Medical diagnosis (Gaussian)
+ \item Real-time prediction}
+
+%====================================================================
+\section{Comparing the Methods of Unit~III}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{3.2cm}p{3.6cm}p{3.4cm}p{3.6cm}@{}}
+\toprule
+ & \textbf{Kernel SVM} & \textbf{Naive Bayes} & \textbf{Random Forest / Boosting}\\
+\midrule
+Training speed & Slow for large $n$ & \textbf{Very fast} & Moderate\\
+Prediction speed & Fast (few support vectors) & \textbf{Very fast} & Moderate\\
+Nonlinear? & Yes (kernel) & Mild & \textbf{Yes}\\
+Needs scaling? & \textbf{Yes} & No & No\\
+Probabilities? & Not directly & Yes (over-confident) & Yes\\
+Works with little data & Yes & \textbf{Yes} & Less so\\
+Interpretability & Low & Moderate & Low--moderate\\
+\end{tabular}
+\end{center}
+
+%====================================================================
+\begin{summary}
+\begin{itemize}
+  \item \textbf{Linear SVM:} the maximum-margin hyperplane; margin $2/\|\vect w\|$; support vectors lie on the road edge and alone determine the model.
+  \item \textbf{Soft margin:} slack $\xi_i$ and parameter $C$; large $C$ = strict (narrow margin, overfit), small $C$ = relaxed (wide margin, underfit).
+  \item \textbf{Dual form:} $f(\vect x)=\sum\alpha_iy_i(\vect x_i\cdot\vect x)+b$; only support vectors have $\alpha_i>0$; data appear only through dot products.
+  \item \textbf{Nonlinear SVM:} lift the data with $\varphi$; the \textbf{kernel trick} replaces dot products by $K(\vect a,\vect b)=\varphi(\vect a)\cdot\varphi(\vect b)$. Polynomial: $(\gamma\vect a\cdot\vect b+r)^d$; RBF: $e^{-\gamma\|\vect a-\vect b\|^2}$. Large $\gamma$ or $C$ overfits.
+  \item \textbf{SVR:} $\varepsilon$-tube; loss $\max(0,|y-f|-\varepsilon)$; points inside the tube are free; support vectors are on or outside.
+  \item \textbf{Naive Bayes:} $\hat y=\argmax_cP(c)\prod_jP(x_j\mid c)$; Gaussian (continuous), multinomial (counts), Bernoulli (binary); use Laplace smoothing $\frac{N_{wc}+\alpha}{N_c+\alpha V}$.
+  \item Worked results: SVM lifted boundary at $x=\pm1.90$; RBF kernel $e^{-0.5\cdot5}=0.082$; SMS ``win free now'' spam with $0.857$ (multinomial) and $0.964$ (Bernoulli); mango ripe with $0.917$.
+\end{itemize}
+\end{summary}
+
+%====================================================================
+\section*{Exam Corner}
+\addcontentsline{toc}{section}{Exam Corner}
+
+\subsection*{A.\ Very Short Answer Questions (2 marks each)}
+\begin{enumerate}
+  \item Define a support vector machine. \qmarks{2}
+  \item What are support vectors? What is the margin? \qmarks{2}
+  \item What is the role of the parameter $C$ in a soft-margin SVM? \qmarks{2}
+  \item Write the decision function of an SVM in dual form. \qmarks{2}
+  \item What is the kernel trick? \qmarks{2}
+  \item Write the formulas of the polynomial and RBF kernels. \qmarks{2}
+  \item What does a large $\gamma$ do in the RBF kernel? \qmarks{2}
+  \item Define the $\varepsilon$-insensitive loss. \qmarks{2}
+  \item What is the effect of increasing $\varepsilon$ in SVR? \qmarks{2}
+  \item State the independence assumption of Naive Bayes. \qmarks{2}
+  \item What is Laplace smoothing? \qmarks{2}
+  \item Name the three types of Naive Bayes and their feature types. \qmarks{2}
+\end{enumerate}
+
+\begin{modelans}[: Q5, Q7 and Q9]
+\textbf{Q5.} The kernel trick is the replacement of every dot product $\vect x_i\cdot\vect x_j$ in the SVM by a kernel $K(\vect x_i,\vect x_j)=\varphi(\vect x_i)\cdot\varphi(\vect x_j)$. The SVM then works in a high-dimensional feature space without ever computing the mapping $\varphi$, which makes nonlinear classification possible at low cost.\par
+\textbf{Q7.} A large $\gamma$ makes the similarity fall off very quickly with distance: every training point influences only a tiny neighbourhood, producing a very wiggly decision boundary. It reduces bias but increases variance, so it \emph{overfits}.\par
+\textbf{Q9.} A larger $\varepsilon$ gives a wider tube; more points fall inside, fewer are support vectors, and the model becomes simpler (flatter). If $\varepsilon$ is too large the model underfits.
+\end{modelans}
+
+\subsection*{B.\ Short Answer Questions (5 marks each)}
+\begin{enumerate}
+  \item Explain the maximum-margin classifier and support vectors with a diagram. \qmarks{5}
+  \item Explain the soft-margin SVM. Discuss the effect of $C$. \qmarks{5}
+  \item Explain the dual form of the SVM and why it is important for kernels. \qmarks{5}
+  \item Why do we need nonlinear SVMs? Explain the lifting idea with an example. \qmarks{5}
+  \item Explain the kernel trick. Describe the linear, polynomial and RBF kernels. \qmarks{5}
+  \item Explain the effect of $C$ and $\gamma$ on an RBF SVM. \qmarks{5}
+  \item Explain SVM regression with the $\varepsilon$-tube. \qmarks{5}
+  \item Explain the Gaussian, multinomial and Bernoulli Naive Bayes classifiers. \qmarks{5}
+  \item Explain why Laplace smoothing is needed in Naive Bayes with an example. \qmarks{5}
+  \item Compare generative and discriminative classifiers. \qmarks{5}
+\end{enumerate}
+
+\begin{modelans}[: B6 (outline for 5 marks)]
+\textbf{Parameter $C$} (penalty for margin violations): large $C$ $\to$ few violations, narrow margin, complex boundary, \emph{low bias, high variance} (overfit); small $C$ $\to$ wide margin, simple boundary, \emph{higher bias, low variance} (underfit).\par
+\textbf{Parameter $\gamma$} (reach of each support vector in $e^{-\gamma\|a-b\|^2}$): large $\gamma$ $\to$ narrow influence, wiggly boundary, overfit; small $\gamma$ $\to$ wide influence, smooth boundary, underfit.\par
+\textbf{Example:} on the moons data ($\gamma=0.1,1,100$) test accuracy was $0.867,\ 0.992,\ 0.850$ while training accuracy rose to $1.0$ at $\gamma=100$. Both parameters are chosen by cross-validation on scaled features.
+\end{modelans}
+
+\subsection*{C.\ Long Answer Questions (10 marks each)}
+\begin{enumerate}
+  \item Explain linear SVM classification: the margin, the optimisation problem, support vectors, soft margin and the dual form. Solve a small numerical example. \qmarks{10}
+  \item Explain nonlinear SVM classification. Describe the kernel trick with the polynomial and RBF kernels, including a numerical verification that $K(\vect a,\vect b)=\varphi(\vect a)\cdot\varphi(\vect b)$. \qmarks{10}
+  \item Explain SVM regression: the $\varepsilon$-insensitive loss, the optimisation problem, support vectors and the roles of $\varepsilon$, $C$ and $\gamma$. \qmarks{10}
+  \item Explain the Naive Bayes classifier. Classify a message using the multinomial model with Laplace smoothing for a given training set. \qmarks{10}
+  \item Describe the Gaussian, multinomial and Bernoulli Naive Bayes classifiers with formulas, examples, advantages and disadvantages. \qmarks{10}
+  \item Compare SVM, Naive Bayes and ensemble methods (Random Forest / boosting) for classification. \qmarks{10}
+\end{enumerate}
+
+\begin{modelans}[: C2 (numerical verification)]
+Take $\vect a=(1,2)$, $\vect b=(3,1)$ and $K(\vect a,\vect b)=(\vect a\cdot\vect b)^2$.\par
+\emph{Via the kernel:} $\vect a\cdot\vect b=1(3)+2(1)=5$, $K=25$.\par
+\emph{Via the feature map} $\varphi(\vect x)=(x_1^2,\sqrt2x_1x_2,x_2^2)$: $\varphi(\vect a)=(1,2\sqrt2,4)$, $\varphi(\vect b)=(9,3\sqrt2,1)$; $\varphi(\vect a)\cdot\varphi(\vect b)=9+2\sqrt2\cdot3\sqrt2+4=9+12+4=25$.\par
+Both give $25$, so the kernel equals the dot product in the 3-D feature space while needing only one 2-D dot product.
+\end{modelans}
+
+\subsection*{D.\ Numerical Problems}
+\begin{enumerate}
+  \item An SVM has $\vect w=(2,1)$, $b=-4$. Classify $(1,1)$ and $(3,2)$ and find the margin. \textit{(Answer: $f(1,1)=-1\Rightarrow-1$ (on the margin); $f(3,2)=4\Rightarrow+1$; margin $=2/\sqrt5=0.894$.)}
+  \item In 1-D the support vectors are $x=1$ ($y=-1$) and $x=3$ ($y=+1$). Find $w,b$, the margin and the dual values $\alpha_i$. \textit{(Answer: $w+b=-1$, $3w+b=1\Rightarrow w=1$, $b=-2$; margin $=2$; $w=\sum\alpha_iy_ix_i=3\alpha-\alpha=2\alpha=1\Rightarrow\alpha=0.5$ each; check $\sum\alpha_iy_i=0$.)}
+  \item Using the dual weights $\alpha=0.5$ at $x=1$ ($y=-1$) and $x=3$ ($y=+1$) with $b=-2$, compute $f(2.5)$. \textit{(Answer: $0.5(-1)(1\cdot2.5)+0.5(1)(3\cdot2.5)-2=-1.25+3.75-2=0.5>0$.)}
+  \item Compute the polynomial kernel $K(\vect a,\vect b)=(\vect a\cdot\vect b+1)^2$ for $\vect a=(1,2)$, $\vect b=(2,1)$. \textit{(Answer: $\vect a\cdot\vect b=4$; $K=25$.)}
+  \item Compute the RBF kernel for $\vect a=(1,2)$, $\vect b=(2,1)$ with $\gamma=0.5$. \textit{(Answer: $\|\vect a-\vect b\|^2=2$; $K=e^{-1}=0.368$.)}
+  \item With $\varphi(x)=(x,x^2)$ compute $\varphi(2)\cdot\varphi(3)$ and the matching kernel $K(2,3)=2\cdot3+(2\cdot3)^2$. \textit{(Answer: $\varphi(2)\cdot\varphi(3)=(2,4)\cdot(3,9)=6+36=42$; $K=6+36=42$.)}
+  \item In SVR with $\varepsilon=0.3$: $y=(2.0,3.0,5.0)$, $f=(2.2,3.5,4.1)$. Find the total $\varepsilon$-insensitive loss. \textit{(Answer: errors $-0.2,-0.5,0.9$; losses $0,0.2,0.6$; total $0.8$.)}
+  \item Gaussian NB: ripe $\sim\mathcal N(6,1)$, unripe $\sim\mathcal N(3,1)$, equal priors. Find $P(\text{ripe}\mid x=4)$. \textit{(Answer: densities $0.0540$ and $0.2420$; posterior $0.182$.)}
+  \item Using the SMS example, classify ``win now'' with multinomial NB. \textit{(Answer: spam $0.5\cdot\frac3{15}\cdot\frac2{15}=0.01333$; ham $0.5\cdot\frac1{15}\cdot\frac2{15}=0.00444$; $P(\text{spam})=0.75$.)}
+  \item A word never occurs in the 200 word-tokens of a class; the vocabulary has 1000 words. Find its Laplace-smoothed probability ($\alpha=1$). \textit{(Answer: $\frac{0+1}{200+1000}=0.00083$.)}
+\end{enumerate}
+
+\subsection*{E.\ Multiple-Choice Questions}
+\begin{enumerate}
+  \item The support vectors of an SVM are: \\
+  (a) all training points \quad (b) points on or inside the margin \quad (c) the outliers only \quad (d) the test points
+  \item The margin of a linear SVM equals: \\
+  (a) $\|\vect w\|$ \quad (b) $1/\|\vect w\|$ \quad (c) $2/\|\vect w\|$ \quad (d) $\|\vect w\|^2$
+  \item A very large $C$ in a soft-margin SVM tends to: \\
+  (a) widen the margin \quad (b) narrow the margin and overfit \quad (c) remove all support vectors \quad (d) make the model linear
+  \item In the dual form the data appear only through: \\
+  (a) squares \quad (b) dot products \quad (c) means \quad (d) labels
+  \item The RBF kernel is: \\
+  (a) $\vect a\cdot\vect b$ \quad (b) $(\vect a\cdot\vect b+1)^2$ \quad (c) $e^{-\gamma\|\vect a-\vect b\|^2}$ \quad (d) $\tanh(\vect a\cdot\vect b)$
+  \item A very large $\gamma$ in an RBF SVM leads to: \\
+  (a) underfitting \quad (b) overfitting \quad (c) a linear boundary \quad (d) fewer features
+  \item In SVR, points strictly inside the $\varepsilon$-tube: \\
+  (a) are support vectors \quad (b) have no effect on the model \quad (c) have the largest loss \quad (d) are removed from the data
+  \item Increasing $\varepsilon$ in SVR typically: \\
+  (a) increases support vectors \quad (b) decreases support vectors \quad (c) changes nothing \quad (d) adds features
+  \item Naive Bayes assumes features are: \\
+  (a) identical \quad (b) conditionally independent given the class \quad (c) all Gaussian \quad (d) uncorrelated with the class
+  \item Which variant suits word counts? \\
+  (a) Gaussian \quad (b) Multinomial \quad (c) Linear \quad (d) Sigmoid
+  \item Laplace smoothing prevents: \\
+  (a) overfitting of trees \quad (b) zero probabilities \quad (c) scaling problems \quad (d) ties
+  \item Which classifier is \emph{generative}? \\
+  (a) SVM \quad (b) logistic regression \quad (c) Naive Bayes \quad (d) k-NN
+\end{enumerate}
+\textbf{Answers:} 1-b,\ 2-c,\ 3-b,\ 4-b,\ 5-c,\ 6-b,\ 7-b,\ 8-b,\ 9-b,\ 10-b,\ 11-b,\ 12-c.
+
+\subsection*{F.\ Practice Problems}
+\begin{enumerate}
+  \item Using the 1-D lifted example, classify $x=-2$ and $x=0.5$ with $f(x)=0.381x^2-1.381$. \textit{(Answer: $f(-2)=0.143\Rightarrow$ orange; $f(0.5)=-1.286\Rightarrow$ blue.)}
+  \item Draw the margin and support vectors for the data $(1,1),(2,2)$ in class $-1$ and $(4,4),(5,5)$ in class $+1$. Find $\vect w$, $b$ and the margin. \textit{(Hint: closest pair $(2,2)$ and $(4,4)$.)}
+  \item \textbf{Coding:} train \texttt{SVC} with linear, polynomial and RBF kernels on \texttt{make\_circles} and report the accuracies.
+  \item \textbf{Coding:} use \texttt{GridSearchCV} to tune $C$ and $\gamma$ of an RBF SVM on the \emph{breast cancer} dataset (after scaling).
+  \item \textbf{Coding:} write your own spam examples and train \texttt{MultinomialNB} with \texttt{alpha=1} and \texttt{alpha=0.01}; compare predicted probabilities.
+\end{enumerate}
+
+\begin{revision}
+\begin{center}\small
+\begin{tabular}{@{}p{3.6cm}p{9.6cm}@{}}
+\toprule
+\textbf{Topic} & \textbf{One-line recall}\\
+\midrule
+Linear SVM & Max-margin hyperplane; margin $2/\|w\|$; min $\frac12\|w\|^2$ s.t.\ $y_i(w\cdot x_i+b)\ge1$.\\
+Support vectors & Points on / inside the margin; only they determine $w,b$.\\
+Soft margin & Slack $\xi_i$, penalty $C$: large $C$ strict (overfit), small $C$ relaxed (underfit).\\
+Dual form & $f(x)=\sum\alpha_iy_i(x_i\cdot x)+b$; $\alpha_i>0$ only for support vectors.\\
+Kernel trick & Replace dot product by $K(a,b)=\varphi(a)\cdot\varphi(b)$.\\
+Kernels & Linear $a\cdot b$; poly $(\gamma a\cdot b+r)^d$; RBF $e^{-\gamma\|a-b\|^2}$.\\
+$C$, $\gamma$ & Large $C$ / large $\gamma$: overfit; small: underfit.\\
+SVR & $\varepsilon$-tube; loss $\max(0,|y-f|-\varepsilon)$; points inside are free.\\
+Naive Bayes & $\arg\max_cP(c)\prod_jP(x_j\mid c)$; generative; conditional independence.\\
+Variants & Gaussian (continuous), multinomial (counts), Bernoulli (binary).\\
+Smoothing & $\frac{N_{wc}+\alpha}{N_c+\alpha V}$ avoids zero probabilities.\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{revision}

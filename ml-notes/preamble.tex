@@ -1,0 +1,38 @@
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=1.9cm,top=2.0cm,bottom=2.0cm,headheight=14pt]{geometry}
+\usepackage{microtype,amsmath,amssymb,booktabs,array,enumitem,xcolor,multirow}
+\usepackage{tikz,pgfplots,fontawesome5,hyperref,fancyhdr,titlesec}
+\pgfplotsset{compat=1.17}
+\usepackage[most]{tcolorbox}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc}
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black}
+\definecolor{mlblue}{HTML}{1F4E9C}\definecolor{mlgreen}{HTML}{1E8449}
+\definecolor{mlorange}{HTML}{D35400}\definecolor{mlred}{HTML}{B03A2E}
+\definecolor{mlpurple}{HTML}{6C3483}
+\setlength{\parindent}{0pt}\setlength{\parskip}{0.35em}
+\renewcommand{\arraystretch}{1.2}
+\setlist{itemsep=1pt,topsep=2pt,parsep=0pt,leftmargin=1.3em}
+\titleformat{\chapter}[hang]{\normalfont\Large\bfseries\color{mlblue}}{\thechapter.}{0.5em}{}[\vspace{-2pt}\color{mlblue}\titlerule]
+\titlespacing*{\chapter}{0pt}{-10pt}{10pt}
+\titleformat{\section}{\normalfont\large\bfseries\color{mlblue}}{\thesection}{0.5em}{}
+\titlespacing*{\section}{0pt}{10pt}{4pt}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries\color{mlblue!80!black}}{\thesubsection}{0.5em}{}
+\titlespacing*{\subsection}{0pt}{7pt}{2pt}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small\nouppercase{\leftmark}}\fancyhead[R]{\small ML Exam Notes (NBCA-601)}
+\fancyfoot[C]{\thepage}
+\tcbset{enhanced,breakable,boxrule=0.6pt,arc=2pt,left=5pt,right=5pt,top=3pt,bottom=3pt,before skip=6pt,after skip=6pt,fonttitle=\bfseries\small}
+\newtcolorbox{dfn}[1]{colback=mlblue!5,colframe=mlblue,title={\faBook\ Definition: #1}}
+\newtcolorbox{imp}{colback=yellow!10,colframe=yellow!50!black,title={\faStar\ Exam focus}}
+\newtcolorbox{numer}[1][]{colback=mlorange!6,colframe=mlorange,title={\faCalculator\ Numerical pattern#1}}
+\newtcolorbox{drawit}[1]{colback=mlgreen!5,colframe=mlgreen,title={\faPencilRuler\ Diagram to draw: #1}}
+\newcommand{\apa}[3]{\par\smallskip\noindent{\small\begin{tabular}{@{}p{2.6cm}p{14.1cm}@{}}
+\textbf{\color{mlgreen}Advantages} & #1\\ \textbf{\color{mlred}Disadvantages} & #2\\ \textbf{\color{mlblue}Applications} & #3\end{tabular}}\par\smallskip}
+\newcommand{\studytime}[1]{\hfill{\small\colorbox{mlpurple!12}{\faClock\ Study time: #1}}\par}
+\newenvironment{iq}{\section*{Important Questions}\begin{itemize}[leftmargin=1.2em]\small}{\end{itemize}}
+\newcommand{\twom}{\textbf{[2 marks]} }\newcommand{\fivem}{\textbf{[5 marks]} }\newcommand{\tenm}{\textbf{[10 marks]} }
+\newcommand{\vect}[1]{\boldsymbol{#1}}
+\newcommand{\E}{\mathbb{E}}
+\DeclareMathOperator{\Var}{Var}\DeclareMathOperator{\Bias}{Bias}
+\DeclareMathOperator*{\argmax}{arg\,max}\DeclareMathOperator*{\argmin}{arg\,min}

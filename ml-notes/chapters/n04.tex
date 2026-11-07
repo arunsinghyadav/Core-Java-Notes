@@ -1,0 +1,193 @@
+\chapter{Linear Models, GLMs and SVM Basics}\label{n:linear}
+\studytime{2.5 hours}
+
+\section{Linear Regression}
+\begin{dfn}{Linear regression}
+\textbf{Linear regression} is a supervised learning method that models a numerical target as a \textbf{linear combination} of the input features plus an intercept:
+$\ \hat y=\theta_0+\theta_1x_1+\dots+\theta_dx_d=\vect\theta^{\!\top}\vect x$.
+The parameters are chosen to minimise the \textbf{sum of squared errors} (least squares).
+\end{dfn}
+
+\textbf{Cost function:} $J(\vect\theta)=\frac1{2n}\sum_{i=1}^n(\hat y_i-y_i)^2$ (MSE up to a factor).
+
+\textbf{Two ways to find $\vect\theta$:}
+\begin{itemize}
+  \item \textbf{Closed form (normal equation):} $\vect\theta=(\mathbf X^{\!\top}\mathbf X)^{-1}\mathbf X^{\!\top}\vect y$. For one feature: $\theta_1=S_{xy}/S_{xx}$, $\theta_0=\bar y-\theta_1\bar x$. Exact; slow when $d$ is large ($O(d^3)$).
+  \item \textbf{Gradient descent:} iterative; works for huge data.
+\end{itemize}
+
+\begin{numer}[: least-squares line and $R^2$]
+Hours $x=(1,2,3,4,5)$, marks $y=(35,45,50,65,70)$; $\bar x=3$, $\bar y=53$.\\
+$S_{xy}=36+8+0+12+34=90$, $S_{xx}=10$ $\Rightarrow$ $\theta_1=9$, $\theta_0=53-27=26$. \textbf{Model:} $\hat y=26+9x$; $x=6\Rightarrow\hat y=80$.\\
+$\hat y=(35,44,53,62,71)$, residuals $(0,1,-3,3,-1)$, SSE $=20$, SST $=\sum(y-\bar y)^2=830$.\\
+MSE $=4$, RMSE $=2$, $R^2=1-\frac{20}{830}=\mathbf{0.976}$ (the line explains 97.6\% of the variation).
+\end{numer}
+
+\begin{dfn}{Coefficient of determination $R^2$}
+$R^2=1-\dfrac{\mathrm{SSE}}{\mathrm{SST}}$: the fraction of the variance of $y$ explained by the model ($0\le R^2\le1$ on training data). \textbf{Adjusted} $R^2=1-(1-R^2)\frac{n-1}{n-p-1}$ penalises extra features.
+\end{dfn}
+
+\subsection{Gradient descent}
+\begin{dfn}{Gradient descent}
+\textbf{Gradient descent} is an iterative optimisation algorithm that minimises a cost function by repeatedly moving the parameters a small step in the direction of the \textbf{negative gradient}:
+$\ \theta_j\leftarrow\theta_j-\alpha\,\dfrac{\partial J}{\partial\theta_j}$, where $\alpha$ is the \textbf{learning rate}.
+\end{dfn}
+For linear regression: $\frac{\partial J}{\partial\theta_0}=\frac1n\sum(\hat y_i-y_i)$, $\ \frac{\partial J}{\partial\theta_1}=\frac1n\sum(\hat y_i-y_i)x_i$.
+\begin{itemize}
+  \item $\alpha$ too small: very slow; $\alpha$ too large: overshoots and diverges.
+  \item \textbf{Batch GD} uses all data per step (smooth, slow); \textbf{Stochastic GD} one example per step (fast, noisy, escapes local minima); \textbf{Mini-batch GD} small batches (best of both, used on GPUs).
+  \item Scale features first, otherwise the cost bowl is elongated and GD is slow.
+\end{itemize}
+
+\begin{numer}[: one GD step]
+Marks data, start $\theta_0=\theta_1=0$, $\alpha=0.01$. All $\hat y=0$.\\
+$\frac{\partial J}{\partial\theta_0}=\frac{-(35+45+50+65+70)}{5}=-53$;\ $\frac{\partial J}{\partial\theta_1}=\frac{-(35+90+150+260+350)}{5}=-177$.\\
+$\theta_0=0-0.01(-53)=0.53$,\ $\theta_1=0-0.01(-177)=1.77$.
+\end{numer}
+
+\begin{drawit}{Gradient descent on a cost curve}
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=7cm,height=4.2cm,xlabel={$\theta$},ylabel={$J(\theta)$},ticks=none,xmin=-3.2,xmax=3.2,ymin=0,ymax=10]
+\addplot[thick,mlblue,domain=-3:3]{x^2};
+\addplot[mlred,mark=*,thick,-Stealth] coordinates {(-2.8,7.84)(-1.9,3.61)(-1.2,1.44)(-0.7,0.49)(-0.35,0.12)};
+\node[font=\scriptsize] at (axis cs:1.5,8.5) {steps get smaller near minimum};
+\end{axis}
+\end{tikzpicture}
+\end{drawit}
+
+\subsection{Polynomial regression and regularisation}
+\begin{itemize}
+  \item \textbf{Polynomial regression:} add powers of features ($x^2,x^3,\dots$) and fit a linear model; high degree $\Rightarrow$ overfitting.
+  \item \textbf{Ridge (L2):} $J+\lambda\sum\theta_j^2$, shrinks weights.
+  \item \textbf{Lasso (L1):} $J+\lambda\sum|\theta_j|$, sets some weights to zero (feature selection).
+  \item \textbf{Elastic Net:} mix of L1 and L2. Larger $\lambda$ $\Rightarrow$ simpler model.
+\end{itemize}
+
+\apa{simple, fast, interpretable coefficients, closed-form solution}{assumes linearity, sensitive to outliers and multicollinearity}{price prediction, sales forecasting, trend analysis, risk estimation}
+
+\section{Logistic Regression}
+\begin{dfn}{Logistic regression}
+\textbf{Logistic regression} is a supervised \textbf{classification} algorithm that estimates the probability that an instance belongs to the positive class by passing a linear combination of the features through the \textbf{sigmoid} function:
+$\ p=\sigma(\vect\theta^{\!\top}\vect x)=\dfrac1{1+e^{-\vect\theta^{\!\top}\vect x}}$. Predict 1 if $p\ge0.5$, else 0.
+\end{dfn}
+
+\begin{itemize}
+  \item Sigmoid maps any $z$ into $(0,1)$; $\sigma(0)=0.5$; $\sigma'(z)=\sigma(z)(1-\sigma(z))$.
+  \item \textbf{Odds} $=\frac p{1-p}$; \textbf{log-odds (logit)} $=\ln\frac p{1-p}=\vect\theta^{\!\top}\vect x$ (linear in $x$). One unit increase in $x_j$ multiplies the odds by $e^{\theta_j}$.
+  \item \textbf{Decision boundary:} $\vect\theta^{\!\top}\vect x=0$ (a straight line/plane).
+  \item \textbf{Cost (log-loss / binary cross-entropy):} $J=-\frac1n\sum\big[y_i\ln p_i+(1-y_i)\ln(1-p_i)\big]$. Convex; no closed form; minimise with GD. Gradient $\frac1n\sum(p_i-y_i)x_{ij}$.
+  \item \textbf{Softmax regression} (multinomial): $P(y=k)=\frac{e^{z_k}}{\sum_je^{z_j}}$ for more than two classes.
+\end{itemize}
+
+\begin{drawit}{Sigmoid curve}
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=7cm,height=4cm,xlabel={$z$},ylabel={$\sigma(z)$},xmin=-6,xmax=6,ymin=0,ymax=1,ytick={0,0.5,1},xtick={-6,0,6},grid=major,grid style={gray!20}]
+\addplot[very thick,mlblue,domain=-6:6,samples=60]{1/(1+exp(-x))};
+\addplot[dashed,mlred] coordinates {(-6,0.5)(6,0.5)};
+\end{axis}
+\end{tikzpicture}
+\end{drawit}
+
+\begin{numer}[: logistic regression]
+$\theta_0=-4$, $\theta_1=1$, $x=5$ hours. $z=-4+5=1$, $p=\sigma(1)=\frac1{1+e^{-1}}=\mathbf{0.731}\Rightarrow$ pass.\\
+Odds $=0.731/0.269=2.72=e^1$. If $y=1$: log-loss $=-\ln0.731=0.313$.
+\end{numer}
+\begin{numer}[: softmax]
+$z=(2,1,0)$: $e^z=(7.389,2.718,1)$, sum $=11.107$ $\Rightarrow$ $P=(0.665,\,0.245,\,0.090)$; predict class 1.
+\end{numer}
+
+\apa{outputs probabilities, simple, interpretable (odds ratios), fast}{linear boundary only, needs feature engineering for complex data, sensitive to outliers}{credit default, disease prediction, spam detection, click-through prediction}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{3cm}p{6.6cm}p{6.6cm}@{}}
+\toprule
+ & \textbf{Linear regression} & \textbf{Logistic regression}\\
+\midrule
+Task & regression (number) & classification (class/probability)\\
+Output & $(-\infty,\infty)$ & $(0,1)$\\
+Function & identity & sigmoid\\
+Cost & squared error (MSE) & log-loss\\
+Solution & closed form or GD & GD only\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Generalised Linear Models (GLMs)}
+\begin{dfn}{Generalised linear model}
+A \textbf{GLM} extends linear regression to targets that are not normally distributed. It has three parts: (1) a \textbf{random component}: $y$ follows an exponential-family distribution (normal, Bernoulli, Poisson, \dots); (2) a \textbf{linear predictor} $\eta=\vect\theta^{\!\top}\vect x$; (3) a \textbf{link function} $g$ with $g(\mu)=\eta$, where $\mu=\E[y]$.
+\end{dfn}
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Model} & \textbf{Distribution of $y$} & \textbf{Link $g(\mu)$} & \textbf{Example}\\
+\midrule
+Linear regression & Normal & identity $\mu$ & price\\
+Logistic regression & Bernoulli & logit $\ln\frac\mu{1-\mu}$ & pass/fail\\
+Poisson regression & Poisson & log $\ln\mu$ & number of calls per hour\\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{numer}[: Poisson regression]
+$\ln\mu=0.5+0.3x$; $x=2$: $\eta=1.1$, $\mu=e^{1.1}=3.0$ calls. $P(y=0)=e^{-3}=0.0498$. Each extra unit of $x$ multiplies the rate by $e^{0.3}=1.35$.
+\end{numer}
+GLMs are fitted by \textbf{maximum likelihood}.
+
+\section{Support Vector Machines (basics)}
+\begin{dfn}{Support vector machine}
+A \textbf{support vector machine (SVM)} is a supervised classifier that finds the \textbf{hyperplane} $\vect w\cdot\vect x+b=0$ separating the two classes with the \textbf{maximum margin}. The training points closest to the hyperplane, which define the margin, are the \textbf{support vectors}.
+\end{dfn}
+\begin{itemize}
+  \item Labels $y_i\in\{-1,+1\}$. Margin width $=\frac2{\|\vect w\|}$.
+  \item \textbf{Hard margin:} $\min\frac12\|\vect w\|^2$ s.t.\ $y_i(\vect w\cdot\vect x_i+b)\ge1$ (only for separable data; sensitive to outliers).
+  \item \textbf{Soft margin:} allow slack $\xi_i$: $\min\frac12\|\vect w\|^2+C\sum\xi_i$. Large $C$ = few violations, narrow margin; small $C$ = wide margin, more violations.
+  \item \textbf{Hinge loss:} $\max(0,\,1-y\,f(\vect x))$.
+\end{itemize}
+
+\begin{drawit}{Maximum-margin hyperplane}
+\centering
+\begin{tikzpicture}[scale=0.6]
+\draw[-Stealth] (0,0)--(8,0) node[below]{$x_1$}; \draw[-Stealth] (0,0)--(0,6.5) node[left]{$x_2$};
+\draw[very thick,mlpurple] (1,6)--(6.5,0.5) node[right,font=\scriptsize]{$\vect w\cdot\vect x+b=0$};
+\draw[dashed] (0,5)--(5,0); \draw[dashed] (2,7)--(7.5,1.5);
+\foreach \x/\y in {0.8/1.5,1/2.8,2/1.4,2.5/2.5,1.2/0.8}{\fill[mlblue] (\x,\y) circle(4pt);}
+\foreach \x/\y in {5.5/3.5,6.5/2.8,5.8/4.8,7/4,4.5/4.5}{\fill[mlorange] (\x,\y) circle(4pt);}
+\draw[thick] (2.5,2.5) circle(7pt); \draw[thick] (4.5,4.5) circle(7pt);
+\draw[Stealth-Stealth,mlred] (2.5,2.5)--(3.5,3.5) node[midway,above left,font=\scriptsize]{margin};
+\node[font=\scriptsize,right] at (8,5.8) {circled = support vectors};
+\end{tikzpicture}
+\end{drawit}
+
+\begin{numer}[: margin]
+Points $(1,1)$ with $y=-1$ and $(3,3)$ with $y=+1$. Solution $\vect w=(0.5,0.5)$, $b=-2$.\\
+Check: $(3,3)\to1.5+1.5-2=+1$; $(1,1)\to0.5+0.5-2=-1$ (both on the margin). Margin $=\frac2{\|\vect w\|}=\frac2{0.707}=\mathbf{2.83}=$ distance between the points. New point $(4,1)$: $2.5-2=0.5>0\Rightarrow+1$.
+\end{numer}
+
+\section{Binary Classification}
+\begin{itemize}
+  \item \textbf{Binary classifier:} two classes (positive/negative), e.g.\ ``digit 5 or not''.
+  \item Classifier outputs a \textbf{score}; a \textbf{threshold} turns it into a class. Raising the threshold $\Rightarrow$ precision $\uparrow$, recall $\downarrow$ (\textbf{precision--recall trade-off}).
+  \item \textbf{ROC curve:} true positive rate (recall) vs.\ false positive rate ($\frac{FP}{FP+TN}$) for all thresholds. \textbf{AUC} $=1$ perfect, $0.5$ random.
+  \item \textbf{Multi-class from binary:} One-vs-Rest ($K$ classifiers) or One-vs-One ($K(K-1)/2$ classifiers).
+\end{itemize}
+
+\begin{imp}
+Most asked: least-squares line + $R^2$ numerical; gradient descent; logistic regression (sigmoid, odds, log-loss); linear vs.\ logistic table; GLM components; SVM margin and support vectors.
+\end{imp}
+
+\begin{iq}
+\item \twom Define the learning rate. What if it is too large?
+\item \twom What is the sigmoid function? Write its range.
+\item \twom What are support vectors?
+\item \twom What is a link function?
+\item \fivem Compare linear and logistic regression.
+\item \fivem Explain batch, stochastic and mini-batch gradient descent.
+\item \fivem Explain Ridge and Lasso regularisation.
+\item \fivem Explain the ROC curve and the precision--recall trade-off.
+\item \tenm Fit a least-squares line to given data, predict a value and compute $R^2$.
+\item \tenm Explain logistic regression with its cost function and decision boundary.
+\item \tenm Explain generalised linear models with examples.
+\end{iq}

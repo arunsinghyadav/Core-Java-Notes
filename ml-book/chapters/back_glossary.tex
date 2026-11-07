@@ -1,0 +1,132 @@
+\chapter{Glossary}\label{app:glossary}
+
+Short definitions of the key terms of the book, in alphabetical order. The number after each term is the chapter where it is explained in detail.
+
+\newcommand{\g}[3]{\item[\textbf{#1}\ \textcolor{gray}{(Ch.~#2)}] #3}
+\small
+\begin{description}[leftmargin=1.3em,labelindent=0pt,itemsep=3pt,topsep=4pt,font=\normalfont]
+\g{Accuracy}{2}{Fraction of predictions that are correct, $(TP+TN)/n$; misleading for imbalanced classes.}
+\g{Activation function}{9}{Non-linear function $\varphi$ applied to a neuron's weighted sum (sigmoid, tanh, ReLU, softmax).}
+\g{AdaBoost}{5}{Boosting method that re-weights misclassified instances and combines weak learners by a weighted vote.}
+\g{Agent}{1}{In reinforcement learning, the learner that observes states, takes actions and receives rewards.}
+\g{Anomaly detection}{1}{Finding instances that differ strongly from the rest (outliers).}
+\g{Backpropagation}{9}{Algorithm that computes the gradient of the loss for every weight by applying the chain rule from the output back to the input.}
+\g{Bagging}{5}{Bootstrap aggregating: train many copies of a model on bootstrap samples and average or vote their predictions.}
+\g{Batch learning}{1}{Training once, offline, on all available data; new data require retraining.}
+\g{Batch size}{9}{Number of examples used for one gradient update in mini-batch training.}
+\g{Bayes' theorem}{3}{$P(C\mid\vect x)=P(\vect x\mid C)P(C)/P(\vect x)$: posterior $=$ likelihood $\times$ prior $/$ evidence.}
+\g{Bias (of a method)}{2}{Error from a too-simple model: the gap between the average prediction and the truth.}
+\g{Bias (neuron parameter)}{9}{Constant $b$ added to a weighted sum; shifts the threshold of the neuron.}
+\g{Bias--variance trade-off}{2}{Expected test error $=\mathrm{Bias}^2+\mathrm{Variance}+\sigma^2$; lowering one tends to raise the other.}
+\g{Binary classification}{4}{Assigning inputs to one of two classes.}
+\g{BIC}{7}{Bayesian information criterion $p\ln n-2\ln\hat L$; used to choose the number of mixture components (lower is better).}
+\g{Boosting}{5}{Sequential ensemble where each learner concentrates on the errors of the previous ones; reduces bias.}
+\g{Bootstrap sample}{5}{Sample of size $n$ drawn \emph{with} replacement; contains about $63.2\%$ of the distinct instances.}
+\g{Broadcasting}{10}{Automatic stretching of a smaller tensor to match the shape of a larger one in an element-wise operation.}
+\g{Centroid}{7}{The mean of the points of a cluster; the cluster centre in K-Means.}
+\g{Classification}{1}{Supervised task whose output is a category.}
+\g{Clustering}{7}{Unsupervised grouping of similar instances.}
+\g{Confusion matrix}{2}{Table of true versus predicted classes (TP, FP, TN, FN).}
+\g{Core point}{7}{DBSCAN point with at least MinPts points (itself included) within distance $\varepsilon$.}
+\g{Covariance matrix}{8}{Matrix of variances and covariances of the features; its eigenvectors are the principal components.}
+\g{Cross-entropy (log loss)}{4}{Loss $-\sum y\ln p$ for classification; punishes confident wrong predictions.}
+\g{Cross-validation}{2}{Estimating performance by training on some folds and validating on the others, in turn.}
+\g{Curse of dimensionality}{8}{Problems that arise in high dimensions: sparse data, almost equal distances, exponentially growing data needs.}
+\g{DBSCAN}{7}{Density-based clustering with core, border and noise points; finds clusters of arbitrary shape.}
+\g{Decision boundary}{1}{Surface that separates the regions predicted as different classes.}
+\g{Decision tree}{3}{Model that predicts by a sequence of feature tests arranged as a tree.}
+\g{Deep learning}{1}{Machine learning with neural networks that have many hidden layers.}
+\g{Dimensionality reduction}{8}{Mapping $d$ features to fewer features while keeping the useful information.}
+\g{Distance metric}{3}{Function measuring dissimilarity (Euclidean, Manhattan, \dots) that is symmetric and obeys the triangle inequality.}
+\g{Dropout}{9}{Regularisation that switches off each neuron with probability $p$ during training.}
+\g{Early stopping}{9}{Stopping training when the validation loss stops improving.}
+\g{Eigenvalue / eigenvector}{8}{For a matrix $\mathbf C$: $\mathbf C\vect w=\lambda\vect w$; in PCA the eigenvalue is the variance along the eigenvector.}
+\g{Embedding}{10}{Trainable lookup table that maps a category to a short dense vector.}
+\g{EM algorithm}{7}{Expectation--Maximisation: alternates computing responsibilities (E) and re-estimating parameters (M).}
+\g{Ensemble}{5}{Combination of several models whose joint prediction is better than any single one.}
+\g{Entropy}{3}{Impurity measure $-\sum p_i\log_2p_i$; zero for a pure node.}
+\g{Epoch}{9}{One complete pass of the training set through the learning algorithm.}
+\g{$\varepsilon$-insensitive loss}{6}{SVR loss $\max(0,|y-f|-\varepsilon)$; errors inside the tube cost nothing.}
+\g{Estimator}{2}{A rule that computes an estimate of a population quantity from a sample.}
+\g{Euclidean distance}{3}{$\sqrt{\sum(a_i-b_i)^2}$.}
+\g{Explained variance ratio}{8}{Fraction $\lambda_j/\sum\lambda_i$ of the total variance captured by a principal component.}
+\g{Feature}{1}{An input variable (attribute) describing an instance.}
+\g{Feature scaling}{3}{Rescaling features to comparable ranges (min--max, standardisation).}
+\g{Gaussian mixture model}{7}{Model $p(\vect x)=\sum\pi_k\mathcal N(\vect x\mid\vect\mu_k,\mathbf\Sigma_k)$ giving soft clusters.}
+\g{Generalisation}{1}{Performing well on new, unseen data.}
+\g{Generalised linear model}{4}{Regression with an exponential-family response and a link function $g(\mu)=\vect\theta^{\top}\vect x$.}
+\g{Gini index}{3}{Impurity measure $1-\sum p_i^2$.}
+\g{Gradient boosting}{5}{Boosting in which each new tree is fitted to the residuals of the current model.}
+\g{Gradient descent}{4}{Minimising a loss by repeatedly stepping against its gradient, $\theta\leftarrow\theta-\eta\nabla J$.}
+\g{GradientTape}{10}{TensorFlow object that records operations and computes exact gradients.}
+\g{Hinge loss}{4}{$\max(0,1-yf(\vect x))$; the SVM loss.}
+\g{Hyperparameter}{1}{A setting chosen by the user before training (e.g.\ $k$, $C$, learning rate).}
+\g{Hyperplane}{4}{Flat decision surface $\vect w\cdot\vect x+b=0$ (a line in 2-D).}
+\g{Inertia}{7}{K-Means objective: sum of squared distances of points to their cluster centroid.}
+\g{Information gain}{3}{Reduction of entropy obtained by a split.}
+\g{Instance-based learning}{1}{Predicting by comparing with stored training examples (e.g.\ k-NN).}
+\g{Kernel}{6}{Function $K(\vect a,\vect b)=\varphi(\vect a)\cdot\varphi(\vect b)$ computing a dot product in a feature space without building it.}
+\g{K-Means}{7}{Clustering that alternates assigning points to the nearest centroid and moving centroids to the mean.}
+\g{K-Means++}{7}{Initialisation that picks starting centroids far apart, with probability $\propto D^2$.}
+\g{k-Nearest Neighbours}{3}{Predicts from the labels of the $k$ closest training points.}
+\g{Label (target)}{1}{The correct output of an instance.}
+\g{Laplace smoothing}{3}{Adding a pseudo-count to every count so that no probability is zero.}
+\g{Lasso}{4}{L1-regularised regression; can set weights exactly to zero.}
+\g{Learning rate}{4}{Step size $\eta$ of gradient descent.}
+\g{Linear regression}{4}{Model $\hat y=\vect\theta^{\top}\vect x$ fitted by least squares.}
+\g{Logistic regression}{4}{Classifier that models $P(y=1)=\sigma(\vect\theta^{\top}\vect x)$.}
+\g{Loss function}{2}{Cost $L(y,\hat y)$ of a single prediction.}
+\g{Manifold learning}{8}{Non-linear dimensionality reduction that unrolls curved data (Isomap, LLE, t-SNE).}
+\g{Margin}{4}{Width $2/\|\vect w\|$ of the empty strip between the two classes in an SVM.}
+\g{Maximum likelihood}{4}{Choosing parameters that make the observed data most probable.}
+\g{Mean squared error (MSE)}{2}{Average of squared errors.}
+\g{Model-based learning}{1}{Learning a model with parameters and predicting only from the model.}
+\g{Multilayer perceptron (MLP)}{9}{Feed-forward neural network with one or more hidden layers.}
+\g{Naive Bayes}{3}{Classifier using Bayes' theorem and conditional independence of features given the class.}
+\g{Neuron}{9}{Unit computing $a=\varphi(\vect w\cdot\vect x+b)$.}
+\g{Noise point}{7}{DBSCAN point that is neither core nor border.}
+\g{One-hot encoding}{10}{Vector with a single $1$ marking the category.}
+\g{Online learning}{1}{Learning incrementally from mini-batches as data arrive.}
+\g{Out-of-bag (OOB)}{5}{Instances not drawn into a bootstrap sample; used as free validation data.}
+\g{Overfitting}{1}{Fitting the training data (and its noise) so well that new data are predicted badly.}
+\g{Parameter}{1}{A value learned from data (weights, coefficients).}
+\g{PCA}{8}{Principal component analysis: projection onto orthogonal directions of maximum variance.}
+\g{Perceptron}{9}{Single threshold neuron trained with the perceptron rule; linear classifier.}
+\g{Precision}{2}{$TP/(TP+FP)$: fraction of predicted positives that are correct.}
+\g{Prefetch}{10}{\texttt{tf.data} step that prepares the next batch while the model trains.}
+\g{Principal component}{8}{Eigenvector of the covariance matrix; a direction of the new coordinate system.}
+\g{Pruning}{3}{Cutting back a decision tree to prevent overfitting.}
+\g{Random forest}{5}{Bagged decision trees with a random subset of features at each split.}
+\g{Recall}{2}{$TP/(TP+FN)$: fraction of true positives found.}
+\g{Regression}{1}{Supervised task whose output is a number.}
+\g{Regularisation}{1}{Constraining a model (e.g.\ penalising large weights) to reduce overfitting.}
+\g{Reinforcement learning}{1}{Learning a policy from rewards obtained by interacting with an environment.}
+\g{Residual}{4}{Difference $y-\hat y$ between observed and predicted value.}
+\g{Ridge}{4}{L2-regularised regression that shrinks the weights.}
+\g{Risk}{2}{Expected loss on new data (generalisation error).}
+\g{ROC curve / AUC}{4}{True-positive rate against false-positive rate over all thresholds; AUC is the area under it.}
+\g{Sampling bias}{1}{Training data that do not represent the population.}
+\g{Sampling distribution}{2}{Distribution of an estimator over repeated samples; its standard deviation is the standard error.}
+\g{Semi-supervised learning}{1}{Learning from a few labelled and many unlabelled examples.}
+\g{Sigmoid}{4}{$1/(1+e^{-z})$; maps any number to $(0,1)$.}
+\g{Silhouette coefficient}{7}{$(b-a)/\max(a,b)$; measures how well a point fits its cluster.}
+\g{Softmax}{4}{Turns scores into probabilities that sum to $1$.}
+\g{Stacking}{5}{Ensemble in which a meta-learner combines the predictions of base learners.}
+\g{Standard error}{2}{Standard deviation of an estimator; $\sigma/\sqrt n$ for the mean.}
+\g{Supervised learning}{1}{Learning from labelled examples.}
+\g{Support vector}{4}{Training point on or inside the margin that determines the SVM.}
+\g{SVM}{4}{Support vector machine: maximum-margin classifier, with kernels for non-linear problems.}
+\g{SVR}{6}{Support vector regression with an $\varepsilon$-tube.}
+\g{Tensor}{10}{Multi-dimensional array with a rank, shape and dtype.}
+\g{Test set}{2}{Data held back to estimate the final performance.}
+\g{TFRecord}{10}{Binary file format of serialised records for large datasets.}
+\g{Training set}{1}{Data used to fit the parameters.}
+\g{Underfitting}{1}{Model too simple to capture the pattern; poor on training and test data.}
+\g{Unsupervised learning}{1}{Finding structure in unlabelled data.}
+\g{Validation set}{2}{Data used to compare models and tune hyperparameters.}
+\g{Vanishing gradient}{9}{Gradients that shrink towards zero in early layers of a deep network.}
+\g{Variance (of a method)}{2}{How much predictions change when the training sample changes.}
+\g{Weak learner}{5}{Model only slightly better than random guessing.}
+\g{Weight}{9}{Parameter that scales an input of a neuron.}
+\end{description}
+\normalsize

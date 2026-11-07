@@ -1,0 +1,206 @@
+\chapter{Introduction to Machine Learning}\label{n:intro}
+\studytime{2 hours}
+
+\section{AI, ML and Deep Learning}
+
+\begin{dfn}{Artificial Intelligence (AI)}
+\textbf{AI} is the branch of computer science that builds machines able to perform tasks that normally need human intelligence, such as reasoning, understanding language, seeing and decision making.
+\end{dfn}
+
+\begin{dfn}{Machine Learning (Arthur Samuel, 1959)}
+\textbf{Machine Learning} is the field of study that gives computers the ability to \textbf{learn from data without being explicitly programmed}.
+\end{dfn}
+
+\begin{dfn}{Machine Learning (Tom Mitchell, 1997)}
+A computer program is said to \textbf{learn} from experience $E$ with respect to some task $T$ and performance measure $P$, if its performance at $T$, as measured by $P$, \textbf{improves with experience $E$}.
+\end{dfn}
+
+\textbf{Example (spam filter):} $T$ = classify e-mails as spam or not; $E$ = e-mails labelled by users; $P$ = percentage of e-mails classified correctly.
+
+\begin{itemize}
+  \item \textbf{AI $\supset$ ML $\supset$ Deep Learning.} DL = ML with many-layered neural networks.
+  \item \textbf{Traditional programming:} rules $+$ data $\to$ answers. \textbf{ML:} data $+$ answers $\to$ rules (model).
+  \item \textbf{Use ML when:} rules are too many or unknown (speech, images), the problem changes over time (spam), or we want insight from large data (data mining).
+\end{itemize}
+
+\begin{drawit}{AI, ML and DL as nested circles; traditional vs.\ ML}
+\centering
+\begin{tikzpicture}[font=\small]
+\draw[thick,mlblue,fill=mlblue!8] (0,0) ellipse (2.6 and 1.5); \node at (0,1.15) {AI};
+\draw[thick,mlgreen,fill=mlgreen!10] (0,-0.2) ellipse (1.8 and 1.0); \node at (0,0.45) {ML};
+\draw[thick,mlorange,fill=mlorange!15] (0,-0.45) ellipse (0.9 and 0.5); \node at (0,-0.45) {DL};
+\begin{scope}[xshift=4.2cm,box/.style={draw,rounded corners,thick,minimum width=1.9cm,minimum height=0.6cm}]
+\node[box] (r) at (0,0.8) {rules + data}; \node[box,fill=mlblue!10] (p) at (3,0.8) {program}; \node[box] (a) at (6,0.8) {answers};
+\draw[-Stealth,thick] (r)--(p); \draw[-Stealth,thick] (p)--(a);
+\node[box] (d) at (0,-0.6) {data + answers}; \node[box,fill=mlgreen!15] (m) at (3,-0.6) {ML algorithm}; \node[box] (o) at (6,-0.6) {rules (model)};
+\draw[-Stealth,thick] (d)--(m); \draw[-Stealth,thick] (m)--(o);
+\end{scope}
+\end{tikzpicture}
+\end{drawit}
+
+\textbf{Applications:} spam filtering, product recommendation, face recognition, speech assistants, fraud detection, medical diagnosis, self-driving cars, language translation, stock forecasting.
+
+\section{Types of Machine Learning Systems}
+
+ML systems are classified on three bases:
+\begin{enumerate}
+  \item \textbf{Amount and type of supervision:} supervised, unsupervised, semi-supervised, reinforcement.
+  \item \textbf{Can it learn incrementally?} batch (offline) vs.\ online learning.
+  \item \textbf{How does it generalise?} instance-based vs.\ model-based learning.
+\end{enumerate}
+
+\subsection{By supervision}
+
+\begin{dfn}{Supervised learning}
+The training data includes the desired outputs, called \textbf{labels}. The model learns a mapping from inputs to labels. \textbf{Classification} predicts a class (spam/not spam); \textbf{regression} predicts a number (house price).
+\end{dfn}
+\textbf{Algorithms:} k-NN, linear and logistic regression, SVM, decision trees, random forests, neural networks.
+
+\begin{dfn}{Unsupervised learning}
+The training data is \textbf{unlabelled}; the system finds structure (groups, patterns) by itself.
+\end{dfn}
+\textbf{Tasks:} clustering (K-Means, DBSCAN), dimensionality reduction (PCA), anomaly detection, association rules (Apriori: ``bread $\Rightarrow$ butter'').
+
+\begin{dfn}{Semi-supervised learning}
+Learning from a \textbf{small amount of labelled} data plus a \textbf{large amount of unlabelled} data. Example: a photo app clusters faces (unsupervised), you name one face per person, and it labels all photos.
+\end{dfn}
+
+\begin{dfn}{Reinforcement learning}
+An \textbf{agent} observes the \textbf{environment}, takes \textbf{actions} and receives \textbf{rewards} or penalties. It learns a \textbf{policy} (which action to take in each state) that maximises the total reward over time. Examples: game playing (AlphaGo), robots learning to walk.
+\end{dfn}
+
+\begin{drawit}{Reinforcement learning loop}
+\centering
+\begin{tikzpicture}[font=\small,box/.style={draw,thick,rounded corners,minimum width=2.4cm,minimum height=0.8cm}]
+\node[box,fill=mlblue!10] (a) at (0,0) {Agent (policy)};
+\node[box,fill=mlgreen!12] (e) at (6,0) {Environment};
+\draw[-Stealth,thick] (a.north) to[bend left=25] node[above]{action $a_t$} (e.north);
+\draw[-Stealth,thick] (e.south) to[bend left=25] node[below]{state $s_{t+1}$, reward $r_{t+1}$} (a.south);
+\end{tikzpicture}
+\end{drawit}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{2.0cm}p{3.3cm}p{3.3cm}p{3.3cm}p{3.3cm}@{}}
+\toprule
+ & \textbf{Supervised} & \textbf{Unsupervised} & \textbf{Semi-supervised} & \textbf{Reinforcement}\\
+\midrule
+Data & labelled & unlabelled & few labels, many unlabelled & rewards from environment\\
+Goal & predict label & find structure & use both & maximise reward\\
+Feedback & correct answer & none & partial & delayed reward\\
+Example & spam, price & customer groups & photo tagging & games, robots\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Batch vs.\ online learning}
+\begin{center}
+\small
+\begin{tabular}{@{}p{2.8cm}p{6.6cm}p{6.6cm}@{}}
+\toprule
+ & \textbf{Batch (offline) learning} & \textbf{Online (incremental) learning}\\
+\midrule
+Training & on all data at once & on small mini-batches, continuously\\
+New data & retrain from scratch & learn on the fly\\
+Resources & large memory and time & small; suits huge or streaming data\\
+Key parameter & --- & \textbf{learning rate}: high = adapts fast but forgets\\
+Risk & model becomes stale & bad data quietly degrades it\\
+Example & monthly retrained recommender & stock prices, sensor streams\\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Out-of-core learning:} online learning used to train on data too large for memory.
+
+\subsection{Instance-based vs.\ model-based learning}
+\begin{dfn}{Instance-based learning}
+The system \textbf{memorises} the training examples and generalises to a new case by comparing it with stored examples using a \textbf{similarity measure}. Example: k-NN.
+\end{dfn}
+\begin{dfn}{Model-based learning}
+The system builds a \textbf{model} (e.g.\ a line $\hat y=\theta_0+\theta_1x$) from the examples, by choosing parameters that minimise a \textbf{cost function}, and then uses the model to predict.
+\end{dfn}
+\textbf{Model-based workflow:} study the data $\to$ select a model $\to$ train it (minimise cost) $\to$ apply it to new cases (\textbf{inference}).
+
+\begin{numer}[: least-squares line]
+Data $x=(1,2,3,4,5)$ (size), $y=(15,26,29,44,46)$ (price). $\bar x=3$, $\bar y=32$.\\
+$S_{xy}=\sum(x-\bar x)(y-\bar y)=34+6+0+12+28=80$, $\ S_{xx}=\sum(x-\bar x)^2=10$.\\
+$\theta_1=S_{xy}/S_{xx}=8$, $\ \theta_0=\bar y-\theta_1\bar x=32-24=8$. \textbf{Model} $\hat y=8+8x$; for $x=6$: $\hat y=56$.
+\end{numer}
+
+\section{Main Challenges of Machine Learning}
+Problems come from either \textbf{bad data} or a \textbf{bad algorithm (model)}.
+
+\begin{enumerate}
+  \item \textbf{Insufficient training data:} most algorithms need thousands of examples; ``data matters more than algorithms''.
+  \item \textbf{Non-representative data:} training data must represent the new cases. \emph{Sampling noise} (sample too small) and \emph{sampling bias} (flawed sampling method).
+  \item \textbf{Poor-quality data:} errors, outliers, missing values. Clean, remove or fill them.
+  \item \textbf{Irrelevant features:} garbage in, garbage out. \emph{Feature engineering} = feature selection $+$ feature extraction $+$ creating new features.
+  \item \textbf{Overfitting} the training data.
+  \item \textbf{Underfitting} the training data.
+\end{enumerate}
+
+\begin{dfn}{Overfitting}
+\textbf{Overfitting} occurs when the model fits the training data (including its noise) too closely, so it performs well on training data but \textbf{poorly on new data}. Cause: model too complex for the amount and noise of the data.
+\end{dfn}
+\textbf{Remedies:} simpler model (fewer parameters), more training data, reduce noise, \textbf{regularisation} (constrain the model), cross-validation, early stopping.
+
+\begin{dfn}{Underfitting}
+\textbf{Underfitting} occurs when the model is \textbf{too simple} to learn the underlying structure, so it performs poorly even on the training data.
+\end{dfn}
+\textbf{Remedies:} more powerful model, better features, reduce regularisation.
+
+\begin{drawit}{Underfit, good fit, overfit}
+\centering
+\begin{tikzpicture}
+\foreach \k/\t/\c in {0/Underfit/mlred,1/Good fit/mlgreen,2/Overfit/mlred}{
+\begin{scope}[xshift=\k*5.4cm]
+\draw[-Stealth] (0,0)--(4.4,0) node[below]{$x$}; \draw[-Stealth] (0,0)--(0,2.8) node[left]{$y$};
+\foreach \x/\y in {0.4/0.5,0.9/1.2,1.4/1.3,1.9/1.9,2.4/1.8,2.9/2.3,3.4/2.1,3.9/2.5}{\fill[mlblue] (\x,\y) circle(2pt);}
+\node[font=\small\bfseries,\c] at (2.2,3.0) {\t};
+\end{scope}}
+\draw[thick,mlred] (0.2,1.6)--(4.2,1.6);
+\draw[thick,mlgreen,domain=0.2:4.2,smooth,xshift=5.4cm] plot (\x,{0.3+1.2*ln(1+\x)});
+\draw[thick,mlred,xshift=10.8cm] plot[smooth,tension=0.6] coordinates {(0.3,0.3)(0.4,0.5)(0.65,1.5)(0.9,1.2)(1.15,0.9)(1.4,1.3)(1.65,2.3)(1.9,1.9)(2.15,1.4)(2.4,1.8)(2.65,2.7)(2.9,2.3)(3.15,1.7)(3.4,2.1)(3.65,2.8)(3.9,2.5)(4.1,2.0)};
+\end{tikzpicture}
+\end{drawit}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{2.8cm}p{6.6cm}p{6.6cm}@{}}
+\toprule
+ & \textbf{Underfitting} & \textbf{Overfitting}\\
+\midrule
+Model & too simple & too complex\\
+Training error & high & very low\\
+Test error & high & high\\
+Bias / variance & high bias & high variance\\
+Fix & more complex model, better features & more data, regularisation, simpler model\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Testing and Validating}
+\begin{itemize}
+  \item Split data into \textbf{training set} (usually 80\%) and \textbf{test set} (20\%). The error on new cases is the \textbf{generalisation error}, estimated on the test set.
+  \item Training error low but generalisation error high $\Rightarrow$ overfitting.
+  \item \textbf{Hyperparameter:} a parameter of the learning algorithm (not of the model), set \emph{before} training, e.g.\ $k$ in k-NN, regularisation strength. \textbf{Parameters} (weights) are learned.
+  \item \textbf{Validation set (holdout validation):} part of the training set used to compare models and tune hyperparameters; the test set is used only once at the end.
+  \item \textbf{Cross-validation:} rotate the validation part (see Chapter~\ref{n:stat}).
+  \item \textbf{No Free Lunch theorem:} no model is best for every problem; you must try several.
+\end{itemize}
+
+\begin{imp}
+Most asked: Mitchell's definition with a $(T,P,E)$ example; types of ML with a table; overfitting vs.\ underfitting with a diagram; challenges of ML. Always give one real-life example for each type.
+\end{imp}
+
+\begin{iq}
+\item \twom Define machine learning. Give $T$, $P$, $E$ for a spam filter.
+\item \twom Differentiate between AI and ML.
+\item \twom What is a hyperparameter? Give an example.
+\item \twom What is semi-supervised learning?
+\item \fivem Compare supervised and unsupervised learning with examples.
+\item \fivem Explain batch and online learning.
+\item \fivem Explain instance-based and model-based learning.
+\item \fivem What is overfitting? How can it be avoided?
+\item \tenm Explain the types of machine learning systems in detail with examples and a diagram.
+\item \tenm Discuss the main challenges of machine learning.
+\end{iq}

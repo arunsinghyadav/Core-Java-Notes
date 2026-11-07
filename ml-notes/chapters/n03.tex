@@ -1,0 +1,179 @@
+\chapter{Distance-Based Methods, Decision Trees and Naive Bayes}\label{n:knn}
+\studytime{2.5 hours}
+
+\section{Distance-Based Methods}
+\begin{dfn}{Distance-based learning}
+\textbf{Distance-based methods} classify or predict a new instance from the training instances that are \textbf{closest} to it, using a distance (or similarity) measure. Assumption: similar inputs have similar outputs.
+\end{dfn}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Measure} & \textbf{Formula} & \textbf{Note}\\
+\midrule
+Euclidean ($L_2$) & $\sqrt{\sum_i(a_i-b_i)^2}$ & straight-line; most common\\
+Manhattan ($L_1$) & $\sum_i|a_i-b_i|$ & city-block distance\\
+Minkowski ($L_p$) & $\big(\sum_i|a_i-b_i|^p\big)^{1/p}$ & $p=1$: Manhattan, $p=2$: Euclidean\\
+Chebyshev ($L_\infty$) & $\max_i|a_i-b_i|$ & largest single difference\\
+Cosine similarity & $\dfrac{\vect a\cdot\vect b}{\|\vect a\|\|\vect b\|}$ & text documents; direction only\\
+Hamming & number of positions that differ & categorical / binary data\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{numer}[: distances]
+$\vect a=(1,2)$, $\vect b=(4,6)$. Euclidean $=\sqrt{9+16}=5$; Manhattan $=3+4=7$; Chebyshev $=\max(3,4)=4$.
+\end{numer}
+
+\textbf{Feature scaling is essential:} a feature measured in large units (salary in rupees) dominates one in small units (age). Use
+\[
+\text{min--max: } x'=\frac{x-x_{\min}}{x_{\max}-x_{\min}}\in[0,1],\qquad \text{z-score: } x'=\frac{x-\mu}{\sigma}.
+\]
+
+\section{k-Nearest Neighbours (k-NN)}
+\begin{dfn}{k-Nearest Neighbours}
+\textbf{k-NN} is a supervised, \textbf{instance-based} (lazy) learning algorithm that predicts the class of a new point by the \textbf{majority vote} of its $k$ nearest training points (classification), or by the \textbf{average} of their values (regression).
+\end{dfn}
+
+\textbf{Algorithm:}
+\begin{enumerate}
+  \item Choose $k$ and a distance measure; scale the features.
+  \item Compute the distance from the query point to every training point.
+  \item Sort the distances and take the $k$ nearest neighbours.
+  \item Classification: majority class; regression: mean of their $y$ values.
+\end{enumerate}
+
+\begin{itemize}
+  \item \textbf{Lazy learner:} no training phase; all work happens at prediction time.
+  \item \textbf{Choice of $k$:} small $k$ $\Rightarrow$ noisy, overfits (high variance); large $k$ $\Rightarrow$ too smooth, underfits (high bias). Choose $k$ by cross-validation; use an \textbf{odd} $k$ for two classes.
+  \item \textbf{Weighted k-NN:} weight each neighbour by $1/d$ so closer neighbours count more.
+\end{itemize}
+
+\begin{numer}[: k-NN classification]
+Query $(5,4)$. Training points with distance: $P_4(6,5)$ B $1.414$; $P_5(7,4)$ B $2.0$; $P_6(5,6)$ B $2.0$; $P_7(4,2)$ A $2.236$; $P_3(3,2)$ A $2.828$; $P_2(2,3)$ A $3.162$; $P_1(1,1)$ A $5.0$.\\
+$k=3$: B,B,B $\Rightarrow$ \textbf{B}. $\ k=5$: 3 B vs 2 A $\Rightarrow$ \textbf{B}. $\ k=7$: 4 A vs 3 B $\Rightarrow$ \textbf{A} (prediction depends on $k$).
+\end{numer}
+
+\begin{drawit}{k-NN with $k=3$}
+\centering
+\begin{tikzpicture}[scale=0.55]
+\draw[-Stealth] (0,0)--(8,0) node[below]{$x_1$}; \draw[-Stealth] (0,0)--(0,7) node[left]{$x_2$};
+\foreach \x/\y in {1/1,2/3,3/2,4/2}{\fill[mlblue] (\x,\y) circle(4pt);}
+\foreach \x/\y in {6/5,7/4,5/6}{\fill[mlorange] (\x,\y) ++(0,0.18) -- ++(-0.18,-0.32) -- ++(0.36,0) -- cycle;}
+\draw[thick,mlred] (5,4) node{$\star$} circle(2.05);
+\node[font=\scriptsize,right] at (7.3,6.3) {circle holds 3 nearest};
+\node[font=\scriptsize,mlblue] at (1.5,4.6) {$\bullet$ class A}; \node[font=\scriptsize,mlorange] at (1.5,5.4) {$\blacktriangle$ class B};
+\end{tikzpicture}
+\end{drawit}
+
+\apa{simple, no training, works for multi-class, naturally non-linear boundaries}{slow prediction on big data, needs scaling, sensitive to irrelevant features and to $k$, suffers from the curse of dimensionality}{recommendation, handwriting recognition, credit rating, medical diagnosis}
+
+\section{Decision Trees}
+\begin{dfn}{Decision tree}
+A \textbf{decision tree} is a supervised, tree-structured model in which each \textbf{internal node} tests a feature, each \textbf{branch} is an outcome of the test, and each \textbf{leaf node} gives a class label (or value). The tree is built top-down by choosing, at each node, the feature that best separates the classes.
+\end{dfn}
+
+\begin{dfn}{Entropy, information gain and Gini index}
+\textbf{Entropy} measures the impurity of a set $S$: $H(S)=-\sum_ip_i\log_2p_i$ ($0$ = pure, $1$ = 50/50 for two classes).\\
+\textbf{Information gain} is the reduction in entropy after splitting on attribute $A$:
+$\ \mathrm{Gain}(S,A)=H(S)-\sum_v\frac{|S_v|}{|S|}H(S_v)$.\\
+\textbf{Gini index:} $G=1-\sum_ip_i^2$ (used by CART).
+\end{dfn}
+
+\textbf{ID3 algorithm:}
+\begin{enumerate}
+  \item Compute the entropy of the whole training set.
+  \item For each attribute, compute the information gain.
+  \item Choose the attribute with the \textbf{highest gain} as the node; create a branch for each value.
+  \item Repeat recursively on each branch until all examples in a node have the same class (leaf) or no attributes remain.
+\end{enumerate}
+
+\begin{numer}[: information gain (Play-Tennis, 14 days: 9 Yes, 5 No)]
+$H(S)=-\frac9{14}\log_2\frac9{14}-\frac5{14}\log_2\frac5{14}=\mathbf{0.940}$.\\
+Outlook: Sunny (2Y,3N) $H=0.971$; Overcast (4Y,0N) $H=0$; Rain (3Y,2N) $H=0.971$.\\
+$\mathrm{Gain}(\text{Outlook})=0.940-\big[\frac5{14}(0.971)+\frac4{14}(0)+\frac5{14}(0.971)\big]=0.940-0.694=\mathbf{0.246}$.\\
+Others: Humidity $0.151$, Wind $0.048$, Temperature $0.029$ $\Rightarrow$ \textbf{Outlook is the root}.
+\end{numer}
+
+\begin{numer}[: Gini]
+Node with 4 Yes, 6 No: $G=1-(0.4^2+0.6^2)=1-0.52=\mathbf{0.48}$.
+\end{numer}
+
+\begin{drawit}{Decision tree for Play-Tennis}
+\centering
+\begin{tikzpicture}[font=\small,level distance=1.3cm,
+  level 1/.style={sibling distance=3.6cm},level 2/.style={sibling distance=1.8cm},
+  n/.style={draw,thick,rounded corners,fill=mlblue!10},l/.style={draw,thick,fill=mlgreen!15},m/.style={draw,thick,fill=mlred!15}]
+\node[n]{Outlook}
+  child{node[n]{Humidity} child{node[m]{No} edge from parent node[left,font=\scriptsize]{High}} child{node[l]{Yes} edge from parent node[right,font=\scriptsize]{Normal}} edge from parent node[left,font=\scriptsize]{Sunny}}
+  child{node[l]{Yes} edge from parent node[right,font=\scriptsize]{Overcast}}
+  child{node[n]{Wind} child{node[m]{No} edge from parent node[left,font=\scriptsize]{Strong}} child{node[l]{Yes} edge from parent node[right,font=\scriptsize]{Weak}} edge from parent node[right,font=\scriptsize]{Rain}};
+\end{tikzpicture}
+\end{drawit}
+
+\begin{itemize}
+  \item \textbf{ID3} uses information gain; \textbf{C4.5} uses gain ratio (handles many-valued attributes, continuous values); \textbf{CART} uses Gini and binary splits (also regression).
+  \item \textbf{Overfitting control (pruning):} pre-pruning (max depth, min samples per leaf) or post-pruning (grow fully, then cut weak branches).
+\end{itemize}
+
+\apa{easy to understand and draw, no scaling needed, handles numerical and categorical data, gives rules}{overfits easily, unstable (small data change $\Rightarrow$ different tree), biased to many-valued features}{loan approval, medical diagnosis, customer churn, fault diagnosis}
+
+\section{Naive Bayes}
+\begin{dfn}{Bayes' theorem}
+\[ P(C\mid X)=\frac{P(X\mid C)\,P(C)}{P(X)} \qquad \text{posterior}=\frac{\text{likelihood}\times\text{prior}}{\text{evidence}} \]
+\end{dfn}
+
+\begin{dfn}{Naive Bayes classifier}
+\textbf{Naive Bayes} is a probabilistic classifier based on Bayes' theorem with the \textbf{naive assumption} that features are \textbf{conditionally independent} given the class:
+\[ \hat y=\argmax_c\ P(c)\prod_{j=1}^dP(x_j\mid c). \]
+\end{dfn}
+
+\textbf{Steps:} (1) compute priors $P(c)$; (2) compute likelihoods $P(x_j\mid c)$ from frequency tables; (3) multiply for each class; (4) choose the largest.
+
+\begin{dfn}{Laplace smoothing}
+If a feature value never occurs with a class, its probability is $0$ and wipes out the whole product. \textbf{Laplace smoothing} adds $\alpha$ (usually 1) to every count:
+$\ P(x_j=v\mid c)=\dfrac{\mathrm{count}(v,c)+\alpha}{N_c+\alpha V_j}$, where $V_j$ is the number of values of feature $j$.
+\end{dfn}
+
+\begin{numer}[: Bayes' theorem]
+$P(\text{spam})=0.3$, $P(\text{offer}\mid\text{spam})=0.6$, $P(\text{offer}\mid\text{ham})=0.1$.\\
+$P(\text{spam}\mid\text{offer})=\frac{0.6\times0.3}{0.6\times0.3+0.1\times0.7}=\frac{0.18}{0.25}=\mathbf{0.72}$.
+\end{numer}
+\begin{numer}[: smoothing]
+A value occurs $0$ times among $N_c=10$ examples; the feature has $V=3$ values. Without smoothing $P=0$; with $\alpha=1$: $P=\frac{0+1}{10+3}=\mathbf{0.077}$.
+\end{numer}
+
+\apa{very fast, needs little data, works well for text, handles many features and classes}{independence assumption rarely true, zero-frequency problem, probabilities poorly calibrated}{spam filtering, sentiment analysis, document classification, medical diagnosis}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{2.6cm}p{4.3cm}p{4.3cm}p{4.3cm}@{}}
+\toprule
+ & \textbf{k-NN} & \textbf{Decision tree} & \textbf{Naive Bayes}\\
+\midrule
+Type & instance-based, lazy & model-based (rules) & probabilistic\\
+Training & none & builds tree & counts frequencies\\
+Prediction speed & slow & fast & very fast\\
+Scaling needed & yes & no & no\\
+Interpretability & medium & high & medium\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{imp}
+Most asked: k-NN algorithm with a numerical; entropy and information gain numerical (Play-Tennis); Naive Bayes numerical with Laplace smoothing; distance measures.
+\end{imp}
+
+\begin{iq}
+\item \twom Define Euclidean and Manhattan distance.
+\item \twom Why is k-NN called a lazy learner?
+\item \twom Define entropy and information gain.
+\item \twom Why is Naive Bayes called ``naive''?
+\item \fivem Explain the effect of $k$ in k-NN.
+\item \fivem Explain Bayes' theorem with an example.
+\item \fivem What is pruning? Explain pre- and post-pruning.
+\item \tenm Explain the k-NN algorithm with a numerical example; list advantages and disadvantages.
+\item \tenm Explain the ID3 algorithm and construct a decision tree using information gain.
+\item \tenm Explain the Naive Bayes classifier with Laplace smoothing and a numerical.
+\end{iq}

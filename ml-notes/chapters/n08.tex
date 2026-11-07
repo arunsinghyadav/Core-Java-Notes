@@ -1,0 +1,120 @@
+\chapter{Dimensionality Reduction}\label{n:dimred}
+\studytime{2 hours}
+
+\begin{dfn}{Dimensionality reduction}
+\textbf{Dimensionality reduction} is the process of reducing the number of features (dimensions) of a dataset while keeping as much of the important information as possible.
+\end{dfn}
+\textbf{Why:} speed up training, remove noise and redundant features, avoid the curse of dimensionality, compress data, visualise data in 2-D or 3-D (\textbf{data visualisation}). \textbf{Cost:} some information is lost; pipelines become more complex.
+
+\section{The Curse of Dimensionality}
+\begin{dfn}{Curse of dimensionality}
+The \textbf{curse of dimensionality} refers to the problems that arise when data has very many features: the space becomes so large that data is \textbf{sparse}, distances between points become large and similar, and the amount of data needed to generalise grows \textbf{exponentially} with the number of dimensions.
+\end{dfn}
+\begin{itemize}
+  \item In a unit square, a random point is near the border (within 0.001) with probability $0.4\%$; in 10\,000 dimensions $>99.999999\%$. In general $P=1-(1-2\delta)^d$.
+  \item Average distance between two random points: $0.52$ in 2-D, $0.66$ in 3-D, about $408.25$ in 1\,000\,000-D $\Rightarrow$ new instances are far from training instances.
+  \item To cover a space with $b$ bins per feature you need $b^d$ cells (e.g.\ $10^{100}$ for 100 features).
+  \item Effect: high risk of \textbf{overfitting}; distance-based methods (k-NN, K-Means) suffer most.
+  \item Remedy: more data (impractical: exponential) or \textbf{reduce dimensions}.
+\end{itemize}
+\begin{numer}[: near the border]
+$\delta=0.001$. $d=2$: $1-0.998^2=0.004$ (0.4\%). $\ d=1000$: $1-0.998^{1000}=1-e^{-2}=\mathbf{0.865}$ (86\%).
+\end{numer}
+
+\section{Main Approaches}
+\begin{dfn}{Projection}
+In most real problems the training instances lie close to a much \textbf{lower-dimensional subspace}. \textbf{Projection} drops perpendicular onto that subspace (e.g.\ 3-D points near a plane are projected to 2-D). PCA is a projection method.
+\end{dfn}
+\begin{dfn}{Manifold learning}
+A $d$-dimensional \textbf{manifold} is a shape that locally looks like a $d$-dimensional plane but is bent or twisted in a higher-dimensional space (e.g.\ the \textbf{Swiss roll}: 2-D manifold in 3-D). \textbf{Manifold learning} models this shape and \textbf{unrolls} it; projection would squash its layers together. Examples: LLE, Isomap, t-SNE.
+\end{dfn}
+\begin{itemize}
+  \item \textbf{Manifold hypothesis:} most real high-dimensional data lie close to a much lower-dimensional manifold.
+  \item \textbf{Feature selection} keeps a subset of original features; \textbf{feature extraction} creates new combined features (PCA).
+  \item Linear methods: PCA, LDA. Non-linear: Kernel PCA, LLE, t-SNE, autoencoders.
+\end{itemize}
+\begin{drawit}{Projection vs.\ manifold (Swiss roll)}
+\centering
+\begin{tikzpicture}[scale=0.8]
+\draw[thick,fill=mlblue!10] (0,0)--(3,0.5)--(3.8,2)--(0.8,1.5)--cycle; \node[font=\scriptsize] at (1.9,1) {plane};
+\foreach \x/\y in {0.7/1.3,1.5/0.6,2.4/1.6,3/1.1,1.2/1.0,2.0/1.2}{\fill[mlorange] (\x,\y+0.35) circle(2pt); \draw[dotted] (\x,\y+0.35)--(\x,\y);}
+\node[font=\scriptsize] at (1.9,-0.5) {projection onto a plane};
+\begin{scope}[xshift=7cm,yshift=1cm]
+\draw[very thick,mlpurple,domain=0:900,samples=200,smooth] plot ({0.0022*\x*cos(\x)},{0.0022*\x*sin(\x)});
+\node[font=\scriptsize] at (0,-2.5) {Swiss roll: unroll, do not squash};
+\end{scope}
+\end{tikzpicture}
+\end{drawit}
+
+\section{Principal Component Analysis (PCA)}
+\begin{dfn}{PCA}
+\textbf{Principal Component Analysis} is an unsupervised, linear dimensionality-reduction technique that finds new orthogonal axes, the \textbf{principal components}, ordered so that the first captures the \textbf{maximum variance} of the data, the second the maximum remaining variance, and so on. The data is then projected onto the first $m$ components.
+\end{dfn}
+\begin{itemize}
+  \item \textbf{Preserving variance:} the axis that keeps maximum variance also minimises the mean squared distance between original points and their projections (least information lost).
+  \item Components are the \textbf{eigenvectors} of the covariance matrix; their \textbf{eigenvalues} are the variances along them.
+  \item PCA assumes data is \textbf{centred}; scale features first if units differ.
+\end{itemize}
+\textbf{Algorithm:}
+\begin{enumerate}
+  \item Standardise / centre the data: $\tilde{\mathbf X}=\mathbf X-\bar{\mathbf x}$.
+  \item Compute the covariance matrix $\mathbf C=\frac1{n-1}\tilde{\mathbf X}^{\!\top}\tilde{\mathbf X}$.
+  \item Find eigenvalues and eigenvectors: $\mathbf C\vect w=\lambda\vect w$; sort by $\lambda$ (descending).
+  \item Choose $m$ components (e.g.\ 95\% explained variance).
+  \item Project: $\mathbf Z=\tilde{\mathbf X}\mathbf W_m$.
+\end{enumerate}
+In practice PCA is computed with \textbf{SVD}: $\tilde{\mathbf X}=\mathbf U\mathbf S\mathbf V^{\!\top}$; rows of $\mathbf V^{\!\top}$ are the components, $\lambda_j=s_j^2/(n-1)$.
+
+\begin{numer}[: PCA by hand]
+Points $(1,1),(2,3),(3,2),(4,5),(5,4)$. Means $\bar x=\bar y=3$; centred: $(-2,-2),(-1,0),(0,-1),(1,2),(2,1)$.\\
+$s_{xx}=\frac{10}4=2.5$, $s_{yy}=2.5$, $s_{xy}=\frac{4+0+0+2+2}4=2$ $\Rightarrow$ $\mathbf C=\left[\begin{smallmatrix}2.5&2\\2&2.5\end{smallmatrix}\right]$.\\
+$\det(\mathbf C-\lambda\mathbf I)=(2.5-\lambda)^2-4=0\Rightarrow\lambda_1=4.5$, $\lambda_2=0.5$.\\
+$\vect w_1=(0.707,0.707)$, $\vect w_2=(0.707,-0.707)$. Explained variance: PC1 $\frac{4.5}{5}=\mathbf{90\%}$, PC2 $10\%$.\\
+Project A: $z_1=\frac{-2-2}{\sqrt2}=-2.83$. Keeping only PC1 reduces 2-D to 1-D while keeping 90\% of the variance.
+\end{numer}
+
+\begin{drawit}{Principal components of 2-D data}
+\centering
+\begin{tikzpicture}[scale=0.7]
+\draw[-Stealth] (0,0)--(6,0) node[below]{$x_1$}; \draw[-Stealth] (0,0)--(0,6) node[left]{$x_2$};
+\foreach \x/\y in {1/1,2/3,3/2,4/5,5/4,1.5/2,3.5/3.8,2.5/2.2,4.2/4.4}{\fill[mlblue] (\x,\y) circle(3pt);}
+\draw[very thick,mlred,-Stealth] (3,3)--(5.2,5.2) node[right,font=\scriptsize]{PC1 (90\%)};
+\draw[very thick,mlgreen,-Stealth] (3,3)--(3.9,2.1) node[right,font=\scriptsize]{PC2 (10\%)};
+\end{tikzpicture}
+\end{drawit}
+
+\begin{itemize}
+  \item \textbf{Explained variance ratio} $=\lambda_j/\sum\lambda_i$. Choose $m$ so cumulative ratio $\ge95\%$, or look for the elbow of the \textbf{scree plot}. (MNIST: 784 $\to$ 154 dims keeps 95\%.)
+  \item \textbf{Reconstruction:} $\hat{\mathbf X}=\mathbf Z\mathbf W_m^{\!\top}+\bar{\mathbf x}$; reconstruction error $=$ sum of discarded eigenvalues (compression).
+  \item \textbf{Randomized PCA} (fast approximation), \textbf{Incremental PCA} (mini-batches, large data), \textbf{Kernel PCA} (non-linear via kernel trick).
+\end{itemize}
+\apa{reduces dimensions and noise, speeds up learning, removes correlation, helps visualisation, unsupervised}{components hard to interpret, linear only, loses some information, sensitive to scaling and outliers}{image compression, face recognition (eigenfaces), visualisation, gene data, preprocessing for ML}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{3cm}p{6.6cm}p{6.6cm}@{}}
+\toprule
+ & \textbf{Feature selection} & \textbf{Feature extraction (PCA)}\\
+\midrule
+Output & subset of original features & new features (combinations)\\
+Interpretability & high & low\\
+Example & drop irrelevant columns & PCA, LDA\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{imp}
+Most asked: curse of dimensionality; projection vs.\ manifold learning; PCA steps with numerical (covariance, eigenvalues, explained variance); choosing number of components.
+\end{imp}
+
+\begin{iq}
+\item \twom Define dimensionality reduction. Give two reasons for using it.
+\item \twom What is the curse of dimensionality?
+\item \twom What is a manifold?
+\item \twom What is the explained variance ratio?
+\item \fivem Explain projection and manifold learning.
+\item \fivem How do you choose the number of principal components?
+\item \fivem Compare feature selection and feature extraction.
+\item \tenm Explain PCA with its algorithm and a numerical example.
+\item \tenm Explain the curse of dimensionality and the main approaches to dimensionality reduction.
+\end{iq}

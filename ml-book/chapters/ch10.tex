@@ -1,0 +1,998 @@
+\chapter{TensorFlow, and Loading and Preprocessing Data}
+\label{ch:tf}
+\begin{objectives}
+After studying this chapter you will be able to:
+\begin{itemize}
+  \item explain the roles of \textbf{TensorFlow} and \textbf{Keras} and work with \textbf{tensors}, \textbf{variables} and \textbf{broadcasting};
+  \item compute gradients with \textbf{automatic differentiation} (\texttt{GradientTape}) and write a \textbf{custom training loop};
+  \item explain how \texttt{tf.function} turns Python code into a fast \textbf{computation graph};
+  \item build efficient input pipelines with the \textbf{\texttt{tf.data}} API: batching, shuffling, mapping and \textbf{prefetching};
+  \item read data from \textbf{CSV} files and \textbf{TFRecord} files;
+  \item preprocess \textbf{numerical}, \textbf{categorical} and \textbf{text} features with Keras preprocessing layers, including \textbf{one-hot encoding} and \textbf{embeddings};
+  \item build a complete data-to-model pipeline;
+  \item answer 2-, 5- and 10-mark university questions on this part of Unit~V.
+\end{itemize}
+\end{objectives}
+
+\begin{pullquote}[--- an old saying among programmers]
+Garbage in, garbage out.
+\end{pullquote}
+
+In Chapter~9 we used Keras as a black box and handed it ready-made NumPy arrays. Real projects are different: the data live in files, are too big for memory, must be cleaned and encoded, and have to be delivered to the model fast enough to keep the processor busy. This chapter opens the box. First we look at \textbf{TensorFlow}, the engine under Keras; then we study how to \textbf{load and preprocess data} efficiently.
+
+%====================================================================
+\section{TensorFlow Basics}
+
+\begin{definition}[: TensorFlow]
+\textbf{TensorFlow} is an open-source library for numerical computation and large-scale machine learning. It offers (i)~a NumPy-like API for working with \emph{tensors}; (ii)~\textbf{automatic differentiation}, which computes gradients for any computation; (iii)~\textbf{graph optimisation} that makes computations fast; and (iv)~support for CPUs, GPUs and TPUs. \textbf{Keras} is its high-level API for building neural networks.
+\end{definition}
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{0.9\linewidth}{!}{%
+\begin{tikzpicture}[b/.style={draw,rounded corners,thick,align=center,font=\small,minimum height=1.0cm,minimum width=10cm}]
+\node[b,fill=mlgreen!16,draw=mlgreen] (k) at (0,3.0) {\textbf{Keras}: layers, models, \texttt{compile}, \texttt{fit}\\{\footnotesize you write this in a few lines}};
+\node[b,fill=mlorange!16,draw=mlorange] (d) at (0,1.5) {\textbf{\texttt{tf.data}} and \textbf{preprocessing layers}\\{\footnotesize load, clean and feed the data}};
+\node[b,fill=mlblue!14,draw=mlblue] (t) at (0,0) {\textbf{TensorFlow core}: tensors, operations, \texttt{GradientTape}, \texttt{tf.function}};
+\node[b,fill=mlpurple!14,draw=mlpurple] (h) at (0,-1.5) {\textbf{Hardware}: CPU \quad GPU \quad TPU};
+\foreach \p/\q in {k/d,d/t,t/h} \draw[-{Stealth},thick] (\p.south)--(\q.north);
+\pic[scale=1.3] at (7.2,1.8) {smile};
+\bubble[text width=3.4cm]{9.7,0.0}{7.3,1.4}{Keras is the steering wheel, TensorFlow is the \textbf{engine}!}
+\end{tikzpicture}}
+\caption{The layers of the TensorFlow ecosystem used in this unit.}\label{fig:tfstack}
+\end{figure}
+
+\begin{explain}
+Read the picture from top to bottom like a car. The top box is what you \emph{drive}: Keras models. The next box prepares the \emph{fuel}: the data pipeline. The blue box is the \emph{engine}: TensorFlow's tensor operations and automatic differentiation, which Keras calls for you. At the bottom is the \emph{road}, the hardware that runs the computation. In this chapter we look at the three lower boxes.
+\end{explain}
+
+\subsection{Tensors}
+
+\begin{definition}[: Tensor]
+A \textbf{tensor} is a multi-dimensional array of numbers of a single type. It is described by its \textbf{rank} (the number of dimensions or axes), its \textbf{shape} (the length of each axis) and its \textbf{dtype} (the number type, e.g.\ \texttt{float32}, \texttt{int32}). Tensors generalise scalars, vectors and matrices.
+\end{definition}
+
+\begin{center}
+\begin{tabular}{@{}cllp{5cm}@{}}
+\toprule
+\textbf{Rank} & \textbf{Name} & \textbf{Example (shape)} & \textbf{Real-life meaning}\\
+\midrule
+0 & scalar & $5$ \quad $()$ & one number (a loss value)\\
+1 & vector & $[1,2,3]$ \quad $(3)$ & the features of one instance\\
+2 & matrix & $\begin{bmatrix}1&2&3\\4&5&6\end{bmatrix}$ \quad $(2,3)$ & a table: 2 instances $\times$ 3 features\\
+3 & 3-D tensor & $(2,2,3)$ & a stack of matrices; e.g.\ a colour image $(H,W,3)$\\
+4 & 4-D tensor & $(32,28,28,1)$ & a batch of 32 grey-scale $28\times28$ images\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}
+% scalar
+\node[font=\small\bfseries,align=center] at (0.6,3.4) {Scalar\\rank 0, shape $()$};
+\node[draw,thick,fill=mlblue!15,minimum size=0.9cm] at (0.6,1.6) {5};
+% vector
+\begin{scope}[xshift=3.2cm]
+\node[font=\small\bfseries,align=center] at (0.5,3.4) {Vector\\rank 1, shape $(3)$};
+\foreach \i/\v in {0/1,1/2,2/3} \node[draw,thick,fill=mlorange!15,minimum size=0.8cm] at (0.5,2.4-0.8*\i-0.3) {\v};
+\end{scope}
+% matrix
+\begin{scope}[xshift=6.3cm]
+\node[font=\small\bfseries,align=center] at (1.2,3.4) {Matrix\\rank 2, shape $(2,3)$};
+\foreach \r/\c/\v in {0/0/1,0/1/2,0/2/3,1/0/4,1/1/5,1/2/6} \node[draw,thick,fill=mlgreen!15,minimum size=0.8cm] at (0.4+0.8*\c,2.1-0.8*\r) {\v};
+\end{scope}
+% 3D
+\begin{scope}[xshift=10.2cm]
+\node[font=\small\bfseries,align=center] at (1.5,3.4) {3-D tensor\\rank 3, shape $(2,2,3)$};
+\foreach \k/\col in {1/mlpurple!10,0/mlpurple!25} {
+  \foreach \r in {0,1} \foreach \c in {0,1,2} \node[draw,thick,fill=\col,minimum size=0.7cm,font=\scriptsize] at (0.4+0.7*\c+0.5*\k,1.9-0.7*\r+0.4*\k) {};
+}
+\node[font=\scriptsize,anchor=north] at (1.5,0.1) {2 matrices stacked};
+\end{scope}
+% 4D
+\begin{scope}[xshift=14.6cm]
+\node[font=\small\bfseries,align=center] at (1.3,3.4) {4-D tensor\\rank 4, shape $(32,28,28,1)$};
+\foreach \k/\pc in {3/12,2/20,1/28,0/36} \draw[thick,fill=mlred!\pc] (0.2+0.35*\k,0.6+0.25*\k) rectangle ++(1.4,1.4);
+\node[font=\scriptsize,anchor=north,align=center] at (1.2,0.5) {a batch of images:\\32 pictures of $28\times28$};
+\end{scope}
+\end{tikzpicture}}
+\caption{Tensors of increasing rank.}\label{fig:ranks}
+\end{figure}
+
+\begin{explain}
+A \textbf{scalar} is a single number. A \textbf{vector} is a column of numbers (a row of a dataset: the feature values of one instance). A \textbf{matrix} is a table with rows and columns (a whole dataset). A \textbf{3-D tensor} is a stack of matrices; for example a colour photograph has height, width and 3 colour channels. A \textbf{4-D tensor} adds a ``batch'' axis, so a mini-batch of 32 grey-scale $28\times28$ images has shape $(32,28,28,1)$ and $32\cdot28\cdot28=25\,088$ numbers. Neural networks process tensors from layer to layer.
+\end{explain}
+
+\subsection{Tensor Operations: Real Outputs}
+
+\begin{lstlisting}
+import tensorflow as tf
+
+t = tf.constant([[1, 2, 3],
+                 [4, 5, 6]])
+print(t.shape, t.dtype)          # (2, 3)  int32
+print(tf.transpose(t))           # [[1,4],[2,5],[3,6]]
+B = tf.constant([[1, 0], [0, 1], [1, 1]])
+print(tf.matmul(t, B))           # [[ 4,  5],[10, 11]]
+print(t + 10)                    # [[11,12,13],[14,15,16]]
+print(tf.reduce_sum(t, axis=0))  # [5 7 9]   (sum of each column)
+print(tf.reduce_sum(t, axis=1))  # [ 6 15]   (sum of each row)
+print(tf.reshape(t, (3, 2)))     # [[1,2],[3,4],[5,6]]
+print(tf.cast(t, tf.float32).dtype)   # float32
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{@{}p{4.2cm}p{9.2cm}@{}}
+\toprule
+\textbf{Operation} & \textbf{Result for} $t=\begin{bmatrix}1&2&3\\4&5&6\end{bmatrix}$\\
+\midrule
+\texttt{tf.transpose(t)} & $\begin{bmatrix}1&4\\2&5\\3&6\end{bmatrix}$ (shape $(3,2)$)\\[3mm]
+\texttt{tf.matmul(t, B)} with $B=\begin{bmatrix}1&0\\0&1\\1&1\end{bmatrix}$ & $\begin{bmatrix}1+0+3&0+2+3\\4+0+6&0+5+6\end{bmatrix}=\begin{bmatrix}4&5\\10&11\end{bmatrix}$\\[3mm]
+\texttt{t + 10}, \texttt{t * 2} & element-wise: $\begin{bmatrix}11&12&13\\14&15&16\end{bmatrix}$, $\begin{bmatrix}2&4&6\\8&10&12\end{bmatrix}$\\[3mm]
+\texttt{tf.reduce\_sum(t)} & $21$ \quad (axis 0: $[5,7,9]$; axis 1: $[6,15]$)\\
+\texttt{tf.reshape(t,(3,2))} & $\begin{bmatrix}1&2\\3&4\\5&6\end{bmatrix}$ (same numbers, new shape)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Broadcasting.} When two tensors have different shapes, TensorFlow automatically \emph{stretches} the smaller one along the missing axes (without copying data) so that the shapes match.
+\[
+  \begin{bmatrix}1&2&3\\4&5&6\end{bmatrix}+\begin{bmatrix}10&20&30\end{bmatrix}
+  =\begin{bmatrix}11&22&33\\14&25&36\end{bmatrix}.
+\]
+The row $[10,20,30]$ was added to \emph{every} row of the matrix. This is how a bias vector is added to all instances of a batch at once.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\foreach \r/\c/\v in {0/0/1,0/1/2,0/2/3,1/0/4,1/1/5,1/2/6} \node[draw,thick,fill=mlblue!15,minimum size=0.75cm] at (0.8*\c,-0.8*\r) {\v};
+\node[font=\Large] at (3.1,-0.4) {$+$};
+\foreach \c/\v in {0/10,1/20,2/30} \node[draw,thick,fill=mlorange!20,minimum size=0.75cm] at (4.0+0.8*\c,0) {\v};
+\foreach \c/\v in {0/10,1/20,2/30} \node[draw,thick,dashed,fill=mlorange!8,minimum size=0.75cm,text=gray] at (4.0+0.8*\c,-0.8) {\v};
+\draw[-{Stealth},thick,mlorange!80!black] (5.6,-0.4) -- (5.6,-0.62);
+\node[font=\scriptsize,mlorange!80!black,anchor=west,align=left] at (6.1,-0.8) {copy stretched\\automatically};
+\node[font=\Large] at (7.9,-0.4) {$=$};
+\foreach \r/\c/\v in {0/0/11,0/1/22,0/2/33,1/0/14,1/1/25,1/2/36} \node[draw,thick,fill=mlgreen!15,minimum size=0.75cm] at (8.7+0.8*\c,-0.8*\r) {\v};
+\end{tikzpicture}
+\caption{Broadcasting: the row vector is added to every row of the matrix.}\label{fig:broadcast}
+\end{figure}
+
+\begin{explain}
+On the left is the $2\times3$ matrix (blue). In the middle is the row vector $[10,20,30]$ (solid orange). Its dashed grey twin below is the \emph{virtual copy} that TensorFlow stretches so that the shapes match; no memory is actually copied. The sum (green) adds $10$ to the first column, $20$ to the second and $30$ to the third in \emph{both} rows.
+\end{explain}
+
+\paragraph{Variables.} A \texttt{tf.Variable} is a tensor whose value can be \emph{changed} (\texttt{assign}, \texttt{assign\_add}). The weights and biases of a model are variables, because training updates them. A constant created with \texttt{tf.constant} cannot be changed. For example, \texttt{v = tf.Variable([1.,2.]); v.assign([3.,4.]); v.assign\_add([1.,1.])} leaves $v=[4,5]$.
+
+\subsection{Automatic Differentiation: GradientTape}
+
+Training a network needs the gradient of the loss with respect to every weight. In Chapter~9 we computed these by hand with backpropagation; TensorFlow computes them \emph{automatically}.
+
+\begin{definition}[: Automatic differentiation and \texttt{GradientTape}]
+\textbf{Automatic differentiation (autodiff)} computes exact derivatives of a program by applying the chain rule to the elementary operations it performs. In TensorFlow, \texttt{tf.GradientTape} \emph{records} every operation on variables executed inside a \texttt{with} block (like a tape recorder) and then \texttt{tape.gradient(result, variables)} \emph{plays the tape backwards} to obtain the derivatives.
+\end{definition}
+
+\begin{lstlisting}
+x = tf.Variable(2.0)
+with tf.GradientTape() as tape:
+    y = x**2 + 3*x             # recorded on the tape
+print(tape.gradient(y, x))     # dy/dx = 2x + 3 = 7.0
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{@{}p{5.1cm}p{3.8cm}p{4.2cm}@{}}
+\toprule
+\textbf{Function and point} & \textbf{By hand} & \textbf{TensorFlow output}\\
+\midrule
+$y=x^2+3x$ at $x=2$ & $2x+3=7$ & \texttt{7.0}\\
+$y=x^3$ at $x=2$ (first derivative) & $3x^2=12$ & \texttt{12.0}\\
+$y=x^3$ at $x=2$ (second derivative, nested tapes) & $6x=12$ & \texttt{12.0}\\
+$z=ab+b^2$ at $(a,b)=(2,3)$ & $\partial z/\partial a=b=3$, $\partial z/\partial b=a+2b=8$ & \texttt{3.0}, \texttt{8.0} (and $z=15$)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[b/.style={draw,rounded corners,thick,minimum height=1.0cm,minimum width=2.2cm,align=center,font=\small}]
+\node[draw,rounded corners,thick,fill=gray!10,minimum width=8.5cm,minimum height=2.7cm] at (3.7,1.2) {};
+\node[font=\small\bfseries] at (3.7,2.3) {the tape (recording)};
+\node[b,fill=mlblue!14,draw=mlblue] (x) at (0,0.6) {$x=2$};
+\node[b,fill=mlorange!14,draw=mlorange] (a) at (3.0,1.2) {$a=x^2=4$};
+\node[b,fill=mlorange!14,draw=mlorange] (c) at (3.0,0.0) {$c=3x=6$};
+\node[b,fill=mlgreen!14,draw=mlgreen] (y) at (6.4,0.6) {$y=a+c=10$};
+\draw[-{Stealth},very thick,mlblue] (x)--(a); \draw[-{Stealth},very thick,mlblue] (x)--(c);
+\draw[-{Stealth},very thick,mlblue] (a)--(y); \draw[-{Stealth},very thick,mlblue] (c)--(y);
+\node[font=\small\bfseries,mlred,anchor=west] at (9.0,2.1) {play it backwards:};
+\node[font=\small,anchor=west] at (9.0,1.45) {$\partial y/\partial a=1,\ \partial y/\partial c=1$};
+\node[font=\small,anchor=west] at (9.0,0.85) {$\partial a/\partial x=2x=4,\ \partial c/\partial x=3$};
+\node[font=\small,anchor=west,mlred] at (9.0,0.2) {$\dfrac{dy}{dx}=1\cdot4+1\cdot3=\mathbf{7}$};
+\pic[scale=1.2] at (13.6,1.3) {smile};
+\bubble[text width=3.0cm]{14.3,-1.3}{13.7,0.9}{I recorded everything, so I can differentiate it!}
+\end{tikzpicture}}
+\caption{How \texttt{GradientTape} computes $dy/dx$ for $y=x^2+3x$ at $x=2$.}\label{fig:tape}
+\end{figure}
+
+\begin{explain}
+\textbf{Left:} while the \texttt{with} block runs, the tape records every operation (blue arrows): from $x=2$ it computes $a=x^2=4$ and $c=3x=6$, then $y=a+c=10$. \textbf{Right:} \texttt{tape.gradient} walks the tape \emph{backwards} and applies the chain rule: $y$ depends on $a$ and $c$ with slope $1$ each; $a$ depends on $x$ with slope $2x=4$; $c$ depends on $x$ with slope $3$. Adding the two paths gives $dy/dx=1\cdot4+1\cdot3=7$, exactly the derivative $2x+3$ at $x=2$. This is backpropagation, done automatically for any computation.
+\end{explain}
+
+\subsection{A Custom Training Loop}
+
+Keras \texttt{fit} hides the training loop. With \texttt{GradientTape} we can write it ourselves. We retrain the study-hours regression of Chapter~4 (hours $1,\dots,5$, marks $35,45,50,65,70$). We centre the hours (subtract $3$) so that gradient descent converges quickly.
+
+\begin{lstlisting}
+hours = tf.constant([1, 2, 3, 4, 5.]); marks = tf.constant([35, 45, 50, 65, 70.])
+xc = hours - 3.0
+w = tf.Variable(0.0); b = tf.Variable(0.0); eta = 0.05
+
+for step in range(200):
+    with tf.GradientTape() as tape:
+        pred = w * xc + b
+        loss = tf.reduce_mean((pred - marks) ** 2) / 2
+    gw, gb = tape.gradient(loss, [w, b])     # automatic gradients
+    w.assign_sub(eta * gw)                   # w <- w - eta * gradient
+    b.assign_sub(eta * gb)
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{@{}rcccc@{}}
+\toprule
+\textbf{Step} & 1 & 10 & 50 & 200\\
+\midrule
+slope $w$ & 0.900 & 5.862 & 8.954 & \textbf{9.000}\\
+bias $b$ (marks at 3 hours) & 2.650 & 21.267 & 48.922 & \textbf{52.998}\\
+loss $J$ & 1487.5 & 572.0 & 11.2 & \textbf{2.000}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent After 200 steps the loop has found slope $w=9$ and $b=53$. The intercept at $0$ hours is $b-3w=53-27=\mathbf{26}$: exactly the line $\widehat{\text{marks}}=26+9\times\text{hours}$ that we obtained in Chapter~4 by the least-squares formula (and the minimum loss $2.0$ equals $\text{SSE}/(2n)=20/10$).
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1,horizontal sep=1.6cm},width=7.2cm,height=5.6cm,grid=both,grid style={gray!18},
+  title style={font=\small\bfseries},xlabel={training step},xmode=log,xmin=0.8,xmax=250]
+\nextgroupplot[title={(a) The parameters converge},ylabel={value},ymin=0,ymax=58,legend style={font=\scriptsize,at={(0.97,0.5)},anchor=east}]
+\addplot[very thick,mlblue,mark=*] coordinates {(1,0.9)(2,1.71)(5,3.69)(10,5.86)(20,7.91)(50,8.95)(100,9.0)(200,9.0)};
+\addplot[very thick,mlorange,mark=square*] coordinates {(1,2.65)(2,5.17)(5,11.99)(10,21.27)(20,34.0)(50,48.92)(100,52.69)(200,53.0)};
+\legend{{slope $w\rightarrow 9$},{bias $b\rightarrow 53$}}
+\nextgroupplot[title={(b) The loss decreases},ylabel={loss $J$},ymode=log,ymin=1.5,ymax=2000]
+\addplot[very thick,mlred,mark=*] coordinates {(1,1487.5)(2,1335.2)(5,968.6)(10,572.0)(20,203.5)(50,11.2)(100,2.05)(200,2.0)};
+\draw[dashed,gray] (axis cs:0.8,2.0)--(axis cs:250,2.0);
+\node[font=\scriptsize,anchor=south east] at (axis cs:240,2.1) {minimum $=2.0$};
+\end{groupplot}
+\end{tikzpicture}
+\caption{Output of the custom \texttt{GradientTape} training loop (real run; logarithmic horizontal axis).}\label{fig:tapeloop}
+\end{figure}
+
+\begin{explain}
+\textbf{(a)} Both parameters start at $0$ and approach their final values: the slope (blue) reaches $9$ after about 50 steps, and the bias (orange) rises to $53$ a bit more slowly. \textbf{(b)} The loss (red) falls from about $1488$ at the beginning to its minimum $2.0$ (the unavoidable error of the best straight line), which it reaches after roughly $100$ steps. The horizontal axes are logarithmic, so the steps near the start are spread out. Keras does exactly this inside \texttt{fit}, with the gradients computed by the same tape.
+\end{explain}
+
+\subsection{Speeding Up with \texttt{tf.function}}
+
+\begin{definition}[: \texttt{tf.function} and computation graph]
+Decorating a Python function with \texttt{@tf.function} (or calling \texttt{tf.function(f)}) makes TensorFlow \textbf{trace} the function once, converting the operations into a \textbf{computation graph}, a data structure that TensorFlow can optimise (merging operations, removing redundant work, parallelising) and run without the Python interpreter. Plain TensorFlow code that runs step by step in Python is called \textbf{eager execution}.
+\end{definition}
+
+We timed a function that performs 20 matrix multiplications followed by \texttt{tanh} on a $300\times300$ matrix, 200 calls each:
+
+\begin{center}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Mode} & \textbf{Time per call} & \textbf{Speed-up}\\
+\midrule
+Eager (Python, step by step) & 22.8 ms & 1.0$\times$\\
+\texttt{tf.function} (graph) & \textbf{15.7 ms} & \textbf{1.45$\times$}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The graph version is about $1.45\times$ faster on this machine (the gain depends on the hardware and on how much Python overhead the function has). Keras models are compiled to graphs automatically, which is one reason \texttt{model.fit} is fast. \textbf{Caution:} Python side effects such as \texttt{print} run only while the function is being traced (the first call), not on every call, so use \texttt{tf.print} for output inside graph functions.
+
+\procon{TensorFlow}
+{\item Fast numerical computing on CPU, GPU and TPU
+ \item Automatic differentiation: no hand-written gradients
+ \item Graph optimisation and deployment (mobile, web, servers)
+ \item Large ecosystem; Keras on top for quick models}
+{\item Steeper learning curve than Keras alone
+ \item Debugging graph code can be harder
+ \item Large library; heavy to install
+ \item Rapidly changing API (version differences)}
+{\item Image recognition and language processing
+ \item Recommender systems and forecasting
+ \item Research prototypes and production services
+ \item On-device machine learning}
+
+%====================================================================
+\section{The \texttt{tf.data} API}
+
+\subsection{Why Do We Need Input Pipelines?}
+
+Real datasets do not fit in memory, live in many files and need preprocessing. If the model waits for data, an expensive GPU sits idle. \texttt{tf.data} lets us describe a \textbf{pipeline} of simple steps that reads, transforms, shuffles and batches the data \emph{efficiently}.
+
+\begin{definition}[: \texttt{tf.data.Dataset}]
+A \texttt{tf.data.Dataset} represents a (possibly huge or infinite) \textbf{sequence of elements}, such as examples or batches. It is created from data in memory or from files and then \textbf{transformed} by chaining methods, each returning a new dataset: \texttt{map}, \texttt{shuffle}, \texttt{batch}, \texttt{repeat}, \texttt{prefetch}, \dots. Elements are produced \emph{lazily}, only when the model asks for them.
+\end{definition}
+
+\begin{center}
+\begin{tabular}{@{}p{6.6cm}p{6.8cm}@{}}
+\toprule
+\textbf{Method} & \textbf{Purpose}\\
+\midrule
+\texttt{Dataset.from\_tensor\_slices(t)} & create a dataset whose elements are the \emph{rows} of a tensor (or tuple of tensors $(X,y)$)\\
+\texttt{.map(f)} & apply a function to every element (parsing, scaling, augmentation)\\
+\texttt{.shuffle(buffer\_size)} & randomise the order of the elements\\
+\texttt{.batch(n)} & group $n$ consecutive elements into one batch\\
+\texttt{.repeat(k)} & repeat the dataset $k$ times (forever if omitted)\\
+\texttt{.take(k)}, \texttt{.skip(k)} & use the first $k$ elements / skip the first $k$\\
+\texttt{.cache()} & keep the data in memory after the first pass\\
+\texttt{.prefetch(n)} & prepare the next batches while the model is busy\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Basic Operations: Real Outputs}
+
+\begin{lstlisting}
+ds = tf.data.Dataset.range(10)                    # 0, 1, 2, ..., 9
+list(ds.batch(4))                                 # [0,1,2,3], [4,5,6,7], [8,9]
+list(ds.batch(4, drop_remainder=True))            # [0,1,2,3], [4,5,6,7]
+list(ds.map(lambda v: v * v))                     # 0,1,4,9,16,25,36,49,64,81
+list(tf.data.Dataset.range(3).repeat(2))          # 0,1,2,0,1,2
+\end{lstlisting}
+
+\noindent \texttt{batch(4)} cuts ten elements into batches of $4,4,2$ (the last batch is smaller unless \texttt{drop\_remainder=True}). For features and labels together:
+
+\begin{lstlisting}
+X = tf.constant([[1.,2.],[3.,4.],[5.,6.],[7.,8.]]);  y = tf.constant([0,1,0,1])
+ds = tf.data.Dataset.from_tensor_slices((X, y))
+# elements: ([1.,2.], 0), ([3.,4.], 1), ...   shapes (2,) and ()
+list(ds.batch(2))   # ( [[1,2],[3,4]], [0,1] ),  ( [[5,6],[7,8]], [0,1] )
+\end{lstlisting}
+
+\subsection{Shuffling with a Buffer}
+
+Training data must be shuffled so that each mini-batch is a random sample. A huge dataset cannot be shuffled completely in memory, so \texttt{shuffle(buffer\_size)} keeps a \textbf{buffer} of the next \texttt{buffer\_size} elements, repeatedly \emph{draws one at random} from the buffer to output, and refills the freed place with the next element of the source.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[ball/.style={circle,draw,thick,minimum size=0.75cm,inner sep=0pt,font=\small},bowl/.style={draw,thick,rounded corners,fill=mlorange!8,minimum width=3.4cm,minimum height=1.25cm}]
+\node[font=\small\bfseries,anchor=west] at (-0.5,3.6) {\texttt{range(10).shuffle(buffer\_size=3)}: the first draws (real output starts $1,3,0,4,\dots$)};
+% step 0
+\node[font=\small,anchor=east] at (-0.2,2.0) {Fill the buffer:};
+\node[bowl] at (2.0,2.0) {};
+\node[ball,fill=mlblue!15] at (1.2,2.0) {0}; \node[ball,fill=mlblue!15] at (2.0,2.0) {1}; \node[ball,fill=mlblue!15] at (2.8,2.0) {2};
+\node[font=\small,anchor=west] at (4.2,2.0) {source still waiting: $3,4,5,\dots$};
+% step 1
+\node[font=\small,anchor=east] at (-0.2,0.5) {Draw one at random:};
+\node[bowl] at (2.0,0.5) {};
+\node[ball,fill=mlblue!15] at (1.2,0.5) {0}; \node[ball,fill=mlgreen!40,very thick] at (2.0,0.5) {1}; \node[ball,fill=mlblue!15] at (2.8,0.5) {2};
+\draw[-{Stealth},very thick,mlgreen] (3.5,0.5)--(4.5,0.5) node[right,font=\small]{output: \textbf{1}, refill with $3$};
+% step 2
+\node[font=\small,anchor=east] at (-0.2,-1.0) {Next draw:};
+\node[bowl] at (2.0,-1.0) {};
+\node[ball,fill=mlblue!15] at (1.2,-1.0) {0}; \node[ball,fill=mlblue!15] at (2.0,-1.0) {2}; \node[ball,fill=mlgreen!40,very thick] at (2.8,-1.0) {3};
+\draw[-{Stealth},very thick,mlgreen] (3.5,-1.0)--(4.5,-1.0) node[right,font=\small]{output: \textbf{3}, refill with $4$};
+% step 3
+\node[font=\small,anchor=east] at (-0.2,-2.5) {Next draw:};
+\node[bowl] at (2.0,-2.5) {};
+\node[ball,fill=mlgreen!40,very thick] at (1.2,-2.5) {0}; \node[ball,fill=mlblue!15] at (2.0,-2.5) {2}; \node[ball,fill=mlblue!15] at (2.8,-2.5) {4};
+\draw[-{Stealth},very thick,mlgreen] (3.5,-2.5)--(4.5,-2.5) node[right,font=\small]{output: \textbf{0}, refill with $5$};
+\pic[scale=1.1] at (11.4,1.3) {smile};
+\bubble[text width=3.3cm]{12.6,-1.6}{11.5,0.9}{I always pick from a \textbf{small bowl}, not from the whole dataset!}
+\end{tikzpicture}}
+\caption{How a shuffle buffer of size 3 produces the output $1,3,0,\dots$ (real output below).}\label{fig:shufflebuf}
+\end{figure}
+
+\begin{explain}
+The bowl holds only three elements. At the start it contains $0,1,2$. A random draw gives \textbf{1}; the freed place is refilled with the next source element, $3$, so the bowl contains $0,2,3$; the next random draw gives \textbf{3}, then the bowl is refilled with $4$ and the third draw gives \textbf{0}, and so on. Continuing the process produces exactly the real output \texttt{[1,3,0,4,2,5,6,8,7,9]}. Because an element can only move \emph{a few places} (the bowl is small), the result is only \emph{lightly} shuffled.
+\end{explain}
+
+\begin{center}
+\begin{tabular}{@{}lp{9cm}@{}}
+\toprule
+\textbf{Call} & \textbf{Output (seed 42)}\\
+\midrule
+\texttt{range(10).shuffle(3)} & $1,3,0,4,2,5,6,8,7,9$ (still nearly ordered)\\
+\texttt{range(10).shuffle(10)} & $5,3,7,1,4,0,2,8,6,9$ (fully shuffled)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{keyidea}
+\textbf{Rule:} use a buffer at least as large as the dataset if memory allows (or at least a few thousand elements), and always call \texttt{shuffle} \emph{before} \texttt{batch}, so that the examples inside a batch are mixed, not the batches themselves.
+\end{keyidea}
+
+\subsection{Performance: Prefetching and Parallel Processing}
+
+Imagine a restaurant with one chef and one customer. If the chef cooks a dish, waits while it is eaten, and only then starts the next one, the customer waits a long time. A better kitchen prepares the \emph{next} dish while the customer eats the current one. In an input pipeline the \textbf{CPU prepares the next batch while the model (GPU) trains on the current batch}. That is what \texttt{prefetch} does.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[x=1.15cm,y=1.0cm,p/.style={draw,thick,fill=mlorange!30,minimum height=0.6cm,anchor=west,font=\scriptsize},t/.style={draw,thick,fill=mlblue!25,minimum height=0.6cm,anchor=west,font=\scriptsize}]
+\node[font=\small\bfseries,anchor=west] at (-1.8,4.6) {(a) Without prefetch: prepare, then train, then prepare\ldots};
+\node[font=\scriptsize,anchor=east] at (-0.1,3.7) {one worker};
+\foreach \i/\txt/\kind in {0/prep 1/p,1/train 1/t,2/prep 2/p,3/train 2/t,4/prep 3/p,5/train 3/t} {
+  \ifx\kind p \node[p,minimum width=1.0cm] at (\i,3.7) {\txt};
+  \else \node[t,minimum width=1.0cm] at (\i,3.7) {\txt}; \fi
+}
+\node[font=\small\bfseries,anchor=west] at (-1.8,2.4) {(b) With prefetch: the next batch is prepared during training};
+\node[font=\scriptsize,anchor=east] at (-0.1,1.5) {CPU (data)};
+\node[font=\scriptsize,anchor=east] at (-0.1,0.6) {GPU (model)};
+\foreach \i in {0,1,2,3,4} \node[p,minimum width=1.0cm] at (\i,1.5) {prep \the\numexpr\i+1\relax};
+\foreach \i in {1,2,3,4,5} \node[t,minimum width=1.0cm] at (\i,0.6) {train \the\numexpr\i\relax};
+\draw[-{Stealth},thick] (-0.1,-0.4)--(6.4,-0.4) node[right,font=\small]{time};
+\draw[dashed,mlred,thick] (6.0,0.3)--(6.0,3.35);
+\node[font=\scriptsize,anchor=west,align=left] at (6.7,3.7) {finished: \textbf{3 batches}};
+\node[font=\scriptsize,anchor=west,align=left] at (6.7,0.9) {finished: \textbf{5 batches}};
+\pic[scale=1.0] at (9.9,2.2) {smile};
+\end{tikzpicture}}
+\caption{Time line of input processing: orange blocks are data preparation, blue blocks are training steps.}\label{fig:prefetch}
+\end{figure}
+
+\begin{explain}
+\textbf{(a)} A single worker alternates between preparing a batch (orange) and training on it (blue), so the model is idle half of the time and only 3 batches are finished in the time shown. \textbf{(b)} With prefetch, the data pipeline (top row) prepares batch $k+1$ \emph{at the same time} as the model (bottom row) trains on batch $k$. After the first preparation the two rows are busy all the time, and in the same time 5 batches are finished. The best case is a speed-up of about $2\times$ when preparation and training take equal time.
+\end{explain}
+
+We measured this with a pipeline in which preparing one element takes 5 ms and one training step takes 5 ms (100 elements):
+
+\begin{center}
+\begin{tabular}{@{}lc@{}}
+\toprule
+\textbf{Pipeline} & \textbf{Time for 100 steps}\\
+\midrule
+No prefetch (prepare, train, prepare, \dots) & 1.19 s\\
+\texttt{.prefetch(1)} & \textbf{0.60 s}\\
+Parallel \texttt{map} (4 calls) \texttt{+ prefetch} & \textbf{0.55 s}\\
+Training only (no preparation at all; the lower limit) & 0.55 s\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Prefetching halves the time ($1.19\to0.60$ s), and parallel preparation reaches the lower limit set by the training itself. (Recent TensorFlow versions add prefetching automatically unless disabled; we disabled it for the first row to show the effect.)
+
+\begin{lstlisting}
+ds = (tf.data.Dataset.from_tensor_slices((X, y))
+        .shuffle(buffer_size=10_000)                     # 1. mix the examples
+        .map(preprocess, num_parallel_calls=tf.data.AUTOTUNE)  # 2. prepare in parallel
+        .batch(32)                                       # 3. group into batches
+        .prefetch(tf.data.AUTOTUNE))                     # 4. overlap with training
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{@{}p{6.6cm}p{6.8cm}@{}}
+\toprule
+\textbf{Good practice} & \textbf{Why}\\
+\midrule
+\texttt{shuffle} before \texttt{batch} & mixes the examples inside each batch\\
+\texttt{map} with \texttt{num\_parallel\_calls} set to \texttt{AUTOTUNE} & uses several CPU cores for preprocessing\\
+\texttt{prefetch(AUTOTUNE)} last & overlaps data preparation with training\\
+\texttt{cache()} after expensive steps & avoids repeating work every epoch (if the data fit in memory)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\procon{The \texttt{tf.data} API}
+{\item Handles data larger than memory
+ \item Fast: parallel reading, prefetching, caching
+ \item Clean chain of simple operations
+ \item Works directly with Keras \texttt{fit}}
+{\item New concepts to learn (lazy datasets, buffers)
+ \item Debugging inside \texttt{map} is harder
+ \item Poorly ordered steps (e.g.\ \texttt{batch} before \texttt{shuffle}) give subtle bugs
+ \item Little benefit for tiny in-memory datasets}
+{\item Training on large image, text and sensor datasets
+ \item Reading many files (CSV, TFRecord)
+ \item On-the-fly data augmentation
+ \item Production data pipelines}
+
+%====================================================================
+\section{Reading Data from CSV and TFRecord Files}
+
+\subsection{Reading CSV Files}
+
+CSV is the most common file format for tabular data. \texttt{tf.data} reads it line by line, so the whole file never has to be loaded into memory.
+
+\begin{lstlisting}
+defaults = [0.] * 11                        # 10 features + 1 target, all float
+
+def parse_csv_line(line):
+    fields = tf.io.decode_csv(line, record_defaults=defaults)
+    return tf.stack(fields[:-1]), tf.stack(fields[-1:])   # (features, target)
+
+def csv_dataset(path, shuffle=False, batch_size=32):
+    ds = tf.data.TextLineDataset(path).skip(1)             # skip the header line
+    if shuffle: ds = ds.shuffle(1000)
+    return (ds.map(parse_csv_line, num_parallel_calls=tf.data.AUTOTUNE)
+              .batch(batch_size).prefetch(1))
+\end{lstlisting}
+
+\begin{itemize}
+  \item \texttt{TextLineDataset} returns every line of the file as a string.
+  \item \texttt{tf.io.decode\_csv} splits a line into fields; \texttt{record\_defaults} gives the type (and the default for missing values) of each column.
+  \item The result has \texttt{element\_spec} (features of shape $(\texttt{None},10)$, target of shape $(\texttt{None},1)$): \texttt{None} is the (variable) batch size.
+\end{itemize}
+
+\textbf{Real result.} We wrote the 1800-row training part of the non-linear regression data of Chapter~9 to a CSV file (first data line: \texttt{0.310480,0.720915,0.776527,\dots}), read it with the pipeline above, and trained the regression MLP with a \texttt{Normalization} layer inside the model. Early stopping ended training after 99 epochs and the test RMSE was \textbf{1.31} (compared with $1.22$ in Chapter~9 with array data and a different random split of the validation set: the same level, and close to the noise floor of $1.0$).
+
+\subsection{TFRecord Files}
+
+\begin{definition}[: TFRecord]
+\textbf{TFRecord} is TensorFlow's preferred binary file format for large datasets: a file containing a sequence of \textbf{records}, each a serialised byte string (usually a \emph{protocol buffer} \texttt{tf.train.Example}). The file is read \textbf{sequentially}, which is very fast for large datasets on disk or in the cloud, and supports compression and parallel reading of many shards.
+\end{definition}
+
+A \texttt{tf.train.Example} is a dictionary of named \emph{features}, each holding a list of bytes (e.g.\ an encoded image or a string), floats or 64-bit integers.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{0.95\linewidth}{!}{%
+\begin{tikzpicture}[b/.style={draw,rounded corners,thick,align=center,font=\small,inner sep=5pt}]
+\node[b,fill=gray!10,minimum width=15.5cm,minimum height=4.6cm,anchor=north west] at (-0.3,3.0) {};
+\node[font=\small\bfseries,anchor=north west] at (-0.1,2.9) {TFRecord file};
+% record 1
+\node[b,fill=mlblue!10,draw=mlblue,minimum width=4.2cm,minimum height=2.7cm,anchor=north west] at (0.1,2.3) {};
+\node[font=\small\bfseries,anchor=north west,mlblue] at (0.2,2.25) {record 1 = Example};
+\node[b,fill=mlorange!15,draw=mlorange,minimum width=3.7cm,anchor=north west] at (0.3,1.65) {\texttt{"x"}: FloatList [1.0, 2.0]};
+\node[b,fill=mlgreen!15,draw=mlgreen,minimum width=3.7cm,anchor=north west] at (0.3,0.75) {\texttt{"label"}: Int64List [0]};
+% record 2
+\node[b,fill=mlblue!10,draw=mlblue,minimum width=4.2cm,minimum height=2.7cm,anchor=north west] at (4.6,2.3) {};
+\node[font=\small\bfseries,anchor=north west,mlblue] at (4.7,2.25) {record 2 = Example};
+\node[b,fill=mlorange!15,draw=mlorange,minimum width=3.7cm,anchor=north west] at (4.8,1.65) {\texttt{"x"}: FloatList [3.0, 4.0]};
+\node[b,fill=mlgreen!15,draw=mlgreen,minimum width=3.7cm,anchor=north west] at (4.8,0.75) {\texttt{"label"}: Int64List [1]};
+% record 3
+\node[b,fill=mlblue!10,draw=mlblue,minimum width=4.2cm,minimum height=2.7cm,anchor=north west] at (9.1,2.3) {};
+\node[font=\small\bfseries,anchor=north west,mlblue] at (9.2,2.25) {record 3 = Example};
+\node[b,fill=mlorange!15,draw=mlorange,minimum width=3.7cm,anchor=north west] at (9.3,1.65) {\texttt{"x"}: FloatList [5.0, 6.0]};
+\node[b,fill=mlgreen!15,draw=mlgreen,minimum width=3.7cm,anchor=north west] at (9.3,0.75) {\texttt{"label"}: Int64List [0]};
+\node[font=\small,anchor=north west] at (13.5,1.7) {$\ldots$};
+\node[font=\scriptsize,anchor=north,align=center] at (7.2,-1.9) {each record is serialised to bytes and stored one after the other (3 records = 159 bytes in the real example)};
+\end{tikzpicture}}
+\caption{The structure of a TFRecord file made of \texttt{tf.train.Example} records.}\label{fig:tfrecord}
+\end{figure}
+
+\begin{explain}
+The big grey box is the file; it holds a \textbf{sequence of records} (blue boxes). Each record is one training example, stored as a dictionary of named features: here \texttt{"x"} holds two floating-point numbers (orange) and \texttt{"label"} holds one integer (green). Reading the file means reading these records one after another from disk, which is very fast; each record is then \emph{parsed} back into tensors.
+\end{explain}
+
+\begin{lstlisting}
+# writing
+with tf.io.TFRecordWriter("toy.tfrecord") as writer:
+    for xs, label in [([1., 2.], 0), ([3., 4.], 1), ([5., 6.], 0)]:
+        example = tf.train.Example(features=tf.train.Features(feature={
+            "x":     tf.train.Feature(float_list=tf.train.FloatList(value=xs)),
+            "label": tf.train.Feature(int64_list=tf.train.Int64List(value=[label])),
+        }))
+        writer.write(example.SerializeToString())
+
+# reading and parsing
+spec = {"x": tf.io.FixedLenFeature([2], tf.float32),
+        "label": tf.io.FixedLenFeature([], tf.int64)}
+ds = tf.data.TFRecordDataset("toy.tfrecord").map(
+        lambda rec: tf.io.parse_single_example(rec, spec))
+for r in ds: print(r["x"].numpy(), int(r["label"]))
+# [1. 2.] 0   [3. 4.] 1   [5. 6.] 0
+\end{lstlisting}
+
+The three records took \textbf{159 bytes} in total and were read back exactly. For images one usually stores each encoded JPEG as a \emph{bytes feature} together with its label.
+
+\paragraph{Images in folders.} For images stored in one folder per class, the function \texttt{image\_dataset\_\allowbreak from\_directory} of \texttt{keras.utils} creates a labelled \texttt{tf.data} dataset directly.
+
+\begin{center}
+\begin{tabular}{@{}p{3cm}p{5.1cm}p{5.1cm}@{}}
+\toprule
+ & \textbf{CSV} & \textbf{TFRecord}\\
+\midrule
+Format & text, human-readable & binary, compact\\
+Best for & small to medium tabular data & very large datasets, images, audio\\
+Reading speed & slower (text parsing) & fast sequential reads\\
+Inspect with a text editor? & yes & no\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\procon{TFRecord format}
+{\item Fast sequential reading of huge datasets
+ \item Compact binary storage; supports compression
+ \item Easy to split into shards and read in parallel
+ \item Integrates directly with \texttt{tf.data}}
+{\item Not human-readable
+ \item Extra code to write and parse the records
+ \item Overkill for small datasets
+ \item Schema must be known when parsing}
+{\item Large image and speech datasets
+ \item Distributed and cloud training
+ \item Efficient storage of preprocessed features}
+
+%====================================================================
+\section{Preprocessing the Input Features}
+
+Neural networks need numerical, well-scaled inputs. Text categories must be encoded and numbers must be normalised. There are three places where this can be done:
+
+\begin{center}
+\begin{tabular}{@{}p{4.1cm}p{9.2cm}@{}}
+\toprule
+\textbf{Where} & \textbf{Remark}\\
+\midrule
+Before training (pandas / scikit-learn) & simple, but you must remember to repeat exactly the same steps when using the model later\\
+Inside \texttt{tf.data} (\texttt{map}) & runs in the pipeline, in parallel with training\\
+As \textbf{Keras preprocessing layers inside the model} & the model carries its preprocessing with it, so the same code is used in training and in production (avoids \textbf{training--serving skew})\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Numerical Features: Normalization}
+
+\begin{definition}[: \texttt{Normalization} layer]
+\texttt{layers.Normalization()} standardises each feature to mean $0$ and standard deviation $1$, $x'=(x-\mu)/\sigma$. The statistics $\mu,\sigma$ are learned from the training data with \texttt{adapt} before training and stored in the layer.
+\end{definition}
+
+\begin{example}[: Normalization on three numbers]
+The training values $10,20,30$ give $\mu=20$ and (population) variance $\frac{100+0+100}{3}=66.67$, so $\sigma=8.165$.
+\[
+  10\to\frac{10-20}{8.165}=-1.2247,\qquad 20\to0,\qquad 30\to+1.2247 .
+\]
+This is exactly what Keras prints: mean \texttt{[20.0]}, variance \texttt{[66.67]}, output $-1.2247,\ 0,\ 1.2247$.
+\end{example}
+
+\begin{lstlisting}
+norm = layers.Normalization()
+norm.adapt(X_train)                       # learn the means and standard deviations
+model = keras.Sequential([keras.Input((10,)), norm,       # preprocessing inside
+                          layers.Dense(50, activation="relu"), layers.Dense(1)])
+\end{lstlisting}
+
+\subsection{Categorical Features: One-Hot Encoding}
+
+A feature such as \texttt{"ocean\_proximity"} with values \texttt{"<1H OCEAN"}, \texttt{"INLAND"}, \texttt{"NEAR OCEAN"} must be turned into numbers. Giving them the numbers $0,1,2$ would wrongly suggest an order; instead we use \textbf{one-hot encoding}.
+
+\begin{definition}[: One-hot encoding]
+\textbf{One-hot encoding} represents a categorical value with $K$ possible values by a vector of length $K$ with a $1$ at the position of the category and $0$ elsewhere. In Keras this takes two layers: \texttt{StringLookup} (maps each string to an integer index using a vocabulary learned with \texttt{adapt}) and \texttt{CategoryEncoding} (converts the index to a one-hot vector).
+\end{definition}
+
+\begin{example}[: One-hot encoding, real output]
+\texttt{StringLookup} adapted on the data \texttt{["<1H OCEAN","INLAND","NEAR OCEAN","INLAND","<1H OCEAN"]} builds the vocabulary \texttt{INLAND}, \texttt{<1H OCEAN}, \texttt{NEAR OCEAN} (ordered by frequency). Then:
+
+\begin{center}
+\begin{tabular}{@{}lccl@{}}
+\toprule
+\textbf{Value} & \textbf{Index} & \textbf{One-hot vector} & \\
+\midrule
+\texttt{INLAND} & 0 & $[1,0,0]$ & \\
+\texttt{NEAR OCEAN} & 2 & $[0,0,1]$ & \\
+\texttt{<1H OCEAN} & 1 & $[0,1,0]$ & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Unknown categories.} If the vocabulary is fixed in advance with one \emph{out-of-vocabulary} slot, a known value gets its index shifted by one (\texttt{INLAND}$\to2$) and an unseen value such as \texttt{ISLAND} falls into slot $0$, so the model does not crash on new categories.
+\end{example}
+
+\subsection{Embeddings}
+
+One-hot vectors become huge when there are many categories (50 000 words, 1 million users) and treat all categories as equally different. An \textbf{embedding} gives every category a short, \emph{learned} vector.
+
+\begin{definition}[: Embedding]
+An \textbf{embedding layer} is a trainable \textbf{lookup table} (a matrix with one row per category and \texttt{output\_dim} columns). The input is the category's integer index; the output is the corresponding row. The rows are initialised randomly and learned by backpropagation like any other weights, so categories that behave similarly end up with \emph{similar vectors}.
+\end{definition}
+
+\begin{example}[: An embedding of 4 categories in 2 dimensions]
+\texttt{layers.Embedding(input\_dim=4, output\_dim=2)} creates a table of shape $(4,2)$, initially small random numbers, e.g.\ row 1 $=(-0.014,\ 0.045)$. Looking up the indices $[1,2,1]$ returns a $(3,2)$ tensor; the first and third rows are identical because both indices are 1.
+
+\medskip
+\textbf{Parameter count.} For 50 categories with 8-dimensional embeddings the table has $50\times8=400$ trainable numbers, while one-hot encoding would feed 50 numbers (mostly zeros) into the next layer.
+\end{example}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\draw[-{Stealth},thick] (-0.3,0)--(7.0,0) node[right,font=\small]{embedding dim 1};
+\draw[-{Stealth},thick] (0,-0.3)--(0,4.6) node[above,font=\small]{embedding dim 2};
+\node[circle,fill=mlblue!50,draw=mlblue,minimum size=0.35cm] at (1.3,3.6) {}; \node[font=\small,anchor=south] at (1.3,3.85) {\texttt{<1H OCEAN}};
+\node[circle,fill=mlblue!50,draw=mlblue,minimum size=0.35cm] at (2.4,3.0) {}; \node[font=\small,anchor=north west] at (2.6,2.85) {\texttt{NEAR OCEAN}};
+\node[circle,fill=mlorange!50,draw=mlorange,minimum size=0.35cm] at (5.6,0.9) {}; \node[font=\small,anchor=south] at (5.6,1.2) {\texttt{INLAND}};
+\draw[mlblue,dashed,thick] (1.85,3.3) ellipse (1.5cm and 0.85cm);
+\node[font=\scriptsize,mlblue,anchor=north west,align=left] at (0.2,1.9) {coastal categories\\ end up close together};
+\pic[scale=1.1] at (6.6,3.6) {smile};
+\end{tikzpicture}
+\caption{Illustration (not a real run) of what a \emph{trained} embedding of the three categories might look like.}\label{fig:embedding}
+\end{figure}
+
+\begin{explain}
+This is a schematic picture, not the output of an experiment: after training on a house-price task, the vectors of categories that affect the price in the same way (the two coastal categories) tend to lie \textbf{close together}, while \texttt{INLAND} lies far away. The network discovers this similarity by itself; with one-hot encoding every pair of categories would be equally far apart.
+\end{explain}
+
+\paragraph{Rule of thumb.} Use one-hot encoding for fewer than about 10 categories; use embeddings for more than about 50 (for 10 to 50 either may work, so try both).
+
+\subsection{Text Features: TextVectorization}
+
+\begin{definition}[: \texttt{TextVectorization}]
+\texttt{layers.TextVectorization} converts raw text into sequences of integer word indices. \texttt{adapt} builds a \textbf{vocabulary} (the most frequent words are given the smallest indices; index $0$ is padding and $1$ is the ``unknown'' token \texttt{[UNK]}).
+\end{definition}
+
+\begin{example}[: TextVectorization, real output]
+Adapted on \texttt{"I love machine learning"}, \texttt{"machine learning is fun"}, \texttt{"I love fun"}, the vocabulary is
+\[
+  \texttt{['', '[UNK]', 'machine', 'love', 'learning', 'i', 'fun', 'is']}
+\]
+(indices $0$ to $7$). The sentence ``I love learning'' becomes $[5,3,4]$ and ``fun fun machine'' becomes $[6,6,2]$. The integer sequences are then passed to an \texttt{Embedding} layer.
+\end{example}
+
+\paragraph{Images.} Layers such as \texttt{Rescaling(1/255)} (scale the pixels), \texttt{RandomFlip}, \texttt{RandomRotation} and \texttt{RandomZoom} (data augmentation; active only during training) can also be placed inside the model.
+
+\begin{warning}
+\textbf{Learn preprocessing statistics from the training set only.} Call \texttt{adapt} on the training data, never on the validation or test data; otherwise information from the test set leaks into the model (Chapter~3, feature scaling).
+\end{warning}
+
+\procon{Keras preprocessing layers}
+{\item Preprocessing is part of the model: no training--serving skew
+ \item One code path for training and production
+ \item Fast, runs on GPU; includes scaling, encoding, text and augmentation
+ \item Statistics (\texttt{adapt}) are saved with the model}
+{\item Must remember to call \texttt{adapt} on training data only
+ \item Less flexible than arbitrary Python code
+ \item Large vocabularies increase model size
+ \item Embeddings need enough data to learn well}
+{\item Normalising numerical features
+ \item Encoding categories (one-hot, embeddings)
+ \item Text classification pipelines
+ \item Image augmentation}
+
+%====================================================================
+\section{A Complete Pipeline from Data to Model}
+
+Putting everything together: files are read, parsed, shuffled, batched and prefetched; the model contains the preprocessing layers; and Keras \texttt{fit} consumes the dataset directly.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[b/.style={draw,rounded corners,thick,minimum height=1.3cm,minimum width=2.4cm,align=center,font=\small,inner sep=4pt},arr/.style={-{Stealth},ultra thick,gray!70!black}]
+\node[b,fill=gray!14] (f) at (0,0) {Files\\{\footnotesize CSV / TFRecord}};
+\node[b,fill=mlblue!12,draw=mlblue] (r) at (3.3,0) {Read\\{\footnotesize \texttt{TextLine-}}\\{\footnotesize \texttt{Dataset}}};
+\node[b,fill=mlorange!14,draw=mlorange] (p) at (6.6,0) {Parse\\{\footnotesize \texttt{map(decode)}}};
+\node[b,fill=mlpurple!12,draw=mlpurple] (s) at (9.9,0) {Shuffle\\{\footnotesize \texttt{shuffle(n)}}};
+\node[b,fill=mlgreen!14,draw=mlgreen] (ba) at (13.2,0) {Batch\\{\footnotesize \texttt{batch(32)}}};
+\node[b,fill=mlred!10,draw=mlred] (pf) at (16.5,0) {Prefetch\\{\footnotesize \texttt{prefetch()}}};
+\node[b,fill=mlblue!22,draw=mlblue,minimum width=6.4cm] (m) at (16.5,-3.0) {\textbf{Keras model}: Normalization $\to$ Dense layers $\to$ output};
+\foreach \a/\c in {f/r,r/p,p/s,s/ba,ba/pf} \draw[arr] (\a)--(\c);
+\draw[arr] (pf)--(m);
+\node[draw,rounded corners,thick,fill=yellow!15,minimum height=1.2cm,minimum width=4.2cm,align=center,font=\small] (l) at (9.5,-3.0) {loss $+$ optimiser\\{\footnotesize \texttt{model.fit(dataset)}}};
+\draw[arr] (m)--(l);
+\pic[scale=1.3] at (0,-2.5) {smile};
+\bubble[text width=3.6cm]{3.7,-3.1}{0.4,-2.4}{A conveyor belt that never lets the model go hungry!}
+\end{tikzpicture}}
+\caption{A complete input pipeline, from files to the training of a model.}\label{fig:pipeline}
+\end{figure}
+
+\begin{explain}
+Follow the conveyor belt from the left. The raw \textbf{files} are \textbf{read} line by line or record by record, each element is \textbf{parsed} into tensors, the examples are \textbf{shuffled} with a buffer, grouped into \textbf{batches}, and \textbf{prefetched} so the next batch is ready while the model is busy. The model begins with its own preprocessing layers (such as \texttt{Normalization}), then the dense layers. The loss and optimiser compare predictions with targets and update the weights; \texttt{model.fit(dataset)} runs the whole belt.
+\end{explain}
+
+\textbf{Real comparison.} We trained the Fashion-MNIST MLP of Chapter~9 for 5 epochs with Adam in two ways: (i)~from NumPy arrays; (ii)~from a \texttt{tf.data} pipeline made of \texttt{shuffle(5000)}, \texttt{batch(32)} and \texttt{prefetch(AUTOTUNE)}.
+
+\begin{lstlisting}
+train_ds = (tf.data.Dataset.from_tensor_slices((X_train, y_train))
+              .shuffle(5000).batch(32).prefetch(tf.data.AUTOTUNE))
+valid_ds = (tf.data.Dataset.from_tensor_slices((X_valid, y_valid))
+              .batch(32).prefetch(tf.data.AUTOTUNE))
+model.fit(train_ds, epochs=5, validation_data=valid_ds)
+\end{lstlisting}
+
+\begin{center}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Input method} & \textbf{Test accuracy} & \textbf{Time per epoch}\\
+\midrule
+NumPy arrays & 0.870 & 6.3 s\\
+\texttt{tf.data} pipeline & 0.875 & 6.0 s\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent For a small dataset that fits in memory the two ways give the \emph{same} accuracy (the small difference $0.870$ vs $0.875$ comes from the different random order of the examples) and similar speed: the advantages of \texttt{tf.data} appear for \textbf{large datasets, files on disk, and expensive preprocessing}, exactly the situation in practice.
+
+%====================================================================
+\section{Putting the Whole Course Together}
+
+We have now met the main families of machine-learning methods. The last picture of the book is a map for choosing among them.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[q/.style={draw,rounded corners,thick,fill=mlblue!10,draw=mlblue,align=center,font=\small,inner sep=6pt,text width=4.4cm},
+ a/.style={draw,rounded corners,very thick,align=center,font=\small,inner sep=6pt,text width=4.6cm},arr/.style={-{Stealth},thick}]
+\node[q] (q0) at (7.0,0) {Do you have \textbf{labelled} data?};
+\node[q] (qu) at (1.5,-3.0) {\textbf{No labels} (unsupervised): what do you need?};
+\node[q] (qs) at (12.5,-3.0) {\textbf{Labels} (supervised): are the data images, audio, text or very large?};
+\node[a,fill=mlpurple!14,draw=mlpurple] (cl) at (-1.7,-6.4) {Find \textbf{groups}: K-Means, DBSCAN, Gaussian mixture\\(Chapter 7)};
+\node[a,fill=mlpurple!14,draw=mlpurple] (dr) at (4.1,-6.4) {Use \textbf{fewer features}: PCA, manifold learning\\(Chapter 8)};
+\node[a,fill=mlgreen!16,draw=mlgreen] (nn) at (9.7,-6.4) {Yes: \textbf{neural networks}, Keras, \texttt{tf.data}\\(Chapters 9--10)};
+\node[a,fill=mlorange!16,draw=mlorange] (tab) at (15.3,-6.4) {No (tabular): \textbf{linear models, trees, k-NN, Naive Bayes, SVM, ensembles}\\(Chapters 3--6)};
+\node[a,fill=gray!14,draw=gray] (ev) at (7.0,-9.3) {\textbf{Always:} split the data, scale the features, cross-validate and compare training with validation error\\(Chapters 1--2)};
+\draw[arr] (q0)--(qu) node[midway,above left,font=\footnotesize]{no};
+\draw[arr] (q0)--(qs) node[midway,above right,font=\footnotesize]{yes};
+\draw[arr] (qu)--(cl); \draw[arr] (qu)--(dr);
+\draw[arr] (qs)--(nn); \draw[arr] (qs)--(tab);
+\draw[arr,dashed,gray] (cl.south)--++(0,-0.6)-|(ev.west);
+\draw[arr,dashed,gray] (tab.south)--++(0,-0.6)-|(ev.east);
+\pic[scale=1.3] at (3.0,-11.9) {smile};
+\bubble[text width=7.4cm]{8.2,-11.9}{3.5,-11.8}{Start simple, measure honestly, and make the model more complex only if you need to!}
+\end{tikzpicture}}
+\caption{A roadmap of the methods studied in this book.}\label{fig:roadmap}
+\end{figure}
+
+\begin{explain}
+Start on the left: if you have \textbf{no labels} you are in unsupervised territory: clustering to find groups (Chapter~7) or dimensionality reduction to compress and visualise (Chapter~8). If you \textbf{do} have labels you are doing supervised learning (regression or classification). For \textbf{images, audio, text or very large data}, neural networks built with Keras and fed by \texttt{tf.data} (Chapters~9--10) are usually the best choice; for ordinary \textbf{tabular data} the classical methods (linear and logistic regression, trees, k-NN, Naive Bayes, SVMs and ensembles such as random forests and boosting; Chapters~3--6) are strong, fast and easier to interpret. Whatever the choice, the discipline of Chapters~1 and~2 always applies: split the data, scale the features, cross-validate, and look at the gap between training and validation performance.
+\end{explain}
+
+\begin{center}
+\small
+\begin{tabular}{@{}clp{8.3cm}@{}}
+\toprule
+\textbf{Unit} & \textbf{Chapters} & \textbf{Key take-away}\\
+\midrule
+I & 1--2 & Learning means generalising to new data; bias--variance trade-off; test loss, cross-validation, sampling distributions\\
+II & 3--4 & k-NN, decision trees, Naive Bayes, linear and logistic regression, GLMs, SVM basics\\
+III & 5--6 & Ensembles reduce variance (bagging) or bias (boosting); kernel SVMs and SVR; Naive Bayes variants\\
+IV & 7--8 & Clustering (K-Means, DBSCAN, GMM); curse of dimensionality; PCA\\
+V & 9--10 & Neural networks, backpropagation, Keras; TensorFlow and efficient data pipelines\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%====================================================================
+\begin{summary}
+\begin{itemize}
+  \item \textbf{TensorFlow} is the numerical engine under Keras: tensors (rank, shape, dtype), operations, broadcasting, variables, automatic differentiation and graph optimisation.
+  \item \textbf{Tensors:} scalar (rank 0), vector, matrix, 3-D, 4-D batch of images $(32,28,28,1)$; \texttt{tf.matmul}, \texttt{reduce\_sum}, \texttt{reshape}; broadcasting stretches the smaller tensor.
+  \item \textbf{\texttt{GradientTape}} records operations and plays them back to get exact gradients (e.g.\ $dy/dx=7$ for $x^2+3x$ at $2$); a custom loop recovers the Chapter~4 regression ($26+9x$).
+  \item \textbf{\texttt{tf.function}} compiles Python into a graph ($1.45\times$ faster in our test).
+  \item \textbf{\texttt{tf.data}:} \texttt{from\_tensor\_slices}, \texttt{map}, \texttt{shuffle} (before \texttt{batch}), \texttt{batch}, \texttt{prefetch}; prefetching halved the time ($1.19\to0.60$ s).
+  \item \textbf{CSV} via \texttt{TextLineDataset} and \texttt{decode\_csv}; \textbf{TFRecord} for large datasets (sequential binary records of \texttt{tf.train.Example}).
+  \item \textbf{Preprocessing layers:} \texttt{Normalization} (adapt on training data), \texttt{StringLookup}+\texttt{CategoryEncoding} (one-hot), \texttt{Embedding} (learned dense vectors), \texttt{TextVectorization}; putting them inside the model avoids training--serving skew.
+  \item A complete pipeline: files $\to$ read $\to$ parse $\to$ shuffle $\to$ batch $\to$ prefetch $\to$ model; for small in-memory data results equal the NumPy route (0.870 vs 0.875).
+\end{itemize}
+\end{summary}
+
+%====================================================================
+\section*{Exam Corner}
+\addcontentsline{toc}{section}{Exam Corner}
+
+\subsection*{A.\ Very Short Answer Questions (2 marks each)}
+\begin{enumerate}
+  \item What is TensorFlow? How is it related to Keras? \qmarks{2}
+  \item Define a tensor. What are rank, shape and dtype? \qmarks{2}
+  \item What is broadcasting? \qmarks{2}
+  \item Differentiate between \texttt{tf.constant} and \texttt{tf.Variable}. \qmarks{2}
+  \item What is automatic differentiation? \qmarks{2}
+  \item What does \texttt{tf.GradientTape} do? \qmarks{2}
+  \item What is the purpose of \texttt{tf.function}? \qmarks{2}
+  \item What is a \texttt{tf.data.Dataset}? \qmarks{2}
+  \item Why should \texttt{shuffle} be called before \texttt{batch}? \qmarks{2}
+  \item What does \texttt{prefetch} do? \qmarks{2}
+  \item What is a TFRecord file? \qmarks{2}
+  \item Differentiate between one-hot encoding and embedding. \qmarks{2}
+\end{enumerate}
+
+\begin{modelans}[: Q3, Q6 and Q9]
+\textbf{Q3.} Broadcasting is the automatic stretching of a smaller tensor along missing axes so that two tensors of different shapes can be combined element-wise, without copying the data. Example: $\left[\begin{smallmatrix}1&2\\3&4\end{smallmatrix}\right]+[10,20]=\left[\begin{smallmatrix}11&22\\13&24\end{smallmatrix}\right]$.\par
+\textbf{Q6.} \texttt{GradientTape} records all operations performed on variables inside a \texttt{with} block; calling \texttt{tape.gradient(loss, variables)} replays the recorded operations backwards with the chain rule and returns exact gradients of the loss with respect to the variables. It is used to write custom training loops.\par
+\textbf{Q9.} \texttt{shuffle} randomises the order of individual examples, and \texttt{batch} groups consecutive examples. If we batch first and then shuffle, only whole batches change their order while each batch always contains the same consecutive examples, so the examples in a batch are not a random sample.
+\end{modelans}
+
+\subsection*{B.\ Short Answer Questions (5 marks each)}
+\begin{enumerate}
+  \item Explain tensors with examples of different ranks and the basic tensor operations. \qmarks{5}
+  \item Explain automatic differentiation with \texttt{GradientTape} using an example. \qmarks{5}
+  \item Explain how a custom training loop is written with TensorFlow. \qmarks{5}
+  \item Explain \texttt{tf.function} and computation graphs. \qmarks{5}
+  \item Explain the \texttt{tf.data} API and its main methods. \qmarks{5}
+  \item Explain how shuffling with a buffer works. \qmarks{5}
+  \item Explain how prefetching and parallel processing speed up an input pipeline. \qmarks{5}
+  \item Explain how CSV data are read with \texttt{tf.data}. \qmarks{5}
+  \item Explain the TFRecord format and the structure of \texttt{tf.train.Example}. \qmarks{5}
+  \item Explain how categorical features are preprocessed (one-hot encoding and embeddings). \qmarks{5}
+  \item Explain Keras preprocessing layers and their advantages. \qmarks{5}
+\end{enumerate}
+
+\begin{modelans}[: B7 (outline for 5 marks)]
+\emph{Problem:} if the model waits for the data, the GPU is idle. \emph{Prefetch:} \texttt{dataset.prefetch(n)} prepares the next $n$ batches in the background while the model trains on the current batch, so data preparation and training overlap. \emph{Parallel map:} \texttt{map(f, num\_parallel\_calls=AUTOTUNE)} preprocesses several elements simultaneously on multiple CPU cores. \emph{Cache:} keep preprocessed data in memory after the first epoch. \emph{Example (real):} with 5~ms of preparation and 5~ms of training per step, 100 steps took $1.19$~s without prefetch, $0.60$~s with \texttt{prefetch(1)} and $0.55$~s with parallel map plus prefetch (the training-only limit).
+\end{modelans}
+
+\subsection*{C.\ Long Answer Questions (10 marks each)}
+\begin{enumerate}
+  \item Explain TensorFlow: tensors, variables, operations, broadcasting, automatic differentiation and \texttt{tf.function}, with code examples. \qmarks{10}
+  \item Explain how to write a custom training loop with \texttt{GradientTape}. Fit a line by gradient descent and show the first update by hand. \qmarks{10}
+  \item Explain the \texttt{tf.data} API: dataset creation, \texttt{map}, \texttt{shuffle}, \texttt{batch}, \texttt{prefetch}, with a pipeline for training a model. \qmarks{10}
+  \item Explain how to load data from CSV files and TFRecord files with TensorFlow, with code. \qmarks{10}
+  \item Explain the preprocessing of numerical, categorical and text features using Keras preprocessing layers, including embeddings. \qmarks{10}
+  \item Describe a complete pipeline from raw files to a trained Keras model and discuss its advantages over using in-memory arrays. \qmarks{10}
+\end{enumerate}
+
+\begin{modelans}[: C2 (first update by hand)]
+Data $x=(1,2,3,4,5)$ hours centred to $x_c=(-2,-1,0,1,2)$, marks $(35,45,50,65,70)$, model $\hat y=wx_c+b$, loss $J=\frac1{2n}\sum(\hat y-y)^2$, start $w=b=0$, $\eta=0.05$.\par
+Errors $\hat y-y=-(35,45,50,65,70)$. $\partial J/\partial b=\frac{-265}{5}=-53$; $\partial J/\partial w=\frac1n\sum(\hat y-y)x_c=\frac{-(35)(-2)-(45)(-1)-0-(65)(1)-(70)(2)}{5}$ $=\frac{70+45-65-140}{5}=-18$.\par
+Update: $w=0-0.05(-18)=0.90$, $b=0-0.05(-53)=2.65$, which are the values printed after step~1 in the real run ($w=0.900$, $b=2.650$).
+\end{modelans}
+
+\subsection*{D.\ Numerical Problems}
+\begin{enumerate}
+  \item Give the rank and number of elements of a tensor of shape $(32,28,28,1)$. \textit{(Answer: rank 4; $32\cdot28\cdot28\cdot1=25\,088$.)}
+  \item Compute \texttt{tf.matmul(A,B)} for $A=\left[\begin{smallmatrix}1&2\\3&4\end{smallmatrix}\right]$ and $B=\left[\begin{smallmatrix}0&1\\1&0\end{smallmatrix}\right]$. \textit{(Answer: $\left[\begin{smallmatrix}2&1\\4&3\end{smallmatrix}\right]$.)}
+  \item Compute $\left[\begin{smallmatrix}1&2\\3&4\end{smallmatrix}\right]+[10,20]$ using broadcasting. \textit{(Answer: $\left[\begin{smallmatrix}11&22\\13&24\end{smallmatrix}\right]$.)}
+  \item Find $dy/dx$ for $y=3x^2+2x$ at $x=1$, and the partial derivatives of $z=x^2y$ at $(x,y)=(2,3)$. \textit{(Answer: $6x+2=8$; $\partial z/\partial x=2xy=12$, $\partial z/\partial y=x^2=4$.)}
+  \item One gradient step: $w=1$, $x=2$, $y=5$, loss $(wx-y)^2$, $\eta=0.1$. \textit{(Answer: gradient $2(wx-y)x=2(2-5)(2)=-12$; $w=1+1.2=2.2$.)}
+  \item How many batches does a dataset of 1000 examples give with batch size 32, with and without \texttt{drop\_remainder}? \textit{(Answer: $\lceil1000/32\rceil=32$ batches (31 full plus one of 8); $31$ with \texttt{drop\_remainder=True}.)}
+  \item Normalise the data $2,4,6,8$ (population standard deviation). \textit{(Answer: $\mu=5$, $\sigma=\sqrt5=2.236$; $-1.342,\ -0.447,\ 0.447,\ 1.342$.)}
+  \item One-hot encode the category with index 2 among 4 categories. How many parameters has an embedding of 50 categories with dimension 8? \textit{(Answer: $[0,0,1,0]$; $50\times8=400$.)}
+  \item A pipeline spends 5~ms preparing a batch and 5~ms training on it, for 100 batches. Estimate the total time without and with perfect overlap. \textit{(Answer: $100\times10=1.0$ s; about $0.5$ s with overlap. Measured: $1.19$ s and $0.60$ s.)}
+  \item \texttt{tf.function} reduces a call from 22.8 ms to 15.7 ms. Find the speed-up and the time saved over 10\,000 calls. \textit{(Answer: $22.8/15.7=1.45$; $(22.8-15.7)\times10\,000=71\,000$ ms $=71$ s.)}
+\end{enumerate}
+
+\subsection*{E.\ Multiple-Choice Questions}
+\begin{enumerate}
+  \item A tensor of shape $(2,3)$ has rank: \\
+  (a) 1 \quad (b) 2 \quad (c) 3 \quad (d) 6
+  \item Which can be modified after creation? \\
+  (a) \texttt{tf.constant} \quad (b) \texttt{tf.Variable} \quad (c) a Python tuple \quad (d) a string tensor
+  \item \texttt{tf.GradientTape} is used for: \\
+  (a) plotting \quad (b) automatic differentiation \quad (c) reading files \quad (d) scaling data
+  \item \texttt{@tf.function} converts Python code into a: \\
+  (a) CSV file \quad (b) computation graph \quad (c) database \quad (d) dataset
+  \item To read the lines of a text file with \texttt{tf.data} we use: \\
+  (a) \texttt{TFRecordDataset} \quad (b) \texttt{TextLineDataset} \quad (c) \texttt{range} \quad (d) \texttt{Normalization}
+  \item The correct order of the two methods is: \\
+  (a) \texttt{batch} then \texttt{shuffle} \quad (b) \texttt{shuffle} then \texttt{batch} \quad (c) either \quad (d) neither
+  \item \texttt{prefetch} improves performance by: \\
+  (a) overlapping data preparation and training \quad (b) shuffling \quad (c) normalising \quad (d) reducing the batch size
+  \item A TFRecord stores data as: \\
+  (a) text lines \quad (b) serialised binary records \quad (c) images only \quad (d) CSV
+  \item To avoid training--serving skew, preprocessing should be: \\
+  (a) done by hand each time \quad (b) part of the model \quad (c) skipped \quad (d) done on the test set only
+  \item \texttt{Normalization.adapt()} should be called on the: \\
+  (a) test set \quad (b) training set \quad (c) validation set \quad (d) all data
+  \item For a categorical feature with 1000 categories the better encoding is usually: \\
+  (a) one-hot \quad (b) embedding \quad (c) integer coding \quad (d) none
+  \item In \texttt{decode\_csv}, \texttt{record\_defaults} specifies: \\
+  (a) the file name \quad (b) the type and default of each column \quad (c) the batch size \quad (d) the optimiser
+\end{enumerate}
+\textbf{Answers:} 1-b,\ 2-b,\ 3-b,\ 4-b,\ 5-b,\ 6-b,\ 7-a,\ 8-b,\ 9-b,\ 10-b,\ 11-b,\ 12-b.
+
+\subsection*{F.\ Practice Problems}
+\begin{enumerate}
+  \item Write TensorFlow code that computes the gradient of $f(x)=x^4$ at $x=3$ and check it by hand. \textit{(Answer: $4x^3=108$.)}
+  \item With a shuffle buffer of size 1, what is the output of \texttt{range(5).shuffle(1)}? Why? \textit{(Answer: $0,1,2,3,4$; the buffer always holds one element, so nothing can be reordered.)}
+  \item \textbf{Coding:} write a CSV file with a few columns of your own data, read it with \texttt{TextLineDataset} and \texttt{decode\_csv}, and print the first batch.
+  \item \textbf{Coding:} measure the effect of \texttt{prefetch} yourself by adding \texttt{time.sleep} in a \texttt{map} function and in the training loop.
+  \item \textbf{Coding:} build a model that includes a \texttt{Normalization} layer and a \texttt{StringLookup} + \texttt{CategoryEncoding} branch for a mixed numerical/categorical dataset.
+  \item Draw the roadmap of Figure~\ref{fig:roadmap} in your own words and explain when you would choose a neural network instead of a random forest.
+\end{enumerate}
+
+\begin{revision}
+\begin{center}\small
+\begin{tabular}{@{}p{3.6cm}p{9.6cm}@{}}
+\toprule
+\textbf{Topic} & \textbf{One-line recall}\\
+\midrule
+Tensor & Array with rank, shape, dtype; batch of images $(32,28,28,1)$.\\
+Variable & Mutable tensor (\texttt{assign}); model weights.\\
+Broadcasting & Smaller tensor is stretched to match: $[[1,2],[3,4]]+[10,20]$.\\
+GradientTape & Records operations, replays backwards: gradient of $x^2+3x$ at 2 is 7.\\
+Custom loop & \texttt{with tape: loss}; \texttt{tape.gradient}; \texttt{assign\_sub($\eta\cdot$grad)}.\\
+tf.function & Traces Python into a graph; $\approx1.45\times$ faster in our test.\\
+tf.data & \texttt{from\_tensor\_slices}, \texttt{map}, \texttt{shuffle}, \texttt{batch}, \texttt{prefetch}.\\
+Shuffle buffer & Random draw from a small bowl; shuffle before batch.\\
+Prefetch & Prepare batch $k+1$ while training on batch $k$ ($1.19\to0.60$ s).\\
+CSV / TFRecord & \texttt{TextLineDataset}+\texttt{decode\_csv} / sequential binary \texttt{Example} records.\\
+Preprocessing layers & Normalization, StringLookup+CategoryEncoding, Embedding, TextVectorization; inside the model.\\
+Embedding & Learned lookup table; $K$ categories $\times$ dim parameters.\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{revision}

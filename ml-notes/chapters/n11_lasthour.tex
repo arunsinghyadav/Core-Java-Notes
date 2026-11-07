@@ -1,0 +1,110 @@
+\chapter*{Last-Hour Revision Sheet}
+\markboth{Last-Hour Revision Sheet}{}
+\addcontentsline{toc}{chapter}{Last-Hour Revision Sheet}
+
+\section*{1. Formulas you must know}
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.45}
+\begin{tabular}{@{}p{4.0cm}p{12.6cm}@{}}
+\toprule
+Least squares & $\theta_1=\frac{\sum(x-\bar x)(y-\bar y)}{\sum(x-\bar x)^2}$, $\ \theta_0=\bar y-\theta_1\bar x$, $\ R^2=1-\frac{\mathrm{SSE}}{\mathrm{SST}}$\\
+Gradient descent & $\theta\leftarrow\theta-\alpha\,\partial J/\partial\theta$\\
+Losses & MSE $\frac1n\sum(y-\hat y)^2$; MAE $\frac1n\sum|y-\hat y|$; log-loss $-[y\ln p+(1-y)\ln(1-p)]$\\
+Bias--variance & $\E[(y-\hat f)^2]=\Bias^2+\Var+\sigma^2$\\
+Metrics & Acc $\frac{TP+TN}{\text{all}}$, P $\frac{TP}{TP+FP}$, R $\frac{TP}{TP+FN}$, $F_1=\frac{2PR}{P+R}$\\
+Standard error / CI & $\sigma/\sqrt n$; $\ \bar x\pm1.96\,s/\sqrt n$\\
+Distances & Euclidean $\sqrt{\sum(a-b)^2}$, Manhattan $\sum|a-b|$, cosine $\frac{\vect a\cdot\vect b}{\|\vect a\|\|\vect b\|}$\\
+Entropy / gain / Gini & $-\sum p\log_2p$; $\ H(S)-\sum\frac{|S_v|}{|S|}H(S_v)$; $\ 1-\sum p^2$\\
+Bayes / Naive Bayes & $P(C|X)=\frac{P(X|C)P(C)}{P(X)}$; $\ \hat y=\argmax_cP(c)\prod P(x_j|c)$; Laplace $\frac{n+1}{N+V}$\\
+Sigmoid / softmax & $\frac1{1+e^{-z}}$; $\ \frac{e^{z_k}}{\sum e^{z_j}}$; odds $\frac p{1-p}$\\
+SVM & margin $\frac2{\|\vect w\|}$; soft margin $\frac12\|\vect w\|^2+C\sum\xi_i$; hinge $\max(0,1-yf)$\\
+Kernels & poly $(\gamma\vect a\cdot\vect b+r)^d$; RBF $e^{-\gamma\|\vect a-\vect b\|^2}$; SVR $\max(0,|y-f|-\varepsilon)$\\
+AdaBoost & $\alpha=\frac12\ln\frac{1-\varepsilon}{\varepsilon}$; $w_i\leftarrow w_ie^{-\alpha y_ih(\vect x_i)}$, normalise\\
+OOB & $(1-1/n)^n\approx36.8\%$ left out\\
+K-Means / silhouette & $J=\sum\|\vect x-\vect\mu\|^2$; $s=\frac{b-a}{\max(a,b)}$\\
+GMM (E-step) & $\gamma_{ij}=\frac{\pi_j\mathcal N_j(\vect x_i)}{\sum_l\pi_l\mathcal N_l(\vect x_i)}$\\
+PCA & $\mathbf C=\frac1{n-1}\tilde{\mathbf X}^{\!\top}\tilde{\mathbf X}$, $\mathbf C\vect w=\lambda\vect w$, explained $=\lambda_j/\sum\lambda$\\
+Neuron / perceptron & $a=\varphi(\vect w\cdot\vect x+b)$; $w\leftarrow w+\eta(y-\hat y)x$\\
+Dense layer parameters & $n_{\text{in}}n_{\text{out}}+n_{\text{out}}$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section*{2. Ten comparisons asked again and again}
+\begin{center}
+\small
+\begin{tabular}{@{}p{4.2cm}p{5.8cm}p{5.8cm}@{}}
+\toprule
+\textbf{Pair} & \textbf{First} & \textbf{Second}\\
+\midrule
+Supervised / unsupervised & labelled data, predict $y$ & unlabelled, find structure\\
+Batch / online & all data at once, retrain & incremental, streaming data\\
+Instance / model-based & memorise + similarity (k-NN) & fit parameters (regression)\\
+Underfit / overfit & high bias, too simple & high variance, too complex\\
+Parameter / hyperparameter & learned from data (weights) & set before training ($k$, $C$, $\eta$)\\
+Linear / logistic regression & number, MSE, closed form & probability, sigmoid, log-loss\\
+Bagging / boosting & parallel, reduces variance & sequential, reduces bias\\
+Hard / soft margin & no violations, outlier-sensitive & slack $\xi$, controlled by $C$\\
+K-Means / DBSCAN & needs $k$, spherical & density, any shape, finds noise\\
+Feature selection / extraction & subset of features & new features (PCA)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section*{3. Which algorithm? One line each}
+\begin{center}
+\small
+\begin{tabular}{@{}p{3.4cm}p{13.2cm}@{}}
+\toprule
+k-NN & majority vote of $k$ nearest points; lazy; scale features\\
+Decision tree & split on highest information gain (ID3) or Gini (CART); prune to avoid overfit\\
+Naive Bayes & Bayes' theorem with independent features; smoothing; fast for text\\
+Linear regression & least-squares line; $R^2$; normal equation or GD\\
+Logistic regression & sigmoid of a linear score; log-loss; probability output\\
+GLM & distribution $+$ linear predictor $+$ link (identity, logit, log)\\
+SVM & widest street; support vectors; kernels for non-linear; $C$, $\gamma$\\
+Random forest & bagged trees $+$ random features; vote\\
+AdaBoost & reweight mistakes; weighted vote of stumps\\
+Gradient boosting & each tree fits residuals; shrinkage $\eta$\\
+Stacking & meta-learner combines base predictions\\
+K-Means & assign to nearest centroid, update means; elbow/silhouette\\
+DBSCAN & core (MinPts in $\varepsilon$), border, noise\\
+GMM & mixture of Gaussians; EM; soft clusters\\
+PCA & eigenvectors of covariance; keep 95\% variance\\
+MLP & layers of neurons; backpropagation; ReLU, softmax\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section*{4. Mock test (3 hours, 70 marks)}
+\textbf{Section A} (answer all, $7\times2=14$)
+\begin{enumerate}[label=\arabic*.]
+  \item Define machine learning using $T$, $P$, $E$.
+  \item What is the bias--variance trade-off?
+  \item Define information gain.
+  \item What are support vectors?
+  \item What is out-of-bag evaluation?
+  \item What is the curse of dimensionality?
+  \item Why are activation functions needed in an MLP?
+\end{enumerate}
+\textbf{Section B} (any four, $4\times7=28$)
+\begin{enumerate}[label=\arabic*.,resume]
+  \item Explain types of ML systems with examples.
+  \item Explain k-fold cross-validation and compute $\mathrm{CV}_{(5)}$ for fold errors $0.10,0.12,0.08,0.11,0.09$. \emph{(Ans.\ 0.10)}
+  \item Find the k-NN prediction ($k=3$) for $(5,4)$ using the data of Chapter~\ref{n:knn}.
+  \item Compare bagging and boosting.
+  \item Explain DBSCAN with core, border and noise points.
+  \item Explain the \texttt{tf.data} pipeline.
+\end{enumerate}
+\textbf{Section C} (any two, $2\times14=28$)
+\begin{enumerate}[label=\arabic*.,resume]
+  \item Fit $\hat y=\theta_0+\theta_1x$ to $x=(1,2,3,4,5)$, $y=(35,45,50,65,70)$; predict $x=6$; compute $R^2$. \emph{(Ans.\ $26+9x$, 80, 0.976)}
+  \item Explain SVM classification (linear and kernel) and SVR.
+  \item Apply PCA to $(1,1),(2,3),(3,2),(4,5),(5,4)$ and find the explained variance of PC1. \emph{(Ans.\ 90\%)}
+  \item Explain the MLP, backpropagation and the Keras workflow.
+\end{enumerate}
+
+\begin{imp}
+Night before the exam: read only the definition boxes, this sheet and the important questions. In the exam: definition first, diagram second, points third, numerical/example fourth, advantages--disadvantages--applications last.
+\end{imp}

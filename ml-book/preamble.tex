@@ -1,8 +1,8 @@
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage[margin=2.4cm,headheight=14pt]{geometry}
-\usepackage{microtype,amsmath,amssymb,booktabs,array,enumitem,xcolor}
-\usepackage{tikz,pgfplots,listings,fontawesome5,hyperref,fancyhdr,titlesec}
+\usepackage{microtype,amsmath,amssymb,booktabs,array,enumitem,xcolor,multirow}
+\usepackage{tikz,pgfplots,listings,fontawesome5,hyperref,fancyhdr,titlesec,longtable}
 \usepackage[most]{tcolorbox}
 \usepgfplotslibrary{groupplots}
 \usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,fit,backgrounds}
@@ -66,3 +66,71 @@
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\vect}[1]{\boldsymbol{#1}}
+
+% ---------- explanation / exam boxes ----------
+\newtcolorbox{explain}{enhanced,breakable,colback=teal!6,colframe=teal!60!black,
+  fonttitle=\bfseries,title={\faEye\ \ Reading the Figure},arc=3pt}
+\newtcolorbox{modelans}[1][]{enhanced,breakable,colback=mlgreen!5,colframe=mlgreen,
+  fonttitle=\bfseries,title={\faCheckCircle\ \ Model Answer#1},arc=3pt}
+\newtcolorbox{revision}{enhanced,breakable,colback=mlpurple!5,colframe=mlpurple,
+  fonttitle=\bfseries,title={\faBolt\ \ Quick Revision},arc=3pt}
+\newcommand{\qmarks}[1]{\hfill\textnormal{\small\textbf{[#1 marks]}}}
+\usepackage{caption}
+\captionsetup{font=small,labelfont={bf,color=mlblue},labelsep=period}
+\newcommand{\rupee}{Rs.}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Bias}{Bias}
+\DeclareMathOperator{\SE}{SE}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\newcommand{\Risk}{\mathcal{R}}
+
+% ---------- exam write-up box (theory answer template) ----------
+\newtcolorbox{theory}[1]{enhanced,breakable,colback=yellow!7,colframe=orange!75!black,
+  fonttitle=\bfseries,title={\faPen\ \ Write-up for the Exam: #1},arc=3pt,
+  boxrule=1pt,toptitle=2pt,bottomtitle=2pt}
+\newcommand{\tpart}[1]{\par\medskip\noindent{\bfseries\color{orange!75!black}\large #1}\par\nopagebreak\vspace{1pt}\noindent\ignorespaces}
+\setlength{\emergencystretch}{3em}
+
+% ---------- presentation: whitespace, indentation, spacing ----------
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.65em plus 0.2em minus 0.1em}
+\linespread{1.12}
+\renewcommand{\arraystretch}{1.35}
+\setlist{itemsep=5pt plus 1pt,topsep=7pt plus 2pt,parsep=3pt,leftmargin=*,labelindent=0.6em}
+\setlist[itemize,2]{itemsep=3pt,topsep=3pt}
+\setlength{\abovedisplayskip}{12pt plus 3pt minus 3pt}
+\setlength{\belowdisplayskip}{12pt plus 3pt minus 3pt}
+\setlength{\jot}{5pt}
+\titlespacing*{\section}{0pt}{26pt plus 4pt minus 2pt}{12pt}
+\titlespacing*{\subsection}{0pt}{20pt plus 3pt minus 2pt}{9pt}
+\titlespacing*{\subsubsection}{0pt}{14pt plus 2pt}{7pt}
+\tcbset{before skip=16pt plus 3pt minus 2pt, after skip=16pt plus 3pt minus 2pt,
+  left=11pt, right=11pt, top=9pt, bottom=9pt}
+\captionsetup{skip=8pt}
+
+% ---------- cartoon helpers ----------
+\usetikzlibrary{shapes.callouts}
+\tikzset{
+ pics/smile/.style={code={\draw[thick,fill=yellow!40] (0,0) circle (0.42);\fill (-0.14,0.1) circle (0.04);\fill (0.14,0.1) circle (0.04);\draw[thick] (-0.18,-0.1) to[bend right=55] (0.18,-0.1);}},
+ pics/sad/.style={code={\draw[thick,fill=blue!12] (0,0) circle (0.42);\fill (-0.14,0.1) circle (0.04);\fill (0.14,0.1) circle (0.04);\draw[thick] (-0.18,-0.2) to[bend left=55] (0.18,-0.2);}},
+ pics/angry/.style={code={\draw[thick,fill=red!22] (0,0) circle (0.42);\fill (-0.14,0.07) circle (0.04);\fill (0.14,0.07) circle (0.04);\draw[thick] (-0.26,0.2)--(-0.07,0.13);\draw[thick] (0.26,0.2)--(0.07,0.13);\draw[thick] (-0.16,-0.18)--(0.16,-0.18);}},
+ pics/house/.style args={#1}{code={\fill[#1!30,draw=#1!80!black,thick] (-0.17,-0.15) rectangle (0.17,0.13);\fill[#1!75!black] (-0.22,0.13)--(0,0.37)--(0.22,0.13)--cycle;\fill[white,draw=#1!80!black] (-0.04,-0.15) rectangle (0.06,-0.02);}},
+ pics/detective/.style={code={\draw[thick,fill=yellow!40] (0,0) circle (0.42);\fill[gray!70!black] (-0.55,0.3) rectangle (0.55,0.38);\fill[gray!70!black] (-0.3,0.38) rectangle (0.3,0.72);\fill (-0.14,0.08) circle (0.04);\fill (0.14,0.08) circle (0.04);\draw[thick] (-0.15,-0.14) to[bend right=40] (0.15,-0.14);\draw[very thick,gray!60!black] (0.62,-0.25)--(0.85,-0.55);\draw[very thick,gray!60!black,fill=cyan!15] (0.55,-0.15) circle (0.18);}},
+}
+\newcommand{\bubble}[4][]{\node[rectangle callout,rounded corners,draw,thick,fill=white,font=\small,align=center,callout absolute pointer={(#3)},#1] at (#2) {#4};}
+\newcounter{proconctr}
+\newcommand{\procon}[4]{%
+  \stepcounter{proconctr}\par\medskip\noindent{\bfseries\color{mlblue!80!black}#1}\par\smallskip
+  \noindent\begin{minipage}[t]{0.325\linewidth}\begin{tcolorbox}[colback=mlgreen!7,colframe=mlgreen,title={\faThumbsUp\ Advantages},fonttitle=\bfseries\small,left=3pt,right=3pt,top=3pt,bottom=3pt,before skip=0pt,after skip=0pt,equal height group=pc\theproconctr]
+  \begin{itemize}[leftmargin=1.1em,itemsep=1pt,topsep=1pt,parsep=0pt,labelsep=0.4em]\footnotesize #2\end{itemize}\end{tcolorbox}\end{minipage}\hfill
+  \begin{minipage}[t]{0.325\linewidth}\begin{tcolorbox}[colback=mlred!6,colframe=mlred,title={\faThumbsDown\ Disadvantages},fonttitle=\bfseries\small,left=3pt,right=3pt,top=3pt,bottom=3pt,before skip=0pt,after skip=0pt,equal height group=pc\theproconctr]
+  \begin{itemize}[leftmargin=1.1em,itemsep=1pt,topsep=1pt,parsep=0pt,labelsep=0.4em]\footnotesize #3\end{itemize}\end{tcolorbox}\end{minipage}\hfill
+  \begin{minipage}[t]{0.325\linewidth}\begin{tcolorbox}[colback=mlblue!6,colframe=mlblue,title={\faBriefcase\ Applications},fonttitle=\bfseries\small,left=3pt,right=3pt,top=3pt,bottom=3pt,before skip=0pt,after skip=0pt,equal height group=pc\theproconctr]
+  \begin{itemize}[leftmargin=1.1em,itemsep=1pt,topsep=1pt,parsep=0pt,labelsep=0.4em]\footnotesize #4\end{itemize}\end{tcolorbox}\end{minipage}\par\medskip}
+
+% ---------- more cartoon pics ----------
+\tikzset{
+ pics/meh/.style={code={\draw[thick,fill=orange!15] (0,0) circle (0.42);\fill (-0.14,0.1) circle (0.04);\fill (0.14,0.1) circle (0.04);\draw[thick] (-0.15,-0.15)--(0.15,-0.15);}},
+ pics/shop/.style args={#1}{code={\fill[#1!25,draw=#1!80!black,thick] (-0.2,-0.15) rectangle (0.2,0.14);\fill[#1!80!black] (-0.25,0.14) rectangle (0.25,0.26);\foreach \x in {-0.21,-0.07,0.07}{\fill[white] (\x,0.14) rectangle ++(0.07,0.12);}\fill[white,draw=#1!80!black] (-0.05,-0.15) rectangle (0.07,-0.02);}},
+}

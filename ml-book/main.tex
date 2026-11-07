@@ -17,17 +17,27 @@
 {\small Unit I Introduction $\cdot$ Unit II Supervised Learning $\cdot$ Unit III Ensembles \& SVM\\
 Unit IV Unsupervised Learning $\cdot$ Unit V Neural Networks}
 \end{titlepage}
-\chapter*{How to Use This Book}
-\begin{objectives}
-Every chapter opens with a box like this one, telling you exactly what you will be able to do by the end.
-\end{objectives}
-\begin{keyidea}The one idea to remember. If you remember nothing else, remember this box.\end{keyidea}
-\begin{definition}[: Term]Formal definitions you may be asked to write in exams.\end{definition}
-\begin{example}Worked examples with real numbers, solved step by step.\end{example}
-\begin{warning}Mistakes students commonly make, and how to avoid them.\end{warning}
-\begin{tryit}Short Python experiments. Run them, change numbers, and watch what happens.\end{tryit}
-\begin{exam}Frequently asked exam questions and how to answer them.\end{exam}
+\input{chapters/front_preface}
+\input{chapters/front_howto}
+\input{chapters/front_guide}
+\input{chapters/front_notation}
 \tableofcontents
 \mainmatter
 \input{chapters/ch01}
+\input{chapters/ch02}
+\input{chapters/ch03}
+\input{chapters/ch04}
+\input{chapters/ch05}
+\input{chapters/ch06}
+\input{chapters/ch07}
+\input{chapters/ch08}
+\input{chapters/ch09}
+\input{chapters/ch10}
+\appendix
+\titleformat{\chapter}[display]
+  {\normalfont\bfseries\color{mlblue}}
+  {\flushright\Large\scshape Appendix \thechapter}{8pt}
+  {\Huge}[\vspace{4pt}\color{mlblue}\titlerule]
+\input{chapters/back_formulas}
+\input{chapters/back_glossary}
 \end{document}

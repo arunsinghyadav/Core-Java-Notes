@@ -1,0 +1,160 @@
+\chapter{Ensemble Learning}\label{n:ensemble}
+\studytime{2.5 hours}
+
+\begin{dfn}{Ensemble learning}
+\textbf{Ensemble learning} combines the predictions of several models (\textbf{base learners}) to obtain a prediction that is more accurate and more stable than that of any single model. A group of predictors is an \textbf{ensemble}; the idea is the ``\textbf{wisdom of the crowd}''.
+\end{dfn}
+\begin{itemize}
+  \item Works best when base learners are \textbf{diverse} (make different, independent errors) and each is better than random guessing (a \textbf{weak learner}).
+  \item Diversity comes from: different algorithms, different training subsets, different feature subsets.
+  \item Main methods: \textbf{voting}, \textbf{bagging/pasting}, \textbf{random forests}, \textbf{boosting}, \textbf{stacking}.
+\end{itemize}
+
+\section{Voting Classifiers}
+\begin{dfn}{Voting classifier}
+A \textbf{voting classifier} trains several different classifiers on the same data and predicts the class that gets the most votes (\textbf{hard voting}) or the class with the highest \textbf{average predicted probability} (\textbf{soft voting}).
+\end{dfn}
+\begin{numer}[: majority vote of 3 independent classifiers, each 70\% accurate]
+$P(\text{majority correct})=p^3+3p^2(1-p)=0.343+3(0.49)(0.3)=0.343+0.441=\mathbf{0.784}$ (better than 0.70).
+\end{numer}
+\begin{numer}[: hard vs.\ soft voting]
+$P(A)$ from three models $=0.9,\ 0.4,\ 0.4$. Hard vote: A, B, B $\Rightarrow$ \textbf{B}. Soft vote: mean $P(A)=\frac{1.7}3=0.567>0.5\Rightarrow$ \textbf{A}. Soft voting uses confidence and is usually better.
+\end{numer}
+
+\section{Bagging and Pasting}
+\begin{dfn}{Bagging and pasting}
+\textbf{Bagging (Bootstrap Aggregating)} trains the same algorithm on different random subsets of the training set drawn \textbf{with replacement} (bootstrap samples) and aggregates their predictions (vote for classification, average for regression). \textbf{Pasting} is the same but samples \textbf{without replacement}.
+\end{dfn}
+\textbf{Algorithm:}
+\begin{enumerate}
+  \item For $b=1,\dots,B$: draw a bootstrap sample of size $n$ from the training data.
+  \item Train a model (often a deep decision tree) on it.
+  \item Predict by majority vote (classification) or average (regression).
+\end{enumerate}
+\begin{itemize}
+  \item Reduces \textbf{variance} without increasing bias; models train \textbf{in parallel}.
+  \item Variance of an average of $B$ models with correlation $\rho$: $\rho\sigma^2+\frac{1-\rho}{B}\sigma^2$. (Example: $\rho=0.5,\sigma^2=1,B=10$: $0.55$ instead of $1$.)
+  \item \textbf{Out-of-bag (OOB) evaluation:} each bootstrap sample leaves out about $(1-\frac1n)^n\approx e^{-1}=\mathbf{36.8\%}$ of the instances; they act as a free validation set.
+\end{itemize}
+
+\begin{drawit}{Bagging}
+\centering
+\begin{tikzpicture}[font=\small,b/.style={draw,thick,rounded corners,minimum width=1.9cm,minimum height=0.6cm}]
+\node[b,fill=gray!15] (d) at (4.5,2.4) {training data};
+\foreach \i/\x in {1/0,2/3,3/6,4/9}{
+  \node[b,fill=mlblue!10] (s\i) at (\x,1.1) {sample \i};
+  \node[b,fill=mlgreen!12] (m\i) at (\x,0) {model \i};
+  \draw[-Stealth] (d)--(s\i); \draw[-Stealth] (s\i)--(m\i);}
+\node[b,fill=mlorange!20] (v) at (4.5,-1.3) {vote / average};
+\foreach \i in {1,...,4}{\draw[-Stealth] (m\i)--(v);}
+\node[font=\scriptsize,right] at (10.1,1.1) {with replacement};
+\end{tikzpicture}
+\end{drawit}
+
+\section{Random Forests}
+\begin{dfn}{Random forest}
+A \textbf{random forest} is an ensemble of decision trees trained by bagging, in which each split considers only a \textbf{random subset of features} (typically $\sqrt d$ for classification). The final prediction is the majority vote (or average) of all trees.
+\end{dfn}
+\begin{itemize}
+  \item Two sources of randomness: bootstrap rows + random features $\Rightarrow$ less correlated trees $\Rightarrow$ lower variance than plain bagging.
+  \item \textbf{Extra-Trees (extremely randomised trees):} also random split thresholds; faster.
+  \item \textbf{Feature importance:} average decrease in impurity caused by each feature over all trees.
+  \item Hyperparameters: number of trees, max features, max depth, min samples per leaf.
+\end{itemize}
+\apa{high accuracy, resists overfitting, handles many features, gives feature importance and OOB score, little tuning}{less interpretable than one tree, slow and large with many trees}{fraud detection, credit scoring, disease prediction, remote sensing, stock analysis}
+
+\section{Boosting}
+\begin{dfn}{Boosting}
+\textbf{Boosting} trains weak learners \textbf{sequentially}, each new learner focusing on the mistakes of the previous ones, and combines them into a strong learner by a weighted vote.
+\end{dfn}
+
+\subsection{AdaBoost (Adaptive Boosting)}
+\textbf{Algorithm:}
+\begin{enumerate}
+  \item Give every training instance equal weight $w_i=\frac1n$.
+  \item Train a weak learner $h_t$ (e.g.\ a decision stump); compute weighted error $\varepsilon_t=\sum_{\text{wrong}}w_i$.
+  \item Learner weight $\alpha_t=\frac12\ln\frac{1-\varepsilon_t}{\varepsilon_t}$ (more accurate $\Rightarrow$ larger say).
+  \item Update $w_i\leftarrow w_i\,e^{-\alpha_ty_ih_t(\vect x_i)}$: wrong instances get \textbf{heavier}; normalise to sum 1.
+  \item Repeat; final $H(\vect x)=\operatorname{sign}\big(\sum_t\alpha_th_t(\vect x)\big)$.
+\end{enumerate}
+\begin{numer}[: one AdaBoost round, 5 instances]
+$w=(0.2,\dots,0.2)$; $h_1$ wrong only on instance 4: $\varepsilon_1=0.2$, $\alpha_1=\frac12\ln\frac{0.8}{0.2}=\frac12\ln4=\mathbf{0.693}$.\\
+Correct $\times e^{-0.693}=\times0.5\to0.1$; wrong $\times e^{0.693}=\times2\to0.4$. Sum $=0.8$; normalised $w=(0.125,0.125,0.125,\mathbf{0.5},0.125)$.\\
+Instance 4 now carries half the weight, so the next learner must get it right.
+\end{numer}
+
+\subsection{Gradient boosting}
+\begin{itemize}
+  \item Each new tree is fitted to the \textbf{residual errors} $r_i=y_i-F_{m-1}(\vect x_i)$ of the current ensemble; $F_m=F_{m-1}+\eta\,h_m$.
+  \item $\eta$ (learning rate, \textbf{shrinkage}) small $\Rightarrow$ more trees needed but better generalisation. Use early stopping.
+  \item \textbf{XGBoost, LightGBM, CatBoost}: fast, regularised implementations.
+\end{itemize}
+\begin{numer}[: gradient boosting]
+$y=(10,20,30)$. $F_0=\bar y=20$; residuals $(-10,0,10)$. A tree fits them exactly; with $\eta=0.1$: $F_1=20+0.1(-10,0,10)=(19,20,21)$. New residuals $(-9,0,9)$: error shrinks step by step.
+\end{numer}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{3cm}p{6.6cm}p{6.6cm}@{}}
+\toprule
+ & \textbf{Bagging} & \textbf{Boosting}\\
+\midrule
+Training & parallel, independent & sequential, each fixes the last\\
+Sampling & bootstrap samples & reweighted (or residual) data\\
+Weights of models & equal & by accuracy ($\alpha_t$)\\
+Reduces & variance & bias (and variance)\\
+Base learner & strong, deep trees & weak learners (stumps)\\
+Overfitting & rarely & possible if too many rounds\\
+Outliers / noise & robust & sensitive\\
+Example & random forest & AdaBoost, gradient boosting\\
+\bottomrule
+\end{tabular}
+\end{center}
+\apa{very high accuracy, reduces bias, works with simple learners}{sequential (slow to train), sensitive to noise and outliers, needs careful tuning}{web search ranking, face detection (AdaBoost), Kaggle competitions, credit risk}
+
+\section{Stacking}
+\begin{dfn}{Stacking (stacked generalisation)}
+\textbf{Stacking} trains several different base models (level 0) and then trains a \textbf{meta-learner} (blender, level 1) that takes the base models' predictions as its inputs and learns how best to combine them.
+\end{dfn}
+\textbf{Steps:} (1) split training data into two parts (or use cross-validation predictions); (2) train base models on part 1; (3) predict part 2 with them; (4) train the meta-learner on these predictions with the true labels; (5) for new data: base predictions $\to$ meta-learner $\to$ final output.
+
+\begin{drawit}{Stacking}
+\centering
+\begin{tikzpicture}[font=\small,b/.style={draw,thick,rounded corners,minimum width=2cm,minimum height=0.6cm}]
+\node[b,fill=gray!15] (x) at (0,0) {input $\vect x$};
+\node[b,fill=mlblue!10] (a) at (3.5,1) {k-NN}; \node[b,fill=mlblue!10] (b) at (3.5,0) {SVM}; \node[b,fill=mlblue!10] (c) at (3.5,-1) {tree};
+\node[b,fill=mlorange!20] (m) at (7.5,0) {meta-learner}; \node[b,fill=mlgreen!15] (y) at (10.8,0) {final $\hat y$};
+\foreach \n in {a,b,c}{\draw[-Stealth] (x)--(\n); \draw[-Stealth] (\n)--(m);}
+\draw[-Stealth] (m)--(y);
+\end{tikzpicture}
+\end{drawit}
+
+\begin{center}
+\small
+\begin{tabular}{@{}lllll@{}}
+\toprule
+\textbf{Method} & \textbf{Base models} & \textbf{Data per model} & \textbf{Combination} & \textbf{Training}\\
+\midrule
+Voting & different & same & majority/average & parallel\\
+Bagging & same & bootstrap samples & majority/average & parallel\\
+Boosting & same (weak) & reweighted & weighted vote & sequential\\
+Stacking & different & same (CV) & learned meta-model & two levels\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{imp}
+Most asked: bagging vs.\ boosting table; random forest; AdaBoost algorithm with weights; stacking diagram; hard vs.\ soft voting.
+\end{imp}
+
+\begin{iq}
+\item \twom Define ensemble learning.
+\item \twom Differentiate bagging and pasting.
+\item \twom What is out-of-bag evaluation?
+\item \twom What is a weak learner?
+\item \fivem Explain hard and soft voting with an example.
+\item \fivem Explain random forests. Why are they better than a single tree?
+\item \fivem Explain stacking with a diagram.
+\item \tenm Compare bagging and boosting. Explain the AdaBoost algorithm.
+\item \tenm Explain ensemble learning methods: voting, bagging, random forest, boosting and stacking.
+\end{iq}

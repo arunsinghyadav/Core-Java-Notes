@@ -1,0 +1,183 @@
+\chapter*{Study Guide}
+\markboth{Study Guide}{Study Guide}
+\addcontentsline{toc}{chapter}{Study Guide}
+
+This guide shows you \emph{where} each part of the syllabus is covered, \emph{how} to study a chapter, and \emph{how} to write answers that earn full marks.
+
+%====================================================================
+\section*{1.\ Course Outcomes and Where They Are Covered}
+
+After completing the course the student should be able to do the following (course outcomes of NBCA-601):
+
+\begin{center}
+\small
+\begin{tabular}{@{}cp{7.6cm}p{4.6cm}@{}}
+\toprule
+\textbf{CO} & \textbf{Course outcome} & \textbf{Where to study it}\\
+\midrule
+CO1 & Explain the fundamental usage of the concept of a Machine Learning system & Chapter~\ref{ch:intro} (p.~\pageref{ch:intro}), Chapter~\ref{ch:stat} (p.~\pageref{ch:stat})\\
+CO2 & Demonstrate various regression techniques & Chapter~\ref{ch:linear} (p.~\pageref{ch:linear}); also SVM regression in Chapter~\ref{ch:svm}\\
+CO3 & Analyse the ensemble learning methods & Chapter~\ref{ch:ensemble} (p.~\pageref{ch:ensemble})\\
+CO4 & Illustrate clustering techniques and dimensionality-reduction models & Chapter~\ref{ch:cluster} (p.~\pageref{ch:cluster}), Chapter~\ref{ch:dimred} (p.~\pageref{ch:dimred})\\
+CO5 & Discuss neural-network models and the fundamental concepts of deep learning & Chapter~\ref{ch:ann} (p.~\pageref{ch:ann}), Chapter~\ref{ch:tf} (p.~\pageref{ch:tf})\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%====================================================================
+\section*{2.\ Syllabus Map: Every Topic and Its Chapter}
+
+Tick each topic when you can \emph{define it, explain it with a diagram, and solve a numerical example}.
+
+\begin{center}
+\small
+\begin{tabular}{@{}c p{8.8cm} c c@{}}
+\toprule
+\textbf{Unit} & \textbf{Syllabus topic} & \textbf{Chapter} & \textbf{Page}\\
+\midrule
+I & Artificial Intelligence, Machine Learning, types of ML systems, challenges of ML & \ref{ch:intro} & \pageref{ch:intro}\\
+I & Statistical learning: supervised and unsupervised learning, training and test loss, trade-offs, estimating risk statistics, sampling distribution of an estimator & \ref{ch:stat} & \pageref{ch:stat}\\
+\midrule
+II & Distance-based methods, nearest neighbours, decision trees, Naive Bayes & \ref{ch:knn} & \pageref{ch:knn}\\
+II & Linear models: linear regression, logistic regression, generalised linear models, support vector machines, binary classification & \ref{ch:linear} & \pageref{ch:linear}\\
+\midrule
+III & Ensemble learning: voting classifiers, bagging and pasting, random forests, boosting, stacking & \ref{ch:ensemble} & \pageref{ch:ensemble}\\
+III & Support vector machines: linear and non-linear SVM classification, SVM regression; Naive Bayes classifiers & \ref{ch:svm} & \pageref{ch:svm}\\
+\midrule
+IV & Clustering, K-Means and its limits, image segmentation, preprocessing, semi-supervised learning, DBSCAN, Gaussian mixtures & \ref{ch:cluster} & \pageref{ch:cluster}\\
+IV & Dimensionality reduction: curse of dimensionality, main approaches, PCA & \ref{ch:dimred} & \pageref{ch:dimred}\\
+\midrule
+V & Introduction to artificial neural networks with Keras; implementing MLPs with Keras & \ref{ch:ann} & \pageref{ch:ann}\\
+V & TensorFlow; loading and preprocessing data with TensorFlow & \ref{ch:tf} & \pageref{ch:tf}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Core topics of each unit.} These are the ideas on which most questions are built; make sure you can handle every one of them.
+
+\begin{center}
+\small
+\begin{tabular}{@{}cp{13.2cm}@{}}
+\toprule
+\textbf{Unit} & \textbf{Core topics}\\
+\midrule
+I & Mitchell's definition $(T,P,E)$; supervised / unsupervised / semi-supervised / reinforcement learning; batch vs.\ online; instance- vs.\ model-based; overfitting and underfitting; bias--variance trade-off; training vs.\ test loss; k-fold cross-validation; precision, recall, $F_1$; standard error and the central limit theorem\\
+II & k-NN with a numerical example; entropy, information gain and ID3; Naive Bayes with Laplace smoothing; least-squares line and $R^2$; gradient descent; logistic regression (sigmoid, odds, log-loss); GLMs; SVM margin and support vectors\\
+III & Bagging vs.\ boosting; random forest; AdaBoost; gradient boosting; stacking; the kernel trick (polynomial and RBF); effect of $C$ and $\gamma$; SVM regression ($\varepsilon$-tube); Gaussian, multinomial and Bernoulli Naive Bayes\\
+IV & K-Means (algorithm and example); elbow and silhouette; limits of K-Means; DBSCAN (core, border, noise); Gaussian mixtures and EM; curse of dimensionality; PCA by hand and explained variance\\
+V & Perceptron and the XOR problem; MLP forward pass; activation functions; backpropagation; Keras workflow; overfitting control (dropout, L2, early stopping); \texttt{tf.data} pipeline; preprocessing layers\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%====================================================================
+\section*{3.\ How to Study a Chapter (7 Steps)}
+
+\begin{enumerate}
+  \item \textbf{Read the Learning Objectives} and turn them into questions you must be able to answer.
+  \item \textbf{Read the cartoon or story first.} Do not memorise anything yet; just understand the idea.
+  \item \textbf{Study the definition boxes} and copy each definition by hand once. Definitions are the easiest marks in the exam.
+  \item \textbf{Redo every worked example} on paper without looking at the solution, then compare.
+  \item \textbf{Run the Python code} (or at least read the printed results) and change one number to see the effect.
+  \item \textbf{Attempt the Exam Corner} before reading the model answers: first the 2-mark questions, then 5-mark, then 10-mark, then the numericals.
+  \item \textbf{Finish with the Quick Revision table}; turn each row into a flash-card.
+\end{enumerate}
+
+\begin{center}
+\begin{tabular}{@{}p{2.8cm}p{4.2cm}p{6.2cm}@{}}
+\toprule
+\textbf{Time per chapter} & \textbf{Reading and examples} & \textbf{Practice}\\
+\midrule
+About 8--10 hours & 4 hours (steps 1--4) & 1 hour of code (step 5), 3--4 hours of Exam Corner (steps 6--7)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{A suggested 15-week plan}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{2.2cm}p{4.3cm}p{7.2cm}@{}}
+\toprule
+\textbf{Week} & \textbf{Chapter} & \textbf{Focus}\\
+\midrule
+1 & Chapter~\ref{ch:intro} & types of ML, overfitting, the vocabulary\\
+2--3 & Chapter~\ref{ch:stat} & loss, bias--variance, cross-validation, standard error\\
+4 & Chapter~\ref{ch:knn} & k-NN, decision tree by hand, Naive Bayes by hand\\
+5 & Chapter~\ref{ch:linear} & regression line, gradient descent, logistic regression, SVM idea\\
+6 & Chapter~\ref{ch:ensemble} & bagging, random forest, AdaBoost by hand\\
+7 & Chapter~\ref{ch:svm} & kernels, soft margin, SVR, Naive Bayes variants\\
+8 & Chapter~\ref{ch:cluster} & K-Means by hand, DBSCAN, EM\\
+9 & Chapter~\ref{ch:dimred} & curse of dimensionality, PCA by hand\\
+10 & Chapter~\ref{ch:ann} & perceptron, forward pass, backpropagation, Keras\\
+11 & Chapter~\ref{ch:tf} & tensors, \texttt{GradientTape}, \texttt{tf.data}\\
+12--13 & Revision & Quick Revision tables, formula sheet (Appendix~A), MCQs of all chapters\\
+14 & Mock test & answer a full paper in the time allowed, using the answer-writing guide below\\
+15 & Final revision & glossary (Appendix~B), weak topics only\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%====================================================================
+\section*{4.\ How to Write Answers That Earn Full Marks}
+
+\subsection*{The structure of an answer}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{2.3cm}p{9.0cm}p{2.3cm}@{}}
+\toprule
+\textbf{Marks} & \textbf{What to write} & \textbf{Time}\\
+\midrule
+\textbf{2 marks} & a precise \textbf{definition} (2--3 lines) plus one key fact, formula or example & 2--3 min\\
+\textbf{5 marks} & definition $+$ a \textbf{labelled diagram} (or table) $+$ 4--5 points of explanation $+$ one short example or formula & 8--10 min\\
+\textbf{10 marks} & introduction $+$ definition $+$ \textbf{working or algorithm in steps} $+$ \textbf{diagram} $+$ \textbf{worked numerical example} $+$ advantages and disadvantages $+$ applications $+$ a one-line conclusion & 15--20 min\\
+\textbf{Numerical} & write ``Given'', the \textbf{formula}, the \textbf{substitution}, the calculation \textbf{step by step}, and the final answer with its meaning & as needed\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{The same topic at three different lengths}
+
+\textbf{Topic: Overfitting.}
+
+\begin{itemize}
+  \item \textbf{2 marks.} \emph{Overfitting} occurs when a model fits the training data, including its noise, so well that it performs poorly on new data (low training error, high test error). It is caused by a model that is too complex for the amount of data.
+  \item \textbf{5 marks.} Add: (i)~a diagram of three fits (underfit, good fit, overfit); (ii)~causes: complex model, little or noisy data, too many features; (iii)~how to detect it: large gap between training and validation error; (iv)~remedies: more data, simpler model, regularisation, cross-validation, early stopping, pruning; (v)~an example, such as a degree-9 polynomial through ten points.
+  \item \textbf{10 marks.} Add: the bias--variance explanation ($\text{error}=\text{bias}^2+\text{variance}+\sigma^2$, overfitting $=$ high variance), the curve of training and test error against model complexity, a numerical example (e.g.\ train MSE $0.026$ vs.\ test MSE $0.102$ for degree 9), and a comparison table with underfitting.
+\end{itemize}
+
+\subsection*{A checklist before you finish an answer}
+
+\begin{enumerate}
+  \item Did I give the \textbf{definition} in the textbook's words?
+  \item Did I draw a \textbf{neat, labelled diagram} (axes, classes, arrows) where one is useful?
+  \item Did I write the \textbf{formula} and explain every symbol?
+  \item Did I include a \textbf{small example}, with numbers?
+  \item Did I mention \textbf{advantages, disadvantages and applications} when asked about a method?
+  \item For a comparison, did I use a \textbf{table} with at least four points?
+  \item For a numerical, did I show \textbf{all steps} and the final answer?
+\end{enumerate}
+
+\begin{exam}
+Draw diagrams with a pencil and ruler, label every axis, and use different markers (circle, triangle) for different classes. A clear diagram is often worth as many marks as a paragraph of text.
+\end{exam}
+
+\subsection*{Common mistakes of students}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{6.4cm}p{6.9cm}@{}}
+\toprule
+\textbf{Mistake} & \textbf{Correct habit}\\
+\midrule
+Writing ``K-Means needs labels'' & K-Means is \emph{unsupervised}: no labels\\
+Confusing parameters and hyperparameters & parameters are \emph{learned}; hyperparameters are \emph{set by you}\\
+Reporting training accuracy as model performance & always report \textbf{test} (or validation) performance\\
+Scaling the whole dataset before splitting & compute scaling statistics on the \textbf{training set only}\\
+Forgetting to scale features for k-NN, SVM, PCA, neural networks & always scale distance-based and gradient-based methods\\
+Mixing up bagging and boosting & bagging: parallel, reduces \emph{variance}; boosting: sequential, reduces \emph{bias}\\
+Leaving numerical answers without units or meaning & write a sentence: ``so the student is predicted to \dots''\\
+\bottomrule
+\end{tabular}
+\end{center}

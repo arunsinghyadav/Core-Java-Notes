@@ -1,0 +1,945 @@
+\chapter[Linear Models and Support Vector Machines]{Linear Models and\\Support Vector Machines}
+
+\begin{objectives}
+After studying this chapter you will be able to:
+\begin{itemize}
+  \item \textbf{define} linear regression, logistic regression, generalized linear models and support vector machines, and write each as a standard exam answer;
+  \item fit a regression line by hand, using both the \textbf{least-squares formula} and \textbf{gradient descent}, and judge it with \textbf{MSE} and $R^2$;
+  \item explain the \textbf{sigmoid}, \textbf{odds}, \textbf{log-odds} and \textbf{cross-entropy loss}, and compute logistic-regression probabilities, boundaries and accuracy end to end;
+  \item describe the three components of a \textbf{GLM} and work with \textbf{Poisson regression};
+  \item explain \textbf{binary classification}, the \textbf{maximum-margin hyperplane}, \textbf{support vectors} and the \textbf{soft margin}, and solve a small SVM by hand;
+  \item compare linear and logistic regression and say when to use each;
+  \item answer 2-, 5- and 10-mark university questions on Unit~II.
+\end{itemize}
+\end{objectives}
+
+\begin{pullquote}[--- Leo Breiman]
+Simple models are not simple-minded: a good linear model often beats a clever complicated one.
+\end{pullquote}
+
+In Chapter~3 the models were built from \emph{distances}, \emph{questions} and \emph{probabilities}. This chapter studies the most widely used family of models in all of statistics and machine learning: \textbf{linear models}, which predict from a \emph{weighted sum} of the features.
+
+\begin{definition}[: Linear model]
+A \textbf{linear model} computes a score
+\[
+  z=\vect{w}\cdot\vect{x}+b=w_1x_1+w_2x_2+\cdots+w_dx_d+b,
+\]
+where $\vect{w}$ are the \textbf{weights} (coefficients) and $b$ is the \textbf{bias} (intercept). The final prediction is a function of $z$: $z$ itself (linear regression), a probability $\sigma(z)$ (logistic regression), or the sign of $z$ (SVM).
+\end{definition}
+
+\begin{center}\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Model} & \textbf{Prediction from the score $z$} & \textbf{Output} & \textbf{Real-life task}\\
+\midrule
+Linear regression & $\hat y=z$ & any real number & Marks from study hours\\
+Logistic regression & $\hat p=\dfrac1{1+e^{-z}}$ & probability in $(0,1)$ & Will the student pass?\\
+GLM (Poisson) & $\hat\mu=e^{z}$ & non-negative count & Number of calls per day\\
+SVM & $\hat y=\operatorname{sign}(z)$ & class $-1$ or $+1$ & Spam or not spam\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%====================================================================
+\section{Linear Regression}
+
+\begin{theory}{Linear Regression}
+\tpart{Definition} \textbf{Linear regression} is a \emph{supervised, parametric} learning method for \emph{regression} problems. It models the target $y$ as a \textbf{linear function of the input features} plus random error, $y=\theta_0+\theta_1x_1+\cdots+\theta_dx_d+\varepsilon$, and chooses the parameters that minimise the sum of squared prediction errors (\textbf{method of least squares}).
+\tpart{Working} (1)~Assume the linear model $\hat y=\theta_0+\theta_1x_1+\dots+\theta_dx_d$. (2)~Define the loss $J(\theta)=\frac1{2n}\sum_i(\hat y_i-y_i)^2$. (3)~Find $\theta$ that minimises $J$ using the \emph{normal equation} or \emph{gradient descent}. (4)~Predict for new inputs and evaluate with MSE, RMSE and $R^2$ on test data.
+\tpart{Assumptions} Linearity of the relationship; independence of errors; constant error variance (homoscedasticity); normally distributed errors (for inference); no strong multicollinearity among features.
+\tpart{Advantages} Simple, fast, easy to interpret (each coefficient is the effect of one feature); needs little data; a good baseline.
+\tpart{Disadvantages} Cannot capture non-linear relationships unless features are transformed; sensitive to outliers; affected by correlated features.
+\tpart{Applications} House-price prediction, sales forecasting, estimating marks or salary, demand and risk modelling.
+\end{theory}
+
+\subsection{Simple Linear Regression}
+
+With one feature $x$ the model is a straight line
+\[
+  \hat y=\theta_0+\theta_1x,
+\]
+where $\theta_1$ is the \textbf{slope} (change in $y$ per unit change in $x$) and $\theta_0$ the \textbf{intercept} (value of $y$ at $x=0$). The error of a prediction is the \textbf{residual} $e_i=y_i-\hat y_i$. The method of \textbf{least squares} chooses $\theta_0,\theta_1$ to minimise the \textbf{sum of squared errors}
+\[
+  \text{SSE}=\sum_{i=1}^{n}(y_i-\theta_0-\theta_1x_i)^2 .
+\]
+Setting the partial derivatives $\partial\text{SSE}/\partial\theta_0$ and $\partial\text{SSE}/\partial\theta_1$ to zero gives the \textbf{closed-form solution}
+\begin{equation}\label{eq:ols}
+  \theta_1=\frac{\sum_i(x_i-\bar x)(y_i-\bar y)}{\sum_i(x_i-\bar x)^2}=\frac{S_{xy}}{S_{xx}},\qquad
+  \theta_0=\bar y-\theta_1\bar x .
+\end{equation}
+
+\subsubsection*{Real-life example: study hours and exam marks}
+
+A teacher records the hours studied $x$ and the marks $y$ (out of 100) of five students.
+
+\begin{center}
+\begin{tabular}{@{}c|ccccc|c@{}}
+\toprule
+Student & A & B & C & D & E & Mean\\
+\midrule
+Hours $x$ & 1 & 2 & 3 & 4 & 5 & $\bar x=3$\\
+Marks $y$ & 35 & 45 & 50 & 65 & 70 & $\bar y=53$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{example}[: End-to-end solution]
+\textbf{Step 1: deviations from the mean.}
+\begin{center}
+\begin{tabular}{@{}c|ccccc|c@{}}
+\toprule
+$x-\bar x$ & $-2$ & $-1$ & $0$ & $1$ & $2$ & \\
+$y-\bar y$ & $-18$ & $-8$ & $-3$ & $12$ & $17$ & \\
+$(x-\bar x)(y-\bar y)$ & $36$ & $8$ & $0$ & $12$ & $34$ & $S_{xy}=90$\\
+$(x-\bar x)^2$ & $4$ & $1$ & $0$ & $1$ & $4$ & $S_{xx}=10$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Step 2: parameters.} $\theta_1=\dfrac{90}{10}=9$ and $\theta_0=53-9(3)=26$. \textbf{Model:} $\ \widehat{\text{marks}}=26+9\times\text{hours}$.\par
+\textbf{Interpretation:} each extra hour of study adds about \textbf{9 marks}; a student who studies 0 hours is expected to score 26.\par
+\textbf{Step 3: predict.} For $x=6$ hours: $\hat y=26+9(6)=\mathbf{80}$ marks.\par
+\textbf{Step 4: check the fit.}
+\begin{center}
+\begin{tabular}{@{}c|ccccc|c@{}}
+\toprule
+$x$ & 1 & 2 & 3 & 4 & 5 & \\
+$y$ & 35 & 45 & 50 & 65 & 70 & \\
+$\hat y=26+9x$ & 35 & 44 & 53 & 62 & 71 & \\
+Residual $y-\hat y$ & 0 & 1 & $-3$ & 3 & $-1$ & $\sum e=0$\\
+$e^2$ & 0 & 1 & 9 & 9 & 1 & $\text{SSE}=20$\\
+$(y-\bar y)^2$ & 324 & 64 & 9 & 144 & 289 & $\text{SST}=830$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\[
+  \text{MSE}=\frac{\text{SSE}}{n}=\frac{20}{5}=4,\quad
+  \text{RMSE}=2,\quad
+  R^2=1-\frac{\text{SSE}}{\text{SST}}=1-\frac{20}{830}=\mathbf{0.976}.
+\]
+The line explains about \textbf{97.6\%} of the variation in marks. The residuals add up to $0$, a property of least squares with an intercept.
+\end{example}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=11cm,height=6.6cm,xlabel={Hours studied $x$},ylabel={Marks $y$},
+  xmin=0,xmax=7,ymin=20,ymax=90,grid=both,grid style={gray!18},
+  legend style={at={(0.02,0.98)},anchor=north west,font=\small}]
+\addplot[only marks,mark=*,mlblue,mark size=3pt] coordinates {(1,35)(2,45)(3,50)(4,65)(5,70)};
+\addlegendentry{students $(x_i,y_i)$}
+\addplot[thick,mlgreen,domain=0:7]{26+9*x};
+\addlegendentry{fitted line $\hat y=26+9x$}
+\addplot[only marks,mark=star,mlorange,mark size=5pt,very thick] coordinates {(6,80)};
+\addlegendentry{prediction for 6 h}
+\draw[mlred,thick] (axis cs:2,44)--(axis cs:2,45);
+\draw[mlred,thick] (axis cs:3,53)--(axis cs:3,50);
+\draw[mlred,thick] (axis cs:4,62)--(axis cs:4,65);
+\draw[mlred,thick] (axis cs:5,71)--(axis cs:5,70);
+\draw[dashed,gray] (axis cs:0,26)--(axis cs:1,26);
+\node[font=\scriptsize,anchor=east] at (axis cs:0.95,26) {$\theta_0=26$};
+\draw[decorate,decoration={brace,amplitude=3pt},mlred] (axis cs:3.12,50)--(axis cs:3.12,53) node[midway,right,font=\scriptsize,xshift=2pt] {$e=-3$};
+\end{axis}
+\end{tikzpicture}
+\caption{Least-squares line for study hours vs.\ marks. Red segments are residuals.}\label{fig:linreg}
+\end{figure}
+
+\begin{explain}
+Each \textbf{blue dot} is a student. The \textbf{green line} is the best straight line, chosen so that the \emph{sum of the squared lengths of the red vertical segments} is as small as possible. A red segment is a \textbf{residual}: the gap between the actual marks and the line's prediction. For student C the line predicts 53 but the actual mark is 50, so the residual is $-3$. The \textbf{slope} of the line is 9 (marks per hour), and where it meets the vertical axis it gives the intercept 26. The \textbf{orange star} is the prediction for a student who studies 6 hours: we read the height of the line at $x=6$, giving 80.
+\end{explain}
+
+\subsection{Normal Equation (Matrix Form)}
+
+For one or many features, stack the inputs into a matrix $\mathbf X$ with a leading column of ones (for the intercept) and the targets into a vector $\vect y$. Minimising $J$ gives the \textbf{normal equation}
+\begin{equation}\label{eq:normal}
+  \vect\theta=(\mathbf X^{\!\top}\mathbf X)^{-1}\mathbf X^{\!\top}\vect y .
+\end{equation}
+
+\begin{example}[: Same problem in matrix form]
+With $\mathbf X=\begin{bmatrix}1&1\\1&2\\1&3\\1&4\\1&5\end{bmatrix}$ and $\vect y=(35,45,50,65,70)^{\top}$:
+\[
+\mathbf X^{\!\top}\mathbf X=\begin{bmatrix}5&15\\15&55\end{bmatrix},\quad
+\mathbf X^{\!\top}\vect y=\begin{bmatrix}265\\885\end{bmatrix},\quad
+(\mathbf X^{\!\top}\mathbf X)^{-1}=\frac1{50}\begin{bmatrix}55&-15\\-15&5\end{bmatrix}.
+\]
+\[
+\vect\theta=\frac1{50}\begin{bmatrix}55(265)-15(885)\\-15(265)+5(885)\end{bmatrix}
+=\frac1{50}\begin{bmatrix}1300\\450\end{bmatrix}=\begin{bmatrix}26\\9\end{bmatrix}.
+\]
+This is the same answer, $\theta_0=26$, $\theta_1=9$.
+\end{example}
+
+The normal equation is exact but requires inverting a $d\times d$ matrix (cost $\approx O(d^3)$), which is slow for thousands of features. For large problems we use an iterative method.
+
+\subsection{Gradient Descent}
+
+\begin{definition}[: Gradient descent]
+\textbf{Gradient descent} is an iterative optimisation algorithm that minimises a differentiable loss $J(\vect\theta)$ by repeatedly moving the parameters a small step in the direction of \emph{steepest decrease}, i.e.\ opposite to the gradient:
+\[
+  \theta_j\;\leftarrow\;\theta_j-\alpha\,\frac{\partial J}{\partial\theta_j},\qquad j=0,1,\dots,d,
+\]
+where $\alpha>0$ is the \textbf{learning rate}. All parameters are updated \emph{simultaneously}.
+\end{definition}
+
+For linear regression with $J(\vect\theta)=\frac1{2n}\sum_i(\hat y_i-y_i)^2$:
+\[
+\frac{\partial J}{\partial\theta_0}=\frac1n\sum_i(\hat y_i-y_i),\qquad
+\frac{\partial J}{\partial\theta_1}=\frac1n\sum_i(\hat y_i-y_i)\,x_i .
+\]
+
+\begin{example}[: Gradient descent by hand on the marks data]
+Start at $\theta_0=\theta_1=0$ and use $\alpha=0.01$.\par
+\textbf{Iteration 1.} Predictions are all $0$, so the errors $\hat y-y$ are $-35,-45,-50,-65,-70$.
+\[
+\tfrac{\partial J}{\partial\theta_0}=\tfrac{-265}{5}=-53,\qquad
+\tfrac{\partial J}{\partial\theta_1}=\tfrac{-35-90-150-260-350}{5}=\tfrac{-885}{5}=-177 .
+\]
+\[
+\theta_0=0-0.01(-53)=0.53,\qquad\theta_1=0-0.01(-177)=1.77 .
+\]
+\textbf{Iteration 2.} Predictions $0.53+1.77x$ are $2.30,\,4.07,\,5.84,\,7.61,\,9.38$; errors $-32.70,-40.93,-44.16,-57.39,-60.62$.
+\[
+\tfrac{\partial J}{\partial\theta_0}=-47.16,\quad\tfrac{\partial J}{\partial\theta_1}=-155.94\ \Rightarrow\ \theta_0=1.00,\ \theta_1=3.33 .
+\]
+\begin{center}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+\textbf{Iteration} & $\theta_0$ & $\theta_1$ & Loss $J$\\
+\midrule
+0 & 0 & 0 & 1487.5\\
+1 & 0.53 & 1.77 & 1166.3\\
+2 & 1.00 & 3.33 & 916.6\\
+3 & 1.42 & 4.70 & 722.4\\
+$\vdots$ & & & \\
+many & $\to26$ & $\to9$ & $\to2.0$\\
+\bottomrule
+\end{tabular}
+\end{center}
+The loss falls every step and the parameters move towards the exact answer $(26,9)$ found earlier; with $\alpha=0.01$ about $20\,000$ steps are needed to reach it to many decimals (a larger $\alpha$ such as $0.05$ is faster, but see the next figure).
+\end{example}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=3 by 1,horizontal sep=0.7cm},width=5.4cm,height=5.2cm,
+  xmin=-6.5,xmax=6.5,ymin=0,ymax=42,ticks=none,title style={font=\small\bfseries},axis lines=left]
+\nextgroupplot[title={(a) $\alpha$ too small}]
+\addplot[gray,domain=-6:6,samples=60]{x^2};
+\addplot[mlblue,thick,mark=*,mark size=2pt] coordinates {(4,16)(3.6,12.96)(3.24,10.50)(2.92,8.50)(2.62,6.89)};
+\nextgroupplot[title={(b) $\alpha$ just right}]
+\addplot[gray,domain=-6:6,samples=60]{x^2};
+\addplot[mlgreen,thick,mark=*,mark size=2pt] coordinates {(4,16)(0.8,0.64)(0.16,0.0256)(0.03,0.001)};
+\nextgroupplot[title={(c) $\alpha$ too large}]
+\addplot[gray,domain=-6:6,samples=60]{x^2};
+\addplot[mlred,thick,mark=*,mark size=2pt] coordinates {(4,16)(-4.8,23.04)(5.76,33.18)};
+\end{groupplot}
+\end{tikzpicture}
+\caption{Gradient descent on the loss $J(\theta)=\theta^2$ starting from $\theta=4$ with three learning rates.}\label{fig:gd}
+\end{figure}
+
+\begin{explain}
+The grey bowl is a simple loss curve $J(\theta)=\theta^2$; the lowest point (the minimum) is at $\theta=0$. Each dot is one iteration, joined in order from the start at $\theta=4$. The update is $\theta\leftarrow\theta(1-2\alpha)$.\par
+\textbf{(a) $\alpha=0.05$ (too small):} every step multiplies $\theta$ by $0.9$: safe, but after five steps we are still far from the bottom. Training is \emph{slow}.\par
+\textbf{(b) $\alpha=0.4$ (good):} each step multiplies by $0.2$, and within three steps we are essentially at the minimum.\par
+\textbf{(c) $\alpha=1.1$ (too large):} each step multiplies by $-1.2$, so we \emph{overshoot} the minimum and land higher on the opposite side each time: the loss \emph{increases} and the algorithm \textbf{diverges}.\par
+\textbf{Lesson:} if the loss goes up, reduce the learning rate.
+\end{explain}
+
+\begin{center}
+\begin{tabular}{@{}p{4.1cm}p{4.9cm}p{4.9cm}@{}}
+\toprule
+ & \textbf{Normal equation} & \textbf{Gradient descent}\\
+\midrule
+Learning rate $\alpha$ & Not needed & Must be chosen\\
+Iterations & None (one formula) & Many\\
+Many features ($d$ large) & Slow, $O(d^3)$ & Works well\\
+Feature scaling & Not needed & \textbf{Needed} for fast convergence\\
+Works for other models & No (linear regression only) & Yes (logistic regression, neural networks)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Multiple Linear Regression}
+
+With $d$ features, $\hat y=\theta_0+\theta_1x_1+\cdots+\theta_dx_d=\vect\theta^{\!\top}\vect x$. Each coefficient $\theta_j$ is the change in $\hat y$ when $x_j$ increases by one unit \emph{while all other features are held fixed}.
+
+\begin{example}[: House price]
+A fitted model for house price (lakh Rs) is
+\[
+\widehat{\text{price}}=5+0.4\,(\text{area in m}^2)+6\,(\text{bedrooms})-0.5\,(\text{age in years}).
+\]
+For a house with 100~m$^2$, 3 bedrooms and 10 years old: $5+0.4(100)+6(3)-0.5(10)=5+40+18-5=\mathbf{58}$ lakh. Reading the coefficients: one extra bedroom adds 6 lakh and each year of age subtracts 0.5 lakh, other things equal.
+\end{example}
+
+\paragraph{Practical points.}
+\begin{itemize}
+  \item \textbf{Categorical features} (e.g.\ city) are converted to 0/1 \emph{dummy variables} (one-hot encoding).
+  \item \textbf{Scale features} before gradient descent so that all weights learn at a similar speed.
+  \item \textbf{Multicollinearity:} if two features are strongly correlated (area in m$^2$ and in ft$^2$) the coefficients become unstable. Drop one feature or use regularisation.
+  \item \textbf{Polynomial regression:} adding $x^2,x^3,\dots$ as new features gives a \emph{curved} fit, yet the model is still \emph{linear in the parameters}, so all the theory applies. A high degree overfits (Chapter~2).
+\end{itemize}
+
+\subsection{Evaluating a Regression Model}
+
+\begin{center}
+\begin{tabular}{@{}p{3.1cm}p{5.1cm}p{5.6cm}@{}}
+\toprule
+\textbf{Metric} & \textbf{Formula} & \textbf{Meaning}\\
+\midrule
+MSE & $\frac1n\sum(y_i-\hat y_i)^2$ & Average squared error; punishes big errors\\
+RMSE & $\sqrt{\text{MSE}}$ & Error in the \emph{units of $y$} (e.g.\ marks)\\
+MAE & $\frac1n\sum|y_i-\hat y_i|$ & Average absolute error; robust to outliers\\
+$R^2$ & $1-\dfrac{\text{SSE}}{\text{SST}}$ & Fraction of variance explained; 1 is perfect, 0 is no better than predicting $\bar y$\\
+Adjusted $R^2$ & $1-(1-R^2)\dfrac{n-1}{n-p-1}$ & $R^2$ penalised for the number of features $p$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+For the marks example, $R^2=0.976$ and adjusted $R^2=1-0.0241\cdot\frac{4}{3}=0.968$.
+
+\begin{warning}
+A high $R^2$ on the \emph{training} data does not guarantee good predictions on new data. Always compute the metrics on a held-out test set. Also remember that \textbf{correlation is not causation}: studying more is associated with higher marks, but the regression alone cannot prove it causes them.
+\end{warning}
+
+\subsection{Regularised Linear Regression}
+
+When there are many features, the least-squares weights can become large and overfit. \textbf{Regularisation} adds a penalty on the size of the weights:
+\[
+\text{Ridge (L2):}\ \ J(\vect\theta)+\lambda\sum_{j=1}^{d}\theta_j^2,\qquad
+\text{Lasso (L1):}\ \ J(\vect\theta)+\lambda\sum_{j=1}^{d}|\theta_j| .
+\]
+\begin{itemize}
+  \item \textbf{Ridge} shrinks all weights smoothly towards zero and handles correlated features well.
+  \item \textbf{Lasso} can shrink some weights \emph{exactly to zero}, so it performs \textbf{automatic feature selection}.
+  \item $\lambda\ge0$ is a hyperparameter (chosen by cross-validation): $\lambda=0$ gives ordinary least squares; large $\lambda$ gives an almost flat model (underfitting).
+\end{itemize}
+
+\begin{tryit}
+Reproduce the hand results with \texttt{scikit-learn}:
+\begin{lstlisting}
+import numpy as np
+from sklearn.linear_model import LinearRegression, Ridge
+
+hours = np.array([[1], [2], [3], [4], [5]])
+marks = np.array([35, 45, 50, 65, 70])
+
+model = LinearRegression().fit(hours, marks)
+print(model.intercept_, model.coef_[0])      # 26.0  9.0
+print(model.predict([[6]]))                  # [80.]
+print(model.score(hours, marks))             # R^2 = 0.9759
+
+# regularised version: weights shrink a little
+print(Ridge(alpha=1.0).fit(hours, marks).coef_)
+\end{lstlisting}
+\emph{Challenge:} add a student with 2 hours and 80 marks (an outlier). How do the slope and $R^2$ change?
+\end{tryit}
+
+%====================================================================
+\section{Logistic Regression}
+
+\begin{theory}{Logistic Regression}
+\tpart{Definition} \textbf{Logistic regression} is a \emph{supervised, parametric} method for \emph{classification}. It models the \textbf{probability} that an instance belongs to the positive class by passing a linear score through the \textbf{sigmoid} function, $P(y=1\mid\vect x)=\sigma(\vect w\cdot\vect x+b)=\dfrac{1}{1+e^{-(\vect w\cdot\vect x+b)}}$, and predicts class 1 if this probability exceeds a threshold (usually $0.5$). Despite its name it is a classification algorithm.
+\tpart{Working} (1)~Compute $z=\vect w\cdot\vect x+b$. (2)~Convert to a probability $p=\sigma(z)$. (3)~Learn $\vect w,b$ by minimising the \textbf{cross-entropy (log) loss}, equivalent to \emph{maximum likelihood}, using gradient descent. (4)~Predict class 1 if $p\ge0.5$ (that is, $z\ge0$), else class 0.
+\tpart{Assumptions} Binary (or categorical) target; independent observations; log-odds is a linear function of the features; little multicollinearity; enough data per class.
+\tpart{Advantages} Gives \emph{probabilities}, not only labels; simple, fast and interpretable (coefficients are log-odds ratios); linear decision boundary; works well as a baseline; can be regularised.
+\tpart{Disadvantages} Only linear boundaries unless features are transformed; may underperform on complex data; sensitive to outliers and correlated features; fails on perfectly separable data without regularisation.
+\tpart{Applications} Spam detection, disease diagnosis, loan default, customer churn, pass/fail prediction.
+\end{theory}
+
+\subsection{Why Not Use Linear Regression for Classes?}
+
+Suppose we code ``fail $=0$, pass $=1$'' and fit a straight line. The line gives predictions like $-0.3$ or $1.4$, which are \emph{not valid probabilities}, and one extreme point can tilt the whole line. We need a function that squeezes any real number into $(0,1)$: the \textbf{sigmoid}.
+
+\begin{definition}[: Sigmoid (logistic) function]
+\[
+  \sigma(z)=\frac{1}{1+e^{-z}},\qquad \sigma(0)=0.5,\qquad \sigma(-z)=1-\sigma(z),\qquad \sigma'(z)=\sigma(z)\big(1-\sigma(z)\big).
+\]
+\end{definition}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=10cm,height=5.8cm,xlabel={score $z=\vect w\cdot\vect x+b$},ylabel={$\sigma(z)$},
+  xmin=-6,xmax=6,ymin=-0.05,ymax=1.1,samples=100,grid=both,grid style={gray!18}]
+\addplot[very thick,mlblue,domain=-6:6]{1/(1+exp(-x))};
+\draw[dashed,mlred] (axis cs:-6,0.5)--(axis cs:6,0.5) node[pos=0.12,above,font=\scriptsize]{threshold $0.5$};
+\draw[dashed,gray] (axis cs:0,-0.05)--(axis cs:0,1.1);
+\fill[mlorange] (axis cs:0,0.5) circle (2.5pt);
+\fill[mlgreen] (axis cs:2,0.8808) circle (2.5pt) node[right,font=\scriptsize]{$\sigma(2)=0.88$};
+\fill[mlgreen] (axis cs:-2,0.1192) circle (2.5pt) node[left,font=\scriptsize]{$\sigma(-2)=0.12$};
+\end{axis}
+\end{tikzpicture}
+\caption{The sigmoid function maps any real score to a probability between 0 and 1.}\label{fig:sigmoid}
+\end{figure}
+
+\begin{explain}
+The horizontal axis is the \textbf{linear score} $z$ (which can be any real number) and the vertical axis is the \textbf{probability}. Large positive scores give probabilities near 1 (confident ``yes''); large negative scores give probabilities near 0 (confident ``no''). At $z=0$ the curve passes through $0.5$, the \textbf{decision threshold} (dashed red line): a score above 0 predicts class~1 and a score below 0 predicts class~0. The S-shape is steepest near $z=0$, where the model is least sure, and flat at the ends, where it is almost certain. The two green dots show the symmetry $\sigma(-2)=1-\sigma(2)$.
+\end{explain}
+
+\subsection{Odds and Log-odds}
+
+\begin{definition}[: Odds and logit]
+If an event has probability $p$, its \textbf{odds} are $\dfrac{p}{1-p}$ and its \textbf{log-odds (logit)} is $\ln\dfrac{p}{1-p}$.
+\end{definition}
+
+Logistic regression says that the \emph{log-odds is linear in the features}:
+\[
+  \ln\frac{p}{1-p}=\theta_0+\theta_1x_1+\cdots+\theta_dx_d .
+\]
+Hence $e^{\theta_j}$ is the \textbf{odds ratio}: the factor by which the odds are \emph{multiplied} when $x_j$ increases by one unit. For instance, if $p=0.8$ the odds are $0.8/0.2=4$ (``4 to 1''); if $p=0.5$ the odds are $1$.
+
+\subsection{Loss Function: Cross-entropy from Maximum Likelihood}
+
+For one example with label $y\in\{0,1\}$ and predicted probability $p=\sigma(z)$, the probability of the observed label is $p^{\,y}(1-p)^{1-y}$. Maximising the likelihood of all $n$ independent examples is the same as minimising the \textbf{cross-entropy (log) loss}
+\begin{equation}\label{eq:logloss}
+  J(\vect\theta)=-\frac1n\sum_{i=1}^{n}\Big[y_i\ln p_i+(1-y_i)\ln(1-p_i)\Big].
+\end{equation}
+\textbf{Why this loss?} If $y=1$ the loss is $-\ln p$: it is $0$ when $p=1$ and grows to $\infty$ as $p\to0$, so \emph{confident wrong answers are punished heavily}. There is no closed-form solution, so we use gradient descent. The gradient has the same neat form as in linear regression:
+\[
+  \frac{\partial J}{\partial\theta_j}=\frac1n\sum_{i=1}^{n}(p_i-y_i)\,x_{ij}.
+\]
+
+\begin{example}[: Computing the log-loss]
+\begin{center}
+\begin{tabular}{@{}cccl@{}}
+\toprule
+True $y$ & Predicted $p$ & Loss & Comment\\
+\midrule
+1 & 0.80 & $-\ln0.80=0.223$ & good\\
+0 & 0.30 & $-\ln0.70=0.357$ & fairly good\\
+1 & 0.10 & $-\ln0.10=2.303$ & confident and wrong: large loss\\
+\bottomrule
+\end{tabular}
+\end{center}
+Average of the first two: $(0.223+0.357)/2=0.290$.
+\end{example}
+
+\subsection{Real-life Example: Will the Student Pass?}
+
+Twenty students record how many hours they studied and whether they passed. Training logistic regression by gradient descent (equivalently by \texttt{scikit-learn}) gives
+\[
+  z=-4.08+1.50\times\text{hours},\qquad P(\text{pass})=\sigma(z).
+\]
+
+\begin{example}[: End-to-end use of the trained model]
+\textbf{(a) Probabilities.} $P(\text{pass})=\sigma(-4.08+1.50\,h)$:
+\begin{center}
+\begin{tabular}{@{}c|ccccc@{}}
+\toprule
+Hours $h$ & 1 & 2 & 3 & 4 & 5\\
+Score $z$ & $-2.58$ & $-1.08$ & $0.42$ & $1.92$ & $3.42$\\
+$P(\text{pass})=\frac{1}{1+e^{-z}}$ & 0.070 & 0.254 & 0.604 & 0.872 & 0.968\\
+Prediction ($\ge0.5$) & Fail & Fail & Pass & Pass & Pass\\
+\bottomrule
+\end{tabular}
+\end{center}
+For $h=3$: $e^{-0.42}=0.657$, so $P=\dfrac{1}{1+0.657}=0.604$.\par
+\textbf{(b) Decision boundary.} $P=0.5\iff z=0\iff h=\dfrac{4.08}{1.50}=\mathbf{2.72}$ hours: students who study more than about 2.7 hours are predicted to pass.\par
+\textbf{(c) Meaning of the coefficient.} The odds ratio is $e^{1.50}=4.48$: each extra hour of study multiplies the odds of passing by about \textbf{4.5}. (At $h=2$ the odds are $0.254/0.746=0.34$; at $h=3$ they are $0.604/0.396=1.52$; and $1.52/0.34\approx4.5$.)\par
+\textbf{(d) Accuracy.} Using the 0.5 rule on the 20 training students: 10 students studied less than 2.72 h (predicted Fail; 8 really failed, 2 passed) and 10 studied more (predicted Pass; 8 passed, 2 failed). So
+\begin{center}
+\begin{tabular}{@{}cc|cc@{}}
+\toprule
+ & & \multicolumn{2}{c}{Predicted}\\
+ & & Pass & Fail\\
+\midrule
+\multirow{2}{*}{Actual} & Pass & $TP=8$ & $FN=2$\\
+ & Fail & $FP=2$ & $TN=8$\\
+\bottomrule
+\end{tabular}
+\end{center}
+Accuracy $=16/20=0.80$, precision $=8/10=0.80$, recall $=8/10=0.80$ (formulas of Chapter~2).
+\end{example}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=11cm,height=6.4cm,xlabel={Hours studied $h$},ylabel={$P(\text{pass})$},
+  xmin=0,xmax=6,ymin=-0.08,ymax=1.1,samples=100,grid=both,grid style={gray!18},
+  legend style={at={(0.02,0.98)},anchor=north west,font=\small}]
+\addplot[only marks,mark=*,mlred,mark size=2.5pt] coordinates {(0.5,0)(0.75,0)(1,0)(1.25,0)(1.5,0)(1.75,0)(2,0)(2.5,0)(3,0)(3.5,0)};
+\addlegendentry{failed}
+\addplot[only marks,mark=square*,mlgreen,mark size=2.5pt] coordinates {(1.75,1)(2.25,1)(2.75,1)(3.25,1)(4,1)(4.25,1)(4.5,1)(4.75,1)(5,1)(5.5,1)};
+\addlegendentry{passed}
+\addplot[very thick,mlblue,domain=0:6]{1/(1+exp(-(-4.0787+1.505*x)))};
+\addlegendentry{$\sigma(-4.08+1.50h)$}
+\draw[dashed,gray] (axis cs:0,0.5)--(axis cs:6,0.5);
+\draw[dashed,gray] (axis cs:2.71,-0.08)--(axis cs:2.71,0.5);
+\node[font=\scriptsize,anchor=north west] at (axis cs:2.75,0.02) {boundary $h=2.72$};
+\end{axis}
+\end{tikzpicture}
+\caption{Logistic regression fitted to 20 students: the S-curve is the predicted probability of passing.}\label{fig:logfit}
+\end{figure}
+
+\begin{explain}
+Red dots at height 0 are students who \textbf{failed}; green squares at height 1 are students who \textbf{passed}. The \textbf{blue S-curve} is the model's predicted probability of passing for any number of study hours. It rises slowly at first, climbs quickly around 2--3.5 hours and flattens near 1. Where the curve crosses the horizontal dashed line (probability $0.5$), the vertical dashed line marks the \textbf{decision boundary} at about 2.7 hours. Note the overlap: some students who studied about 2--3 hours passed and others failed, so the model is naturally \emph{uncertain} there and the curve gives a probability, not a hard yes/no. A straight regression line through these 0/1 points would go below 0 and above 1, which makes no sense for probabilities.
+\end{explain}
+
+\subsection{Training by Gradient Descent: One Step by Hand}
+
+\begin{example}[: One gradient step of logistic regression]
+Five students: $x=(1,2,3,4,5)$ hours and $y=(0,0,1,0,1)$. Start with $\theta_0=\theta_1=0$, so $z=0$ and $p=\sigma(0)=0.5$ for everyone. Use $\alpha=0.5$.\par
+Errors $p-y=(0.5,\ 0.5,\ -0.5,\ 0.5,\ -0.5)$.
+\[
+\tfrac{\partial J}{\partial\theta_0}=\tfrac{0.5+0.5-0.5+0.5-0.5}{5}=0.1,\qquad
+\tfrac{\partial J}{\partial\theta_1}=\tfrac{0.5(1)+0.5(2)-0.5(3)+0.5(4)-0.5(5)}{5}=\tfrac{-0.5}{5}=-0.1 .
+\]
+\[
+\theta_0=0-0.5(0.1)=-0.05,\qquad \theta_1=0-0.5(-0.1)=0.05 .
+\]
+The new score is $z=-0.05+0.05x$; the 5-hour student now gets $\sigma(0.20)=0.55$ instead of $0.50$. Repeating the step many times converges to the best weights.
+\end{example}
+
+\subsection{Multiclass Logistic Regression}
+
+For $K>2$ classes there are two standard approaches.
+\begin{itemize}
+  \item \textbf{One-vs-Rest (OvR):} train $K$ binary classifiers (``class $k$ vs.\ all others'') and pick the class with the highest probability.
+  \item \textbf{Softmax (multinomial) regression:} compute a score $z_k$ for each class and convert them to probabilities that sum to 1,
+  \[
+    P(y=k\mid\vect x)=\frac{e^{z_k}}{\sum_{j=1}^{K}e^{z_j}} .
+  \]
+\end{itemize}
+
+\begin{example}[: Softmax]
+Scores $z=(2.0,\ 1.0,\ 0.1)$ for three classes: $e^{z}=(7.389,\ 2.718,\ 1.105)$, sum $=11.212$, so the probabilities are $(0.659,\ 0.242,\ 0.099)$ and the predicted class is the first.
+\end{example}
+
+\subsection{Choosing the Threshold and Regularisation}
+
+\begin{itemize}
+  \item The threshold $0.5$ is not sacred. For \emph{cancer screening} a missed patient (false negative) is very costly, so we lower the threshold (say to $0.2$) to raise \textbf{recall}, accepting more false alarms. For \emph{spam filtering} a good mail sent to spam (false positive) is costly, so we raise it to improve \textbf{precision}.
+  \item Logistic regression can be \textbf{regularised} just like linear regression (L2 or L1 penalty). In \texttt{scikit-learn} the parameter \texttt{C} is the \emph{inverse} of regularisation strength: smaller \texttt{C} means stronger regularisation.
+\end{itemize}
+
+\begin{center}
+\begin{tabular}{@{}p{3.5cm}p{4.9cm}p{4.9cm}@{}}
+\toprule
+ & \textbf{Linear regression} & \textbf{Logistic regression}\\
+\midrule
+Task & Regression (predict a number) & Classification (predict a class / probability)\\
+Output & Any real value & Probability in $(0,1)$\\
+Function & $\hat y=\vect\theta^{\!\top}\vect x$ & $\hat p=\sigma(\vect\theta^{\!\top}\vect x)$\\
+Loss & Squared error & Cross-entropy (log loss)\\
+Solution & Closed form or gradient descent & Gradient descent only\\
+Metric & MSE, RMSE, $R^2$ & Accuracy, precision, recall, $F_1$, log-loss\\
+Example & Marks from study hours & Pass/fail from study hours\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tryit}
+Reproduce the pass/fail model:
+\begin{lstlisting}
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+
+h = np.array([.5,.75,1,1.25,1.5,1.75,1.75,2,2.25,2.5,
+              2.75,3,3.25,3.5,4,4.25,4.5,4.75,5,5.5]).reshape(-1, 1)
+p = np.array([0,0,0,0,0,0,1,0,1,0, 1,0,1,0,1,1,1,1,1,1])
+
+# a very large C = almost no regularisation
+clf = LogisticRegression(C=1e6).fit(h, p)
+print(clf.intercept_, clf.coef_)           # about -4.08  1.50
+print(clf.predict_proba([[3]])[0, 1])      # P(pass | 3 h) = 0.607
+print(clf.score(h, p))                     # accuracy = 0.80
+\end{lstlisting}
+Fitted coefficients: intercept $-4.079$, slope $1.505$, boundary at $2.71$ hours, training accuracy $0.80$, matching the hand calculation. \emph{Challenge:} predict the probabilities for 1, 2, 4 and 5 hours (answer: $0.07,\ 0.26,\ 0.88,\ 0.97$).
+\end{tryit}
+
+%====================================================================
+\section{Generalized Linear Models (GLMs)}
+
+\begin{theory}{Generalized Linear Model}
+\tpart{Definition} A \textbf{generalized linear model (GLM)} is a flexible extension of linear regression that allows the response $y$ to follow any distribution from the \textbf{exponential family} (normal, Bernoulli/binomial, Poisson, gamma, \dots) and relates its \textbf{mean} $\mu=\E[y\mid\vect x]$ to a linear predictor through a \textbf{link function}: $g(\mu)=\vect\theta^{\!\top}\vect x$.
+\tpart{Three components} (1)~\emph{Random component:} the distribution of $y$ (exponential family). (2)~\emph{Systematic component:} the linear predictor $\eta=\theta_0+\theta_1x_1+\cdots+\theta_dx_d$. (3)~\emph{Link function:} $g$, with $g(\mu)=\eta$, i.e.\ $\mu=g^{-1}(\eta)$.
+\tpart{Working} Choose the distribution suited to the type of target, choose the matching link, and estimate $\vect\theta$ by \textbf{maximum likelihood} (usually by iteratively re-weighted least squares, IRLS, or gradient descent).
+\tpart{Advantages} One unified framework; handles counts, proportions and binary data properly; predictions always stay in the valid range; coefficients remain interpretable.
+\tpart{Disadvantages} Still assumes a linear relationship on the link scale; sensitive to outliers; the distribution must be chosen correctly (e.g.\ over-dispersed counts break the Poisson model).
+\tpart{Applications} Insurance claim counts, accident/call counts, binary outcomes (credit default), proportions, waiting times.
+\end{theory}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[node distance=1.0cm,
+  b/.style={draw,rounded corners,thick,align=center,font=\small,minimum height=1.1cm,minimum width=2.4cm},
+  arr/.style={-{Stealth},thick}]
+\node[b,fill=mlblue!12,draw=mlblue] (x) {Features\\$x_1,\dots,x_d$};
+\node[b,fill=mlgreen!12,draw=mlgreen,right=of x] (eta) {Linear predictor\\$\eta=\vect\theta^{\!\top}\vect x$};
+\node[b,fill=mlorange!14,draw=mlorange,right=of eta] (mu) {Mean\\$\mu=g^{-1}(\eta)$};
+\node[b,fill=mlpurple!12,draw=mlpurple,right=of mu] (y) {Response\\$y\sim$ distribution$(\mu)$};
+\draw[arr] (x)--(eta); \draw[arr] (eta)--(mu) node[midway,above,font=\scriptsize]{inverse link}; \draw[arr] (mu)--(y);
+\end{tikzpicture}
+\caption{Structure of a generalized linear model.}\label{fig:glm}
+\end{figure}
+
+\begin{explain}
+Read left to right. The \textbf{features} are combined linearly into a score $\eta$ (green box), exactly as in linear regression. The \textbf{inverse link} $g^{-1}$ (arrow label) then converts this unbounded score into the \textbf{mean} $\mu$ of the response, forcing it into a sensible range (for example $(0,1)$ for probabilities or $(0,\infty)$ for counts). Finally the \textbf{actual outcome} $y$ is a random draw from a distribution (normal, Bernoulli, Poisson, \dots) whose mean is $\mu$. Changing the \emph{link} and the \emph{distribution} gives different models: this single picture covers linear, logistic and Poisson regression.
+\end{explain}
+
+\begin{center}
+\begin{tabular}{@{}p{3.1cm}p{2.7cm}p{2.7cm}p{2.5cm}p{2.6cm}@{}}
+\toprule
+\textbf{Model} & \textbf{Distribution of $y$} & \textbf{Link $g(\mu)$} & \textbf{Mean $\mu$} & \textbf{Target type}\\
+\midrule
+Linear regression & Normal & identity: $\mu$ & $\eta$ & real number\\
+Logistic regression & Bernoulli & logit: $\ln\frac{\mu}{1-\mu}$ & $\frac1{1+e^{-\eta}}$ & 0/1 class\\
+Poisson regression & Poisson & log: $\ln\mu$ & $e^{\eta}$ & count $0,1,2,\dots$\\
+Gamma regression & Gamma & inverse: $1/\mu$ & $1/\eta$ & positive, skewed\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{keyidea}
+\textbf{Linear regression and logistic regression are both GLMs.} Linear regression uses a Normal distribution with the identity link; logistic regression uses a Bernoulli distribution with the logit link. This is why they share the same gradient formula $\frac1n\sum(\hat\mu_i-y_i)x_{ij}$.
+\end{keyidea}
+
+\subsection{Real-life Example: Poisson Regression for Emergency Calls}
+
+A city fire-control room counts the number of emergency calls per day. The count depends on the rainfall $x$ (mm): $y\sim\text{Poisson}(\mu)$ with
+\[
+  \ln\mu=1+0.2\,x\qquad\Longleftrightarrow\qquad\mu=e^{\,1+0.2x}.
+\]
+
+\begin{example}[: Using the model]
+\textbf{Expected calls on a dry day} ($x=0$): $\mu=e^{1}=2.72$.\par
+\textbf{On a day with 5 mm rain:} $\mu=e^{1+1.0}=e^{2}=7.39$ calls.\par
+\textbf{On a day with 10 mm rain:} $\mu=e^{3}=20.09$ calls.\par
+\textbf{Interpretation of the coefficient:} each extra millimetre of rain multiplies the expected number of calls by $e^{0.2}=1.22$, i.e.\ an increase of about \textbf{22\%} per mm. Notice that the prediction is always positive, which an ordinary linear model could not guarantee.\par
+\textbf{Probability of exactly 7 calls on the 5 mm day:} for a Poisson variable $P(y=k)=\dfrac{\mu^ke^{-\mu}}{k!}$, so $P(y=7)=\dfrac{7.39^{7}e^{-7.39}}{5040}\approx0.15$.
+\end{example}
+
+%====================================================================
+\section{Binary Classification and Support Vector Machines}
+
+\subsection{Binary Classification}
+
+\begin{definition}[: Binary classification]
+\textbf{Binary classification} is the supervised task of assigning each input to one of exactly \textbf{two classes}, called the \textbf{positive} and \textbf{negative} class (coded $\{0,1\}$ in logistic regression or $\{-1,+1\}$ in SVMs). The classifier learns a \textbf{decision function} $f(\vect x)$ and predicts the positive class when $f(\vect x)$ exceeds a threshold.
+\end{definition}
+
+A \textbf{linear classifier} uses $f(\vect x)=\vect w\cdot\vect x+b$; the set $\{\vect x:\vect w\cdot\vect x+b=0\}$ is a \textbf{hyperplane} (a line in 2-D, a plane in 3-D) that cuts the space into the two decision regions. \textbf{Examples:} spam / not spam, fraud / genuine, disease / healthy, loan default / repay. Performance is judged with the confusion matrix, precision, recall, $F_1$ (Chapter~2) and the \textbf{ROC curve} (true-positive rate against false-positive rate for all thresholds; the area under it, \textbf{AUC}, is $1$ for a perfect classifier and $0.5$ for random guessing).
+
+\begin{warning}
+Many different lines can separate the same two classes perfectly. Which one is \emph{best}? Logistic regression picks the one with the best likelihood; the \textbf{SVM} picks the one \textbf{farthest from both classes}, which tends to generalise better.
+\end{warning}
+
+\subsection{The Support Vector Machine (Linear, Hard Margin)}
+
+\begin{theory}{Support Vector Machine}
+\tpart{Definition} A \textbf{Support Vector Machine (SVM)} is a \emph{supervised} learning algorithm for \emph{classification} (and regression) that finds the \textbf{maximum-margin hyperplane}: the separating hyperplane $\vect w\cdot\vect x+b=0$ that is \textbf{as far as possible from the nearest training points of both classes}. The nearest points that fix the boundary are called \textbf{support vectors}.
+\tpart{Working} (1)~Label the classes $y_i\in\{-1,+1\}$. (2)~Find $\vect w,b$ with the widest margin such that every point is on the correct side: $y_i(\vect w\cdot\vect x_i+b)\ge1$. (3)~The margin width is $2/\|\vect w\|$, so we \emph{minimise} $\tfrac12\|\vect w\|^2$ subject to those constraints. (4)~Classify new points by $\operatorname{sign}(\vect w\cdot\vect x+b)$. For overlapping classes, a \emph{soft margin} (parameter $C$) allows some errors; for non-linear data, \emph{kernels} are used (Chapter~6).
+\tpart{Assumptions} Data are (nearly) linearly separable in the chosen feature space; features should be scaled.
+\tpart{Advantages} Effective in high dimensions; only the support vectors matter, so it is memory-efficient; strong generalisation because of the maximum margin; flexible through kernels.
+\tpart{Disadvantages} Slow on very large datasets; requires feature scaling; sensitive to the choice of $C$ and the kernel; does not directly output probabilities; hard to interpret with non-linear kernels.
+\tpart{Applications} Text and spam classification, image and face recognition, handwriting recognition, bioinformatics (gene and protein classification).
+\end{theory}
+
+\paragraph{Geometry.} The distance from a point $\vect x_0$ to the hyperplane $\vect w\cdot\vect x+b=0$ is $\dfrac{|\vect w\cdot\vect x_0+b|}{\|\vect w\|}$. We scale $\vect w,b$ so that the closest points satisfy $|\vect w\cdot\vect x+b|=1$. Then the two \emph{margin lines} are $\vect w\cdot\vect x+b=+1$ and $\vect w\cdot\vect x+b=-1$ and the \textbf{margin width} is
+\[
+  \frac{1}{\|\vect w\|}+\frac{1}{\|\vect w\|}=\frac{2}{\|\vect w\|}.
+\]
+Making the margin wide means making $\|\vect w\|$ small. The \textbf{hard-margin SVM} is therefore the optimisation problem
+\begin{equation}\label{eq:svm}
+  \min_{\vect w,b}\ \tfrac12\|\vect w\|^2\qquad\text{subject to}\qquad y_i\,(\vect w\cdot\vect x_i+b)\ \ge\ 1\quad\text{for all }i .
+\end{equation}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=9cm,height=9cm,xmin=-0.5,xmax=5.5,ymin=-0.5,ymax=5.5,axis equal image,
+  xlabel={$x_1$ (number of links)},ylabel={$x_2$ (capital-letter words)},grid=both,grid style={gray!15},
+  legend style={at={(1.03,0.5)},anchor=west,font=\small}]
+\addplot[only marks,mark=*,mlblue,mark size=3pt] coordinates {(1,1)(0,0)(1,0)};
+\addlegendentry{not spam ($-1$)}
+\addplot[only marks,mark=triangle*,mlorange,mark size=4pt] coordinates {(3,3)(4,4)(4,3)};
+\addlegendentry{spam ($+1$)}
+\addplot[very thick,mlgreen,domain=-0.5:5.5]{4-x};
+\addlegendentry{$\vect w\cdot\vect x+b=0$}
+\addplot[dashed,mlred,thick,domain=-0.5:5.5]{6-x};
+\addlegendentry{$+1$ margin}
+\addplot[dashed,mlred,thick,domain=-0.5:5.5]{2-x};
+\addlegendentry{$-1$ margin}
+\draw[mlblue,thick] (axis cs:1,1) circle (0.2cm);
+\draw[mlorange,thick] (axis cs:3,3) circle (0.2cm);
+\draw[{Stealth}-{Stealth},thick,mlpurple] (axis cs:1.15,1.15)--(axis cs:2.85,2.85);
+\node[font=\scriptsize,mlpurple,rotate=45,above] at (axis cs:2.0,2.0) {margin $=2.83$};
+\end{axis}
+\end{tikzpicture}
+\caption{Maximum-margin separation of spam and non-spam e-mails. Circled points are the support vectors.}\label{fig:svm}
+\end{figure}
+
+\begin{explain}
+Each point is an e-mail described by two features. The \textbf{solid green line} is the decision boundary. The two \textbf{dashed red lines} are the \textbf{margin}: they pass through the nearest point of each class, the \textbf{circled support vectors} $(1,1)$ and $(3,3)$. The \textbf{purple arrow} is the margin width, the gap that the SVM tries to make as large as possible. Only the circled points decide where the line goes. If you moved or deleted the other four points (without crossing the margin), the boundary would \emph{not change}. A different separating line (say, tilted) could also split the classes, but it would pass closer to some points and generalise worse.
+\end{explain}
+
+\begin{example}[: SVM by hand on the spam data]
+\textbf{Data.} Three non-spam mails (class $-1$): $(1,1),\ (0,0),\ (1,0)$. Three spam mails (class $+1$): $(3,3),\ (4,4),\ (4,3)$. Features: number of links $x_1$ and number of words in capitals $x_2$.\par
+\textbf{Step 1: find the closest opposite pair.} The nearest points are $(1,1)$ and $(3,3)$ (distance $\sqrt{8}=2.83$). They are the support vectors; by symmetry the boundary passes midway, perpendicular to the line joining them, so $\vect w=(a,a)$.\par
+\textbf{Step 2: impose the margin conditions.}
+\[
+\vect w\cdot(3,3)+b=+1\ \Rightarrow\ 6a+b=1,\qquad
+\vect w\cdot(1,1)+b=-1\ \Rightarrow\ 2a+b=-1 .
+\]
+Subtracting: $4a=2\Rightarrow a=0.5$; then $b=-1-2(0.5)=-2$. So $\vect w=(0.5,\,0.5)$, $b=-2$ and the boundary is $0.5x_1+0.5x_2-2=0$, i.e.\ $\ x_1+x_2=4$.\par
+\textbf{Step 3: verify all six constraints} $y_i(\vect w\cdot\vect x_i+b)\ge1$:
+\begin{center}
+\begin{tabular}{@{}c|cccccc@{}}
+\toprule
+Point & $(1,1)$ & $(0,0)$ & $(1,0)$ & $(3,3)$ & $(4,4)$ & $(4,3)$\\
+$f=0.5x_1+0.5x_2-2$ & $-1$ & $-2$ & $-1.5$ & $1$ & $2$ & $1.5$\\
+$y\,f$ & 1 & 2 & 1.5 & 1 & 2 & 1.5\\
+Satisfied? & on margin & yes & yes & on margin & yes & yes\\
+\bottomrule
+\end{tabular}
+\end{center}
+All $y_if(\vect x_i)\ge1$, and exactly two points equal $1$: they are the support vectors.\par
+\textbf{Step 4: margin.} $\|\vect w\|=\sqrt{0.25+0.25}=0.707$, so the margin is $2/0.707=\mathbf{2.83}$.\par
+\textbf{Step 5: predict.} A new mail with 4 links and 1 capital word: $f=0.5(4)+0.5(1)-2=0.5>0\Rightarrow$ \textbf{spam}. A mail with $(1,2)$: $f=0.5+1-2=-0.5<0\Rightarrow$ \textbf{not spam}.
+\end{example}
+
+\subsection{Soft-Margin SVM}
+
+Real data usually overlap, so no hyperplane separates the classes perfectly (and noisy points would make a hard margin very narrow). The \textbf{soft-margin SVM} allows some points to violate the margin by introducing \textbf{slack variables} $\xi_i\ge0$:
+\begin{equation}\label{eq:softsvm}
+  \min_{\vect w,b,\vect\xi}\ \tfrac12\|\vect w\|^2+C\sum_{i=1}^{n}\xi_i\qquad\text{subject to}\qquad y_i(\vect w\cdot\vect x_i+b)\ge1-\xi_i,\ \ \xi_i\ge0 .
+\end{equation}
+Here $\xi_i=0$ for a correctly classified point outside the margin, $0<\xi_i\le1$ for a point inside the margin but on the correct side, and $\xi_i>1$ for a misclassified point. The hyperparameter $C$ controls the trade-off:
+
+\begin{center}
+\begin{tabular}{@{}p{3.4cm}p{4.9cm}p{4.9cm}@{}}
+\toprule
+ & \textbf{Large $C$} & \textbf{Small $C$}\\
+\midrule
+Priority & Few training errors & Wide margin\\
+Margin & Narrow & Wide\\
+Bias / variance & Low bias, high variance & Higher bias, lower variance\\
+Risk & Overfitting & Underfitting\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Equivalently, the soft-margin SVM minimises the \textbf{hinge loss}
+\[
+  L_{\text{hinge}}=\max\big(0,\ 1-y\,f(\vect x)\big),
+\]
+which is $0$ for points correctly classified \emph{beyond} the margin and grows linearly otherwise. For example, with $y=+1$: $f=2\Rightarrow$ loss $0$; $f=0.3\Rightarrow0.7$; $f=-0.5\Rightarrow1.5$.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=10.5cm,height=6.2cm,xlabel={margin $m=y\,f(\vect x)$},ylabel={loss},
+  xmin=-2,xmax=3,ymin=0,ymax=3.2,samples=100,grid=both,grid style={gray!18},
+  legend style={at={(0.98,0.60)},anchor=east,font=\small}]
+\addplot[thick,gray,domain=-2:-0.001]{1};
+\addplot[thick,gray,domain=0.001:3,forget plot]{0};
+\addlegendentry{0--1 loss}
+\addplot[very thick,mlred,domain=-2:3]{max(0,1-x)};
+\addlegendentry{hinge (SVM)}
+\addplot[very thick,mlblue,domain=-2:3]{ln(1+exp(-x))/ln(2)};
+\addlegendentry{log loss (logistic)}
+\draw[dashed] (axis cs:0,0)--(axis cs:0,3.2);
+\draw[dashed] (axis cs:1,0)--(axis cs:1,3.2);
+\node[font=\scriptsize,anchor=south] at (axis cs:-1,2.6) {misclassified};
+\node[font=\scriptsize,anchor=south] at (axis cs:2,0.35) {safe};
+\node[font=\scriptsize,anchor=south,align=center] at (axis cs:0.5,2.6) {inside\\margin};
+\end{axis}
+\end{tikzpicture}
+\caption{Loss as a function of the margin $m=y\,f(\vect x)$: 0--1 loss, hinge loss (SVM) and log loss (logistic regression).}\label{fig:losses}
+\end{figure}
+
+\begin{explain}
+The horizontal axis is the \textbf{margin} $m=y\,f(\vect x)$: it is positive when the point is on the \emph{correct} side and negative when on the \emph{wrong} side, and bigger values mean greater confidence. \textbf{Grey (0--1 loss):} counts a mistake as 1 and a correct answer as 0, but it is a cliff, so we cannot use gradients on it. \textbf{Red (hinge loss):} zero once $m\ge1$ (``correct with room to spare''), so points beyond the margin contribute \emph{nothing}, and grows linearly for $m<1$, including points that are right but inside the margin. \textbf{Blue (log loss):} never exactly zero, so every point still matters a little, and it decreases smoothly. Both red and blue curves are smooth-ish \emph{upper bounds} on the 0--1 loss that can be optimised. This single picture shows why an SVM depends only on a few support vectors, while logistic regression uses all points.
+\end{explain}
+
+\begin{keyidea}
+\textbf{SVM vs logistic regression.} Both learn a linear boundary. Logistic regression minimises the log loss and outputs \emph{probabilities}; the SVM minimises the hinge loss and maximises the \emph{margin}, depending only on the support vectors. When classes are nearly separable the SVM often generalises slightly better; when you need probabilities, use logistic regression. The \emph{kernel trick} that lets SVMs learn \emph{non-linear} boundaries is covered in Chapter~6.
+\end{keyidea}
+
+\begin{tryit}
+Verify the hand-solved SVM:
+\begin{lstlisting}
+import numpy as np
+from sklearn.svm import SVC
+
+X = np.array([[1,1],[0,0],[1,0],[3,3],[4,4],[4,3]])   # [links, capitals]
+y = np.array([-1,-1,-1, 1, 1, 1])                      # -1 ham, +1 spam
+
+svm = SVC(kernel="linear", C=1e6).fit(X, y)   # huge C = hard margin
+print(svm.coef_, svm.intercept_)       # [[0.5 0.5]] [-2.]
+print(svm.support_vectors_)            # [[1. 1.] [3. 3.]]
+print(svm.predict([[4, 1]]))           # [1]  -> spam
+print(svm.decision_function([[4, 1]])) # [0.5]
+\end{lstlisting}
+The output reproduces $\vect w=(0.5,0.5)$, $b=-2$, the two support vectors and $f(4,1)=0.5$. \emph{Challenge:} set \texttt{C=0.01} and watch what happens to the margin and the support vectors.
+\end{tryit}
+
+%====================================================================
+\section{Choosing Among the Methods of Unit II}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{2.7cm}p{2.6cm}p{2.8cm}p{2.7cm}p{2.7cm}@{}}
+\toprule
+ & \textbf{k-NN} & \textbf{Decision tree} & \textbf{Naive Bayes} & \textbf{Linear / Logistic / SVM}\\
+\midrule
+Boundary & Irregular, local & Axis-parallel boxes & Smooth (probabilistic) & Linear hyperplane\\
+Interpretable? & Low & High & Moderate & High (coefficients)\\
+Needs scaling? & Yes & No & No & Yes\\
+Training speed & None & Fast & Very fast & Fast--moderate\\
+Outputs probabilities? & Roughly & Roughly & Yes & Logistic: yes; SVM: no\\
+Good when & Small data, local patterns & Mixed features, rules needed & Text, little data & Many features, linear structure\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%====================================================================
+\begin{summary}
+\begin{itemize}
+  \item \textbf{Linear regression:} $\hat y=\vect\theta^{\!\top}\vect x$, fitted by least squares: $\theta_1=S_{xy}/S_{xx}$, $\theta_0=\bar y-\theta_1\bar x$, or $\vect\theta=(\mathbf X^{\!\top}\mathbf X)^{-1}\mathbf X^{\!\top}\vect y$, or gradient descent $\theta_j\leftarrow\theta_j-\alpha\,\partial J/\partial\theta_j$. Evaluate with MSE, RMSE, $R^2$. Ridge (L2) and Lasso (L1) regularise.
+  \item \textbf{Logistic regression:} $P(y=1)=\sigma(\vect\theta^{\!\top}\vect x)$; log-odds is linear; trained by minimising cross-entropy (maximum likelihood); predicts class 1 if $p\ge0.5$; $e^{\theta_j}$ is the odds ratio. Softmax extends it to many classes.
+  \item \textbf{GLM:} distribution from the exponential family $+$ linear predictor $+$ link function $g(\mu)=\eta$. Linear (identity), logistic (logit) and Poisson (log) regression are special cases.
+  \item \textbf{Binary classification:} two classes, decision function and hyperplane; evaluate with confusion matrix, precision, recall, $F_1$, ROC--AUC.
+  \item \textbf{SVM:} maximum-margin hyperplane; margin $=2/\|\vect w\|$; minimise $\frac12\|\vect w\|^2$ s.t.\ $y_i(\vect w\cdot\vect x_i+b)\ge1$; only \textbf{support vectors} matter; soft margin adds slack and $C$; hinge loss $\max(0,1-yf)$.
+  \item Worked examples: marks $=26+9\times$hours ($R^2=0.976$); pass probability $\sigma(-4.08+1.5h)$ with boundary $2.72$ h; Poisson calls $e^{1+0.2x}$; SVM $\vect w=(0.5,0.5)$, $b=-2$, margin $2.83$.
+\end{itemize}
+\end{summary}
+
+%====================================================================
+\section*{Exam Corner}
+\addcontentsline{toc}{section}{Exam Corner}
+
+\subsection*{A.\ Very Short Answer Questions (2 marks each)}
+\begin{enumerate}
+  \item Define linear regression. \qmarks{2}
+  \item What is a residual? What does the method of least squares minimise? \qmarks{2}
+  \item Write the gradient-descent update rule. What is the role of the learning rate? \qmarks{2}
+  \item Define $R^2$. What does $R^2=0.9$ mean? \qmarks{2}
+  \item Differentiate Ridge and Lasso regression. \qmarks{2}
+  \item Define the sigmoid function. What is its range? \qmarks{2}
+  \item Define odds and log-odds. \qmarks{2}
+  \item Why is logistic regression a classification algorithm even though it has ``regression'' in its name? \qmarks{2}
+  \item Define a generalized linear model. What is a link function? \qmarks{2}
+  \item What are support vectors? What is the margin of an SVM? \qmarks{2}
+  \item What is the role of the parameter $C$ in a soft-margin SVM? \qmarks{2}
+  \item Define hinge loss. \qmarks{2}
+\end{enumerate}
+
+\begin{modelans}[: Q2, Q7 and Q10]
+\textbf{Q2.} A \emph{residual} is the difference between the observed and predicted value, $e_i=y_i-\hat y_i$. Least squares chooses the parameters that minimise the \emph{sum of squared residuals} $\sum e_i^2$.\par
+\textbf{Q7.} If an event has probability $p$, its \emph{odds} are $p/(1-p)$ and its \emph{log-odds} (logit) is $\ln[p/(1-p)]$. Logistic regression models the log-odds as a linear function of the features.\par
+\textbf{Q10.} \emph{Support vectors} are the training points that lie exactly on the margin boundaries (or inside the margin) and that alone determine the position of the separating hyperplane. The \emph{margin} is the distance between the two margin lines, $2/\|\vect w\|$.
+\end{modelans}
+
+\subsection*{B.\ Short Answer Questions (5 marks each)}
+\begin{enumerate}
+  \item Explain simple linear regression and derive the least-squares estimates of $\theta_0$ and $\theta_1$. \qmarks{5}
+  \item Explain gradient descent for linear regression. Discuss the effect of the learning rate. \qmarks{5}
+  \item Compare the normal equation and gradient descent. \qmarks{5}
+  \item State the assumptions of linear regression. Explain $R^2$ and adjusted $R^2$. \qmarks{5}
+  \item Explain logistic regression with the sigmoid function. Why is it preferred to linear regression for classification? \qmarks{5}
+  \item Explain the cross-entropy loss used in logistic regression. \qmarks{5}
+  \item Explain generalized linear models with the three components and examples. \qmarks{5}
+  \item Explain the maximum-margin classifier and support vectors with a diagram. \qmarks{5}
+  \item Differentiate between linear regression and logistic regression. \qmarks{5}
+  \item Differentiate between hard-margin and soft-margin SVM. \qmarks{5}
+\end{enumerate}
+
+\begin{modelans}[: B5 (outline for 5 marks)]
+\emph{Definition:} logistic regression models $P(y=1\mid\vect x)=\sigma(z)=1/(1+e^{-z})$ with $z=\vect w\cdot\vect x+b$; it predicts class 1 if $P\ge0.5$.\par
+\emph{Sigmoid:} maps $(-\infty,\infty)\to(0,1)$; $\sigma(0)=0.5$; S-shaped (draw the curve).\par
+\emph{Why not linear regression?} (i)~a line can give outputs $<0$ or $>1$, not valid probabilities; (ii)~squared error is a poor loss for 0/1 targets; (iii)~outliers can shift the line and change predictions; (iv)~errors are not normal or of constant variance.\par
+\emph{Training:} minimise cross-entropy $J=-\frac1n\sum[y\ln p+(1-y)\ln(1-p)]$ by gradient descent. \emph{Example:} pass/fail from study hours.
+\end{modelans}
+
+\subsection*{C.\ Long Answer Questions (10 marks each)}
+\begin{enumerate}
+  \item Explain linear regression in detail: model, least-squares method, normal equation, gradient descent, assumptions and evaluation metrics. Fit a line to the data $(1,2),(2,4),(3,5),(4,4),(5,5)$. \qmarks{10}
+  \item Explain logistic regression: sigmoid, odds and log-odds, decision boundary, cross-entropy loss and gradient-descent training. Explain how it is extended to multiple classes. \qmarks{10}
+  \item Explain generalized linear models. Show that linear and logistic regression are special cases. Explain Poisson regression with an example. \qmarks{10}
+  \item Explain the support vector machine: maximum margin, support vectors, hard-margin optimisation problem, soft margin and the role of $C$. Solve a small numerical example. \qmarks{10}
+  \item Compare linear regression, logistic regression and SVM with respect to task, loss function, output, advantages and disadvantages. \qmarks{10}
+  \item Explain overfitting in linear models and how regularisation (Ridge and Lasso) controls it. \qmarks{10}
+\end{enumerate}
+
+\begin{modelans}[: C1 (numerical part)]
+$x=(1,2,3,4,5)$, $y=(2,4,5,4,5)$. $\bar x=3$, $\bar y=4$.\par
+$(x-\bar x)(y-\bar y)=(-2)(-2)+(-1)(0)+(0)(1)+(1)(0)+(2)(1)=4+0+0+0+2=6=S_{xy}$; $S_{xx}=4+1+0+1+4=10$.\par
+$\theta_1=6/10=0.6$, $\ \theta_0=4-0.6(3)=2.2$. \textbf{Model:} $\hat y=2.2+0.6x$. Prediction for $x=6$: $2.2+3.6=5.8$.\par
+Residuals: $\hat y=(2.8,3.4,4.0,4.6,5.2)$, $e=(-0.8,0.6,1,-0.6,-0.2)$, $\text{SSE}=0.64+0.36+1+0.36+0.04=2.4$, $\text{SST}=4+0+1+0+1=6$, $R^2=1-2.4/6=\mathbf{0.60}$.
+\end{modelans}
+
+\subsection*{D.\ Numerical Problems}
+\begin{enumerate}
+  \item Fit a line to $x=(2,4,6,8)$, $y=(3,7,5,10)$ and predict $y$ at $x=10$. \textit{(Answer: $\bar x=5$, $\bar y=6.25$, $S_{xy}=19$, $S_{xx}=20$, $\theta_1=0.95$, $\theta_0=1.5$; $\hat y(10)=11$.)}
+  \item For problem~1 compute SSE and $R^2$. \textit{(Answer: $\hat y=3.4,5.3,7.2,9.1$; residuals $-0.4,1.7,-2.2,0.9$; SSE $=8.70$; SST $=26.75$; $R^2=0.675$.)}
+  \item One gradient-descent step for $\hat y=\theta_1x$ on $(1,2),(2,4)$ with $\theta_1=0$, $\alpha=0.1$, $J=\frac1{2n}\sum(\hat y-y)^2$. \textit{(Answer: gradient $=\frac1n\sum(\hat y-y)x=\frac{(-2)(1)+(-4)(2)}{2}=-5$; $\theta_1=0-0.1(-5)=0.5$.)}
+  \item Evaluate $\sigma(0)$, $\sigma(2)$ and $\sigma(-2)$. \textit{(Answer: $0.5$, $0.881$, $0.119$.)}
+  \item A logistic model has $z=-6+2x$. Find $P(y=1)$ at $x=3$ and at $x=4$, the decision boundary and the odds ratio per unit of $x$. \textit{(Answer: $\sigma(0)=0.5$; $\sigma(2)=0.881$; boundary $x=3$; $e^{2}=7.39$.)}
+  \item Compute the log-loss for $(y=1,p=0.8)$ and $(y=0,p=0.3)$ and the average. \textit{(Answer: $0.223$, $0.357$; average $0.290$.)}
+  \item One gradient step of logistic regression on $(x,y)=(0,0),(1,1)$ from $\theta_0=\theta_1=0$ with $\alpha=1$. \textit{(Answer: errors $0.5,-0.5$; $\partial J/\partial\theta_0=0$; $\partial J/\partial\theta_1=\frac{0+(-0.5)(1)}2=-0.25$; new $\theta=(0,\,0.25)$.)}
+  \item Softmax of scores $(1,2,3)$. \textit{(Answer: $e^z=2.718,7.389,20.086$, sum $=30.193$, probabilities $0.090,0.245,0.665$.)}
+  \item A Poisson model has $\ln\mu=0.2+0.5x$. Find the expected count at $x=2$ and the rate ratio per unit of $x$. \textit{(Answer: $\mu=e^{1.2}=3.32$; ratio $e^{0.5}=1.65$.)}
+  \item An SVM has $\vect w=(1,1)$, $b=-3$. Classify $(2,2)$ and $(1,1)$, and find the margin. \textit{(Answer: $f(2,2)=1\Rightarrow+1$ (on margin); $f(1,1)=-1\Rightarrow-1$ (on margin); margin $=2/\sqrt2=1.41$.)}
+  \item Compute the hinge loss for $(y=+1,f=0.3)$, $(y=-1,f=-2)$ and $(y=+1,f=-0.5)$. \textit{(Answer: $0.7$, $0$, $1.5$.)}
+\end{enumerate}
+
+\subsection*{E.\ Multiple-Choice Questions}
+\begin{enumerate}
+  \item Least squares minimises: \\
+  (a) sum of residuals \quad (b) sum of squared residuals \quad (c) largest residual \quad (d) sum of $y$
+  \item In gradient descent, a learning rate that is too large may cause: \\
+  (a) slow learning \quad (b) divergence \quad (c) exact solution \quad (d) underfitting
+  \item The range of the sigmoid function is: \\
+  (a) $(-1,1)$ \quad (b) $(0,\infty)$ \quad (c) $(0,1)$ \quad (d) $(-\infty,\infty)$
+  \item Logistic regression is used for: \\
+  (a) clustering \quad (b) classification \quad (c) dimensionality reduction \quad (d) only regression
+  \item If $p=0.8$, the odds are: \\
+  (a) 0.8 \quad (b) 0.25 \quad (c) 4 \quad (d) 1.25
+  \item The link function of logistic regression is: \\
+  (a) identity \quad (b) log \quad (c) logit \quad (d) inverse
+  \item Poisson regression is suitable for: \\
+  (a) binary data \quad (b) count data \quad (c) negative values \quad (d) text
+  \item The margin of an SVM is: \\
+  (a) $\|\vect w\|$ \quad (b) $1/\|\vect w\|$ \quad (c) $2/\|\vect w\|$ \quad (d) $2\|\vect w\|$
+  \item Lasso regularisation can: \\
+  (a) make weights exactly zero \quad (b) increase variance \quad (c) remove the intercept \quad (d) only increase weights
+  \item A large value of $C$ in a soft-margin SVM leads to: \\
+  (a) wide margin, many errors \quad (b) narrow margin, few errors \quad (c) no support vectors \quad (d) a non-linear boundary
+  \item Ridge regression adds a penalty proportional to: \\
+  (a) $\sum|\theta_j|$ \quad (b) $\sum\theta_j^2$ \quad (c) $\max\theta_j$ \quad (d) number of features
+  \item Which method gives probabilities directly? \\
+  (a) SVM \quad (b) logistic regression \quad (c) hinge loss \quad (d) least squares
+\end{enumerate}
+\textbf{Answers:} 1-b,\ 2-b,\ 3-c,\ 4-b,\ 5-c,\ 6-c,\ 7-b,\ 8-c,\ 9-a,\ 10-b,\ 11-b,\ 12-b.
+
+\subsection*{F.\ Practice Problems}
+\begin{enumerate}
+  \item Collect data on 8 friends: hours of sleep and score in a short test. Fit a line by hand and by \texttt{scikit-learn} and compare.
+  \item Using the pass/fail model, find the number of study hours that gives a pass probability of $0.9$. \textit{(Hint: solve $-4.08+1.5h=\ln(0.9/0.1)=2.197$; answer $h\approx4.2$.)}
+  \item \textbf{Coding:} implement gradient descent for linear regression from scratch with \texttt{numpy} and plot the loss against iterations for $\alpha=0.001,\,0.01,\,0.05$.
+  \item \textbf{Coding:} train \texttt{LogisticRegression} and a linear \texttt{SVC} on the \emph{breast cancer} dataset (\texttt{load\_breast\_cancer}), scale the features, and compare accuracy, precision and recall.
+  \item Draw a labelled diagram of an SVM with the margin, hyperplane and support vectors, and mark where $w\cdot x+b=+1,0,-1$.
+\end{enumerate}
+
+\begin{revision}
+\begin{center}\small
+\begin{tabular}{@{}p{3.6cm}p{9.6cm}@{}}
+\toprule
+\textbf{Topic} & \textbf{One-line recall}\\
+\midrule
+Linear regression & $\hat y=\theta_0+\theta_1x$; minimise SSE; $\theta_1=\frac{S_{xy}}{S_{xx}}$, $\theta_0=\bar y-\theta_1\bar x$.\\
+Normal equation & $\vect\theta=(\mathbf X^{\!\top}\mathbf X)^{-1}\mathbf X^{\!\top}\vect y$; exact but $O(d^3)$.\\
+Gradient descent & $\theta\leftarrow\theta-\alpha\,\partial J/\partial\theta$; too small $\to$ slow, too large $\to$ diverges.\\
+Metrics & MSE, RMSE, MAE, $R^2=1-\text{SSE}/\text{SST}$, adjusted $R^2$.\\
+Ridge / Lasso & L2 shrinks weights; L1 makes some exactly $0$ (feature selection).\\
+Sigmoid & $\sigma(z)=\frac{1}{1+e^{-z}}$; range $(0,1)$; $\sigma(0)=0.5$.\\
+Logistic regression & $\ln\frac{p}{1-p}=\vect\theta^{\!\top}\vect x$; loss $=-\frac1n\sum[y\ln p+(1-y)\ln(1-p)]$; odds ratio $e^{\theta_j}$.\\
+Softmax & $\frac{e^{z_k}}{\sum_je^{z_j}}$ for many classes.\\
+GLM & distribution $+$ linear predictor $+$ link; identity / logit / log.\\
+SVM & max margin $2/\|w\|$; min $\frac12\|w\|^2$ s.t.\ $y_i(w\cdot x_i+b)\ge1$; support vectors.\\
+Soft margin & slack $\xi_i$; large $C$: narrow margin, overfit; small $C$: wide margin.\\
+Hinge loss & $\max(0,1-yf)$; zero beyond the margin.\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{revision}

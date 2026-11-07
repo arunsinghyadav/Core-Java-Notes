@@ -84,3 +84,10 @@
 \DeclareMathOperator*{\argmin}{arg\,min}
 \DeclareMathOperator*{\argmax}{arg\,max}
 \newcommand{\Risk}{\mathcal{R}}
+
+% ---------- exam write-up box (theory answer template) ----------
+\newtcolorbox{theory}[1]{enhanced,breakable,colback=yellow!7,colframe=orange!75!black,
+  fonttitle=\bfseries,title={\faPen\ \ Write-up for the Exam: #1},arc=3pt,
+  boxrule=1pt,toptitle=2pt,bottomtitle=2pt}
+\newcommand{\tpart}[1]{\par\smallskip\noindent\textbf{\color{orange!70!black}#1.}\ }
+\setlength{\emergencystretch}{3em}

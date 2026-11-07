@@ -743,7 +743,7 @@ $F_1=\frac{2(0.778)(0.70)}{0.778+0.70}=\frac{1.089}{1.478}\approx\mathbf{0.737}$
 \begin{enumerate}
   \item In Figure~\ref{fig:model}, suppose $f(x)=2x+1$ and $\sigma=0.5$. What is the smallest possible expected squared error for any model, and why?
   \item Run the polynomial experiment with degrees 2, 5 and 12 and sketch train/test MSE against degree. At which degree does the test MSE start rising?
-  \item \textbf{Coding:} implement 5-fold cross-validation with \texttt{sklearn.model\_selection.cross\_val\_score} for \texttt{LinearRegression} and report the mean and standard error of the scores.
+  \item \textbf{Coding:} implement 5-fold cross-validation with \texttt{cross\_val\_score} for \texttt{LinearRegression} and report the mean and standard error of the scores.
   \item Simulate sampling distributions from a \emph{skewed} population (e.g.\ \texttt{rng.exponential(1, n)}) and verify with histograms that $\bar X$ becomes bell-shaped as $n$ grows (CLT).
 \end{enumerate}
 

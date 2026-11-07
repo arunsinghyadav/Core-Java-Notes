@@ -140,83 +140,27 @@ Read the tree from top to bottom. The three coloured boxes are the three \textbf
 \end{itemize}
 \end{explain}
 
-\begin{theory}{Ensemble Learning}
-\tpart{Definition}
-\textbf{Ensemble learning} is a machine-learning technique that trains \emph{multiple base models} and \textbf{combines their predictions} (by voting, averaging or a learned combiner) to obtain better accuracy and robustness than any single model.
-
-\tpart{Working}
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
-  \item Create several base learners, making them \emph{diverse} (different algorithms, data samples or features).
-  \item Train each base learner.
-  \item Combine the predictions: majority/weighted vote for classification, average for regression, or a meta-model.
-  \item Evaluate the ensemble on unseen test data.
-\end{enumerate}
-
-\tpart{Assumptions}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Each base learner is better than random guessing
-  \item The learners make \emph{different} (ideally independent) errors
-\end{itemize}
-
-\tpart{Advantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Higher accuracy than a single model
-  \item Reduces overfitting (lower variance) and is more robust to noise
-  \item Works with almost any base algorithm
-\end{itemize}
-
-\tpart{Disadvantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item More computation, memory and prediction time
-  \item Harder to interpret than a single model
-  \item Gains are small if the members are too similar
-\end{itemize}
-
-\tpart{Applications}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Credit scoring and fraud detection
-  \item Medical diagnosis and recommender systems
-  \item Winning solutions in data-science competitions
-\end{itemize}
-\end{theory}
 
 %====================================================================
+\procon{Ensemble learning}
+{\item Higher accuracy than a single model
+ \item Reduces overfitting (lower variance) and is more robust to noise
+ \item Works with almost any base algorithm}
+{\item More computation, memory and prediction time
+ \item Harder to interpret than a single model
+ \item Gains are small if the members are too similar}
+{\item Credit scoring and fraud detection
+ \item Medical diagnosis and recommender systems
+ \item Winning solutions in data-science competitions}
+
 \section{Voting Classifiers}
 
-\begin{theory}{Voting Classifier}
-\tpart{Definition}
+
+\begin{definition}[: Voting classifier]
 A \textbf{voting classifier} combines several \emph{different} classifiers trained on the \emph{same data}. In \textbf{hard voting} the final class is the one predicted by the \emph{majority} of the classifiers; in \textbf{soft voting} the predicted class \emph{probabilities} are averaged and the class with the highest average probability wins.
+\end{definition}
 
-\tpart{Working}
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
-  \item Train several diverse classifiers (e.g.\ logistic regression, SVM, random forest) on the same training set.
-  \item \textbf{Hard voting:} each classifier predicts a class; count the votes; choose the most frequent class.
-  \item \textbf{Soft voting:} each classifier outputs $P(\text{class})$; compute $\bar P(c)=\frac1m\sum_j P_j(c)$ (optionally weighted); choose $\argmax_c\bar P(c)$.
-\end{enumerate}
 
-\tpart{Assumptions}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Classifiers are reasonably accurate and diverse
-  \item (Soft voting) every classifier can output well-calibrated probabilities
-\end{itemize}
-
-\tpart{Advantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Very simple to build and often beats the best single member
-  \item Soft voting uses the classifiers' \emph{confidence}
-\end{itemize}
-
-\tpart{Disadvantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Poor members or highly similar members add little
-  \item Needs several trained models, hence more cost
-\end{itemize}
-
-\tpart{Applications}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Combining different algorithms for text, image or tabular classification
-\end{itemize}
-\end{theory}
 
 \begin{figure}[!htbp]
 \centering
@@ -295,6 +239,13 @@ Accuracy & Good & Usually slightly better\\
 \end{center}
 
 %====================================================================
+\procon{Voting classifiers}
+{\item Very simple to build and often beats the best single member
+ \item Soft voting uses the classifiers' \emph{confidence}}
+{\item Poor members or highly similar members add little
+ \item Needs several trained models, hence more cost}
+{\item Combining different algorithms for text, image or tabular classification}
+
 \section{Bagging and Pasting}
 
 Voting uses \emph{different algorithms} on the same data. Another way to create diversity is to use the \textbf{same algorithm} but train each copy on a \textbf{different random subset of the training data}.
@@ -380,45 +331,6 @@ Let $\sigma^2=4$ and $B=10$.
 
 Each model never saw about $36.8\%$ of the training instances. We can use these OOB instances as a \emph{free validation set}: for each instance, predict using only the models that did \textbf{not} have it in their sample, and compute the accuracy. The \textbf{OOB score} is a good estimate of test accuracy \emph{without needing a separate validation set}.
 
-\begin{theory}{Bagging and Pasting}
-\tpart{Definition}
-\textbf{Bagging} (bootstrap aggregating) trains many copies of the same learner, each on a \emph{bootstrap sample} (random sample with replacement) of the training data, and combines their outputs by voting or averaging. \textbf{Pasting} is the same but samples \emph{without replacement}.
-
-\tpart{Working}
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
-  \item Draw $B$ random samples from the training set (with replacement for bagging).
-  \item Train one base learner (e.g.\ a deep decision tree) on each sample.
-  \item For a new instance collect the $B$ predictions.
-  \item Classification: majority vote; regression: average.
-  \item Optionally estimate accuracy using the out-of-bag instances.
-\end{enumerate}
-
-\tpart{Assumptions}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item The base learner is unstable (small data changes cause large changes in the model)
-  \item Bootstrap samples are representative of the population
-\end{itemize}
-
-\tpart{Advantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Reduces variance and overfitting
-  \item Parallel training; free OOB validation
-  \item Works with any base learner
-\end{itemize}
-
-\tpart{Disadvantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Does not reduce bias
-  \item Less interpretable and slower than one model
-  \item Little gain for stable learners (e.g.\ linear regression)
-\end{itemize}
-
-\tpart{Applications}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Improving decision trees (Random Forests)
-  \item Noisy data problems, regression and classification
-\end{itemize}
-\end{theory}
 
 \begin{center}
 \begin{tabular}{@{}p{3.2cm}p{5.4cm}p{5.4cm}@{}}
@@ -435,6 +347,16 @@ Typical bias / variance & Slightly higher bias, lower variance & Slightly lower 
 \end{center}
 
 %====================================================================
+\procon{Bagging and pasting}
+{\item Reduces variance and overfitting
+ \item Parallel training; free OOB validation
+ \item Works with any base learner}
+{\item Does not reduce bias
+ \item Less interpretable and slower than one model
+ \item Little gain for stable learners (e.g.\ linear regression)}
+{\item Improving decision trees (Random Forests)
+ \item Noisy data problems, regression and classification}
+
 \section{Random Forests}
 
 A \textbf{Random Forest} is the most popular ensemble method. It is \textbf{bagging of decision trees} with one extra trick that makes the trees even more different.
@@ -526,46 +448,6 @@ A great by-product: a forest tells us \textbf{which features matter}. A feature'
 Each bar is one of the four measurements of an iris flower; a \textbf{longer bar means the forest relied on that feature more}. The two \textbf{petal} measurements together account for about $87\%$ of the importance ($0.436+0.437$), while the \emph{sepal width} contributes only $3\%$. This agrees with the single tree of Chapter~3, which separated all three species using only the petal width. Such a ranking helps in \textbf{feature selection} and in explaining the model to non-experts.
 \end{explain}
 
-\begin{theory}{Random Forest}
-\tpart{Definition}
-A \textbf{Random Forest} is an ensemble of decision trees built by \emph{bagging}, in which each split considers only a \emph{random subset of features}; the final output is the majority vote (classification) or the mean (regression) of the trees.
-
-\tpart{Working}
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
-  \item Draw $B$ bootstrap samples from the training data.
-  \item For each sample grow a decision tree; at \emph{each node} choose the best split from a random subset of $m\approx\sqrt p$ features.
-  \item Grow the trees deep (little or no pruning).
-  \item Predict by majority vote or average of all trees.
-  \item Compute the OOB score and the feature importances.
-\end{enumerate}
-
-\tpart{Assumptions}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Individual trees are low-bias but high-variance
-  \item Trees are weakly correlated because of the randomisation
-\end{itemize}
-
-\tpart{Advantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item High accuracy; handles many features and mixed data types
-  \item Much less overfitting than a single tree
-  \item Gives feature importance and OOB error; needs little tuning
-\end{itemize}
-
-\tpart{Disadvantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Less interpretable than one tree; larger memory
-  \item Slower prediction with many trees
-  \item May be biased towards features with many categories
-\end{itemize}
-
-\tpart{Applications}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Credit-risk and churn prediction
-  \item Medical diagnosis, bioinformatics, remote sensing
-  \item Feature selection
-\end{itemize}
-\end{theory}
 
 \paragraph{Main hyperparameters.}
 \begin{itemize}
@@ -577,6 +459,17 @@ A \textbf{Random Forest} is an ensemble of decision trees built by \emph{bagging
 \paragraph{Extra-Trees.} \emph{Extremely Randomised Trees} go one step further and also choose the \emph{split thresholds} at random: faster to train and even lower variance, at the price of a little more bias.
 
 %====================================================================
+\procon{Random forests}
+{\item High accuracy; handles many features and mixed data types
+ \item Much less overfitting than a single tree
+ \item Gives feature importance and OOB error; needs little tuning}
+{\item Less interpretable than one tree; larger memory
+ \item Slower prediction with many trees
+ \item May be biased towards features with many categories}
+{\item Credit-risk and churn prediction
+ \item Medical diagnosis, bioinformatics, remote sensing
+ \item Feature selection}
+
 \section{Boosting}
 
 Bagging trains models \emph{in parallel} to reduce variance. \textbf{Boosting} trains them \textbf{one after another}, each model trying to correct the mistakes of the previous ones. It reduces \textbf{bias}.
@@ -699,43 +592,14 @@ Each group of bars is one training instance; the three bars show its weight at t
 The \textbf{spotlight moves} to whichever instances are still being misclassified. This is how boosting makes later learners specialise in the hard cases.
 \end{explain}
 
-\begin{theory}{AdaBoost}
-\tpart{Definition}
-\textbf{AdaBoost} (Adaptive Boosting) is a \emph{sequential} ensemble algorithm that builds a strong classifier as a \emph{weighted vote of weak learners} (usually decision stumps), re-weighting the training instances after every round so that misclassified instances get more attention.
 
-\tpart{Working}
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
-  \item Start with equal instance weights $w_i=1/n$.
-  \item Train a weak learner on the weighted data and compute its weighted error $\varepsilon_t$.
-  \item Compute its weight $\alpha_t=\frac12\ln\frac{1-\varepsilon_t}{\varepsilon_t}$.
-  \item Increase the weights of misclassified instances, decrease the others, and normalise.
-  \item Repeat for $T$ rounds; predict $H(\vect x)=\operatorname{sign}\sum_t\alpha_th_t(\vect x)$.
-\end{enumerate}
-
-\tpart{Assumptions}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Each weak learner is slightly better than random guessing ($\varepsilon_t<0.5$)
-  \item Data are not dominated by label noise
-\end{itemize}
-
-\tpart{Advantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Turns weak learners into a strong one; reduces bias
-  \item Few hyperparameters; simple to implement
-\end{itemize}
-
-\tpart{Disadvantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Sensitive to noisy data and outliers (they keep gaining weight)
-  \item Sequential, so it cannot be parallelised
-\end{itemize}
-
-\tpart{Applications}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Face detection (Viola--Jones)
-  \item Text and customer classification
-\end{itemize}
-\end{theory}
+\procon{AdaBoost}
+{\item Turns weak learners into a strong one; reduces bias
+ \item Few hyperparameters; simple to implement}
+{\item Sensitive to noisy data and outliers (they keep gaining weight)
+ \item Sequential, so it cannot be parallelised}
+{\item Face detection (Viola--Jones)
+ \item Text and customer classification}
 
 \subsection{Gradient Boosting}
 
@@ -825,43 +689,6 @@ The blue dots are the data. The \textbf{grey dashed line} is the starting guess 
 
 \paragraph{Learning rate and number of stages.} A small $\eta$ (e.g.\ $0.1$) makes learning slower but usually generalises better; it must be balanced with the number of trees $M$ (small $\eta$ needs large $M$). Too many stages can \textbf{overfit}; use early stopping on a validation set. Popular fast implementations are \textbf{XGBoost}, \textbf{LightGBM} and \textbf{CatBoost}.
 
-\begin{theory}{Gradient Boosting}
-\tpart{Definition}
-\textbf{Gradient boosting} builds an additive model $F_M(\vect x)=F_0+\eta\sum_mh_m(\vect x)$ \emph{stage by stage}, where each new weak learner $h_m$ is fitted to the \textbf{negative gradient of the loss} (the \emph{residuals}, for squared error) of the current model.
-
-\tpart{Working}
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
-  \item Initialise with a constant prediction (e.g.\ the mean).
-  \item Compute the residuals of the current model.
-  \item Fit a small decision tree to the residuals.
-  \item Add the tree to the model scaled by the learning rate $\eta$.
-  \item Repeat for $M$ stages (stop early on a validation set).
-\end{enumerate}
-
-\tpart{Assumptions}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item A differentiable loss function suited to the task
-  \item Weak learners are simple (shallow trees)
-\end{itemize}
-
-\tpart{Advantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Very high accuracy on structured/tabular data
-  \item Works for regression, classification and ranking with any differentiable loss
-\end{itemize}
-
-\tpart{Disadvantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Many hyperparameters to tune (learning rate, depth, number of trees)
-  \item Can overfit noisy data; sequential training is slower
-\end{itemize}
-
-\tpart{Applications}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Web search ranking, click-through-rate prediction
-  \item Credit scoring and sales forecasting
-\end{itemize}
-\end{theory}
 
 \begin{center}
 \small
@@ -878,6 +705,14 @@ Weak learner & Usually a stump & Small tree (depth 3--8)\\
 \end{center}
 
 %====================================================================
+\procon{Gradient boosting}
+{\item Very high accuracy on structured/tabular data
+ \item Works for regression, classification and ranking with any differentiable loss}
+{\item Many hyperparameters to tune (learning rate, depth, number of trees)
+ \item Can overfit noisy data; sequential training is slower}
+{\item Web search ranking, click-through-rate prediction
+ \item Credit scoring and sales forecasting}
+
 \section{Stacking}
 
 Voting uses a fixed rule (majority, average). \textbf{Stacking} (stacked generalisation) asks: \emph{why not train a model to learn the best way to combine the predictions?}
@@ -921,46 +756,17 @@ Three trained base models predict the probability that a customer will leave (ch
 Since $0.64\ge0.5$ the customer is predicted to \textbf{churn}. A simple average of the three would give $0.567$; stacking gave more influence to the first model because the meta-learner found it most reliable.
 \end{example}
 
-\begin{theory}{Stacking}
-\tpart{Definition}
-\textbf{Stacking} (stacked generalisation) is an ensemble technique in which the predictions of several diverse \emph{base learners} are used as inputs to a \emph{meta-learner} that is trained to produce the final prediction.
-
-\tpart{Working}
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
-  \item Split the training data into folds.
-  \item Train each base learner and obtain \emph{out-of-fold predictions} for every training instance.
-  \item Use these predictions as features and the true labels as targets to train the meta-learner.
-  \item Retrain the base learners on all training data.
-  \item For a new instance: get the base predictions, then pass them to the meta-learner.
-\end{enumerate}
-
-\tpart{Assumptions}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Base learners are diverse and make different errors
-  \item Meta-learner is simple enough not to overfit
-\end{itemize}
-
-\tpart{Advantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Learns the best combination automatically
-  \item Often more accurate than any single model or simple voting
-\end{itemize}
-
-\tpart{Disadvantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Complex, slow to train and tune
-  \item Risk of information leakage and overfitting
-  \item Hard to interpret
-\end{itemize}
-
-\tpart{Applications}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Machine-learning competitions (e.g.\ the Netflix Prize)
-  \item High-stakes prediction where small accuracy gains matter
-\end{itemize}
-\end{theory}
 
 %====================================================================
+\procon{Stacking}
+{\item Learns the best combination automatically
+ \item Often more accurate than any single model or simple voting}
+{\item Complex, slow to train and tune
+ \item Risk of information leakage and overfitting
+ \item Hard to interpret}
+{\item Machine-learning competitions (e.g.\ the Netflix Prize)
+ \item High-stakes prediction where small accuracy gains matter}
+
 \section{Comparison and Practical Advice}
 
 \begin{center}

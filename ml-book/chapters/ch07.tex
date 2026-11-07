@@ -1,0 +1,1271 @@
+\chapter{Clustering: K-Means, DBSCAN and Gaussian Mixtures}
+
+\input{figs/moons_data}
+\input{figs/gmm_data}
+
+\begin{objectives}
+After studying this chapter you will be able to:
+\begin{itemize}
+  \item define \textbf{clustering} and explain how it differs from classification;
+  \item run the \textbf{K-Means} algorithm by hand, explain \textbf{inertia}, \textbf{K-Means++} and how to choose $k$ with the \textbf{elbow} and \textbf{silhouette} methods;
+  \item explain the \textbf{limits of K-Means} and recognise when it fails;
+  \item use clustering for \textbf{image segmentation}, \textbf{preprocessing} and \textbf{semi-supervised learning};
+  \item explain \textbf{DBSCAN} (core, border and noise points) and apply it to a small dataset by hand;
+  \item explain \textbf{Gaussian mixture models}, the \textbf{EM algorithm} and \textbf{soft clustering}, and carry out an EM step by hand;
+  \item choose between K-Means, DBSCAN and GMM;
+  \item answer 2-, 5- and 10-mark university questions on this part of Unit~IV.
+\end{itemize}
+\end{objectives}
+
+\begin{pullquote}[--- a data scientist's saying]
+Supervised learning answers ``which of the known groups is this?'' Clustering answers ``are there any groups at all?''
+\end{pullquote}
+
+%====================================================================
+\section{Introduction to Clustering}
+
+Imagine you pour a bag of mixed socks onto the floor. Nobody tells you the categories, but you quickly start making piles: black socks here, white socks there, striped socks over there. You have just \textbf{clustered} the socks, using only how similar they look.
+
+\begin{definition}[: Clustering]
+\textbf{Clustering} is an \emph{unsupervised} learning task: given unlabelled data $\{\vect{x}_i\}_{i=1}^n$, divide it into groups (\textbf{clusters}) so that instances in the \emph{same} cluster are \emph{similar} to each other and instances in \emph{different} clusters are \emph{dissimilar}. There are no correct labels to learn from; the groups are discovered from the structure of the data.
+\end{definition}
+
+\paragraph{Clustering is not classification.}
+\begin{center}
+\begin{tabular}{@{}p{3.3cm}p{5.5cm}p{5.5cm}@{}}
+\toprule
+ & \textbf{Classification} & \textbf{Clustering}\\
+\midrule
+Labels in training data? & Yes (supervised) & No (unsupervised)\\
+Groups known beforehand? & Yes, fixed classes & No, discovered from data\\
+Goal & Predict the class of a new item & Find natural groups\\
+Evaluation & Accuracy against true labels & Cohesion/separation measures\\
+Example & Spam or not spam & Group customers by buying habits\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Why cluster?}
+\begin{itemize}
+  \item \textbf{Customer segmentation:} group shoppers so that each group gets a suitable offer.
+  \item \textbf{Image segmentation:} split a picture into regions (Section~\ref{sec:seg}).
+  \item \textbf{Anomaly detection:} points that belong to no cluster are suspicious.
+  \item \textbf{Data exploration and compression:} summarise millions of points by a few cluster centres.
+  \item \textbf{Helping other learning tasks:} preprocessing and semi-supervised learning (Sections~\ref{sec:pre} and~\ref{sec:semi}).
+\end{itemize}
+
+\paragraph{Families of clustering methods.} This chapter studies one method from each of three families:
+
+\begin{center}
+\begin{tabular}{@{}p{3.3cm}p{4.2cm}p{6cm}@{}}
+\toprule
+\textbf{Family} & \textbf{Method} & \textbf{Idea}\\
+\midrule
+Centroid-based & K-Means & Each cluster is represented by its centre; points go to the nearest centre\\
+Density-based & DBSCAN & A cluster is a dense region separated from other dense regions by sparse regions\\
+Model-based & Gaussian mixtures & Data come from a mixture of probability distributions; each point belongs to every cluster with some probability\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent (A fourth family, \emph{hierarchical clustering}, builds a tree of nested clusters; it is not part of this syllabus.)
+
+%====================================================================
+\section{K-Means Clustering}
+
+\subsection{The Idea: Where to Open the Pizza Shops?}
+
+A pizza company wants to open $k=2$ shops in a town. Every house will order from its \emph{nearest} shop, and the company wants the delivery distances to be as short as possible. A simple strategy is:
+
+\begin{enumerate}
+  \item Open the shops anywhere (even at random).
+  \item Every house chooses its nearest shop.
+  \item Each shop \emph{moves to the middle} of the houses that chose it.
+  \item Repeat steps 2--3 until nobody changes their mind.
+\end{enumerate}
+
+This is exactly the K-Means algorithm: the \textbf{shops are the centroids} and the \textbf{houses are the data points}.
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[x=1.15cm,y=1.15cm]
+% ---------------- left : assignment ----------------
+\node[font=\small\bfseries,align=center] at (3.0,5.7) {Step 1: assignment\\every house picks the nearest shop};
+\draw[orange!70!black,thick,dashed] (2,3)--(4,2); \draw[orange!70!black,thick,dashed] (1,1)--(4,2); \draw[orange!70!black,thick,dashed] (4,4)--(4,2);
+\draw[mlblue,thick,dashed] (5,3)--(5,2);
+\pic[scale=1.3] at (2,3) {house=mlorange};  \node[font=\scriptsize] at (2,3.45) {A};
+\pic[scale=1.3] at (5,3) {house=mlblue};    \node[font=\scriptsize] at (5,3.45) {B};
+\pic[scale=1.3] at (1,1) {house=mlorange};  \node[font=\scriptsize] at (1,1.45) {D};
+\pic[scale=1.3] at (4,4) {house=mlorange};  \node[font=\scriptsize] at (4,4.45) {E};
+\pic[scale=1.6] at (5,2) {shop=mlblue};     \node[font=\scriptsize,mlblue,anchor=west] at (5.3,1.85) {shop 1 (on C)};
+\pic[scale=1.6] at (4,2) {shop=mlorange};   \node[font=\scriptsize,mlorange!70!black,anchor=north] at (4,1.55) {shop 2 (on F)};
+% ---------------- right : update ----------------
+\begin{scope}[xshift=8.6cm]
+\node[font=\small\bfseries,align=center] at (3.0,5.7) {Step 2: update\\each shop moves to the middle of its customers};
+\foreach \x/\y/\c/\n in {2/3/mlorange/A,5/3/mlblue/B,5/2/mlblue/C,1/1/mlorange/D,4/4/mlorange/E,4/2/mlorange/F}
+  {\pic[scale=1.3] at (\x,\y) {house=\c}; \node[font=\scriptsize] at (\x,\y+0.45) {\n};}
+\draw[-{Stealth},very thick,mlblue] (5,2.1)--(5,2.4);
+\draw[-{Stealth},very thick,mlorange!80!black] (4,1.95)--(2.85,2.4);
+\pic[scale=1.6] at (5,2.5) {shop=mlblue};
+\pic[scale=1.6] at (2.75,2.5) {shop=mlorange};
+\node[font=\scriptsize,mlorange!70!black,anchor=north] at (2.75,2.0) {new shop 2};
+\node[font=\scriptsize,mlblue,anchor=west] at (5.35,2.5) {new shop 1};
+\pic[scale=1.4] at (6.8,0.5) {smile};
+\bubble[text width=3.6cm]{3.4,0.2}{6.4,0.45}{I move to the \textbf{middle} of my customers!}
+\end{scope}
+\end{tikzpicture}}
+\caption{The two steps of K-Means as a pizza-shop story: assign houses to the nearest shop, then move each shop to the middle of its customers.}\label{fig:pizza}
+\end{figure}
+
+\begin{explain}
+\textbf{Left:} the two shops have been opened on houses C (blue) and F (orange). The dashed lines show each remaining house choosing the \emph{closest} shop: B joins the blue shop; A, D and E join the orange shop. This is the \textbf{assignment step}.
+
+\medskip
+\textbf{Right:} the houses are now coloured by their shop. Each shop moves to the \emph{average position} of its own customers: the blue shop moves from $(5,2)$ up to $(5,2.5)$ and the orange shop moves from $(4,2)$ to $(2.75,2.5)$. This is the \textbf{update step}. After the move some houses may be nearer to the \emph{other} shop, so we repeat. The full run for this example is worked out in Section~\ref{sec:kmex}.
+\end{explain}
+
+\subsection{Definition and Algorithm}
+
+\begin{definition}[: K-Means clustering]
+\textbf{K-Means} partitions $n$ points into $k$ clusters $C_1,\dots,C_k$ with centres (\textbf{centroids}) $\vect\mu_1,\dots,\vect\mu_k$ by minimising the \textbf{within-cluster sum of squares}, also called the \textbf{inertia}:
+\[
+  J=\sum_{j=1}^{k}\ \sum_{\vect x_i\in C_j}\|\vect x_i-\vect\mu_j\|^{2}.
+\]
+Each centroid is the \emph{mean} of the points in its cluster, $\vect\mu_j=\frac1{|C_j|}\sum_{\vect x_i\in C_j}\vect x_i$.
+\end{definition}
+
+\begin{definition}[: The K-Means (Lloyd's) algorithm]
+\begin{enumerate}
+  \item Choose the number of clusters $k$ and initialise $k$ centroids (e.g.\ $k$ random data points).
+  \item \textbf{Assignment step:} assign every point to its \emph{nearest} centroid (Euclidean distance).
+  \item \textbf{Update step:} replace every centroid by the \emph{mean} of the points assigned to it.
+  \item Repeat steps 2--3 until the assignments no longer change (or the centroids move less than a tiny tolerance).
+\end{enumerate}
+\end{definition}
+
+\textbf{Why it works.} The assignment step can only decrease $J$ (every point moves to a centre that is at least as close), and the update step can only decrease $J$ (the mean is the point that minimises the sum of squared distances to a set). So $J$ never increases and, since there are finitely many partitions, the algorithm must stop. The result, however, is only a \textbf{local minimum} of $J$: it depends on the starting centroids.
+
+\subsection{Worked Example: K-Means by Hand}\label{sec:kmex}
+
+\textbf{Data:} six points $A(2,3)$, $B(5,3)$, $C(5,2)$, $D(1,1)$, $E(4,4)$, $F(4,2)$ and $k=2$. Initial centroids: $\vect\mu_1=C=(5,2)$ and $\vect\mu_2=F=(4,2)$.
+
+\begin{example}[: Iteration 1]
+Euclidean distances from every point to the two centroids and the resulting cluster:
+
+\begin{center}
+\begin{tabular}{@{}c|c|cc|c@{}}
+\toprule
+Point & Coordinates & $d(\cdot,\vect\mu_1=(5,2))$ & $d(\cdot,\vect\mu_2=(4,2))$ & Cluster\\
+\midrule
+A & $(2,3)$ & $\sqrt{9+1}=3.162$ & $\sqrt{4+1}=2.236$ & 2\\
+B & $(5,3)$ & $\sqrt{0+1}=1.000$ & $\sqrt{1+1}=1.414$ & 1\\
+C & $(5,2)$ & $0$ & $1.000$ & 1\\
+D & $(1,1)$ & $\sqrt{16+1}=4.123$ & $\sqrt{9+1}=3.162$ & 2\\
+E & $(4,4)$ & $\sqrt{1+4}=2.236$ & $\sqrt{0+4}=2.000$ & 2\\
+F & $(4,2)$ & $1.000$ & $0$ & 2\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Inertia with the starting centroids: cluster~1 $\{B,C\}$: $1^2+0^2=1$; cluster~2 $\{A,D,E,F\}$: $2.236^2+3.162^2+2^2+0=5+10+4+0=19$; total $J=\mathbf{20}$.
+
+\medskip
+\textbf{Update step:}
+\[
+  \vect\mu_1=\Big(\tfrac{5+5}{2},\tfrac{3+2}{2}\Big)=(5,\,2.5),\qquad
+  \vect\mu_2=\Big(\tfrac{2+1+4+4}{4},\tfrac{3+1+4+2}{4}\Big)=(2.75,\,2.5).
+\]
+New inertia $J=\mathbf{12.25}$.
+\end{example}
+
+\begin{example}[: Iteration 2]
+With $\vect\mu_1=(5,2.5)$ and $\vect\mu_2=(2.75,2.5)$:
+
+\begin{center}
+\begin{tabular}{@{}c|cc|c|l@{}}
+\toprule
+Point & $d(\cdot,\vect\mu_1)$ & $d(\cdot,\vect\mu_2)$ & Cluster & Changed?\\
+\midrule
+A $(2,3)$ & $3.041$ & $0.901$ & 2 & no\\
+B $(5,3)$ & $0.500$ & $2.305$ & 1 & no\\
+C $(5,2)$ & $0.500$ & $2.305$ & 1 & no\\
+D $(1,1)$ & $4.272$ & $2.305$ & 2 & no\\
+E $(4,4)$ & $1.803$ & $1.953$ & \textbf{1} & \textbf{yes} (was 2)\\
+F $(4,2)$ & $1.118$ & $1.346$ & \textbf{1} & \textbf{yes} (was 2)\\
+\bottomrule
+\end{tabular}
+\end{center}
+Points E and F \emph{change their mind}. Inertia with the old centroids is $11.125$. Update:
+\[
+  \vect\mu_1=\Big(\tfrac{5+5+4+4}{4},\tfrac{3+2+4+2}{4}\Big)=(4.5,\,2.75),\qquad
+  \vect\mu_2=\Big(\tfrac{2+1}{2},\tfrac{3+1}{2}\Big)=(1.5,\,2).
+\]
+New inertia $J=\mathbf{6.25}$.
+\end{example}
+
+\begin{example}[: Iteration 3: convergence]
+With $\vect\mu_1=(4.5,2.75)$ and $\vect\mu_2=(1.5,2)$ every point stays in the same cluster as before (B, C, E, F in cluster~1 and A, D in cluster~2), so the centroids do not move: the algorithm has \textbf{converged}.
+
+\medskip
+\begin{center}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+ & \textbf{Cluster 1} & \textbf{Cluster 2}\\
+\midrule
+Members & B, C, E, F & A, D\\
+Centroid & $(4.5,\,2.75)$ & $(1.5,\,2.0)$\\
+Inertia contribution & $3.75$ & $2.50$\\
+\bottomrule
+\end{tabular}
+\end{center}
+Final inertia $J=3.75+2.50=\mathbf{6.25}$.
+\end{example}
+
+\begin{center}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Stage} & Start & After update 1 & After assignment 2 & After update 2\\
+\midrule
+Inertia $J$ & 20 & 12.25 & 11.125 & \textbf{6.25}\\
+\bottomrule
+\end{tabular}
+\end{center}
+The inertia \textbf{never increases}, confirming the argument above.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=3 by 1,horizontal sep=0.75cm},width=5.2cm,height=5.2cm,
+  xmin=0,xmax=6,ymin=0,ymax=5,ticks=none,grid=both,grid style={gray!15},title style={font=\footnotesize\bfseries,align=center}]
+\nextgroupplot[title={Iteration 1\\shops start on C and F}]
+\addplot[only marks,mark=*,mlblue,mark size=3pt] coordinates {(5,3)(5,2)};
+\addplot[only marks,mark=*,mlorange,mark size=3pt] coordinates {(2,3)(1,1)(4,4)(4,2)};
+\addplot[only marks,mark=star,black,mark size=5pt,very thick] coordinates {(5,2)(4,2)};
+\node[font=\scriptsize] at (axis cs:2,3.4) {A}; \node[font=\scriptsize] at (axis cs:5,3.4) {B}; \node[font=\scriptsize] at (axis cs:5.4,2) {C};
+\node[font=\scriptsize] at (axis cs:1,1.4) {D}; \node[font=\scriptsize] at (axis cs:4,4.4) {E}; \node[font=\scriptsize] at (axis cs:3.6,1.6) {F};
+\nextgroupplot[title={Iteration 2\\shops at $(5,2.5)$, $(2.75,2.5)$}]
+\addplot[only marks,mark=*,mlblue,mark size=3pt] coordinates {(5,3)(5,2)(4,4)(4,2)};
+\addplot[only marks,mark=*,mlorange,mark size=3pt] coordinates {(2,3)(1,1)};
+\addplot[only marks,mark=star,black,mark size=5pt,very thick] coordinates {(5,2.5)(2.75,2.5)};
+\draw[-{Stealth},dotted,thick] (axis cs:5,2)--(axis cs:5,2.45);
+\draw[-{Stealth},dotted,thick] (axis cs:4,2)--(axis cs:2.8,2.45);
+\node[font=\scriptsize] at (axis cs:4,4.4) {E}; \node[font=\scriptsize] at (axis cs:4,1.6) {F};
+\nextgroupplot[title={Iteration 3 (final)\\shops at $(4.5,2.75)$, $(1.5,2)$}]
+\addplot[only marks,mark=*,mlblue,mark size=3pt] coordinates {(5,3)(5,2)(4,4)(4,2)};
+\addplot[only marks,mark=*,mlorange,mark size=3pt] coordinates {(2,3)(1,1)};
+\addplot[only marks,mark=star,black,mark size=5pt,very thick] coordinates {(4.5,2.75)(1.5,2)};
+\draw[-{Stealth},dotted,thick] (axis cs:5,2.5)--(axis cs:4.55,2.72);
+\draw[-{Stealth},dotted,thick] (axis cs:2.75,2.5)--(axis cs:1.55,2.02);
+\end{groupplot}
+\end{tikzpicture}
+\caption{The K-Means run of the worked example. Stars are centroids; colours show the current cluster.}\label{fig:kmrun}
+\end{figure}
+
+\begin{explain}
+Each panel is one iteration; the \textbf{stars} are the centroids and the \textbf{colours} show the cluster each point currently belongs to (blue = cluster~1, orange = cluster~2). In the first panel the two centroids start almost on top of each other, so the clustering is poor. In the second panel the dotted arrows show the centroids moving; points E and F have turned blue because they are now closer to the blue star. In the third panel the centroids have settled in the middle of their groups and nothing changes any more.
+\end{explain}
+
+\subsection{Initialisation and K-Means++}
+
+Because K-Means only finds a local minimum, a bad start can give a bad result. If both initial shops land in the same neighbourhood, the final clusters can be poor.
+
+\begin{definition}[: K-Means++ initialisation]
+\textbf{K-Means++} chooses the first centroid uniformly at random from the data; each further centroid is chosen from the remaining points with probability \emph{proportional to $D(\vect x)^2$}, the squared distance from the point to the nearest centroid already chosen. This spreads the starting centroids far apart.
+\end{definition}
+
+\begin{example}[: K-Means++ probabilities]
+One-dimensional points $0,\ 1,\ 10$; suppose the first centroid is $0$.
+\[
+  D^2=(0,\ 1,\ 100)\ \Rightarrow\ P=\Big(0,\ \tfrac1{101},\ \tfrac{100}{101}\Big)=(0,\ 0.0099,\ 0.990).
+\]
+The next centroid is almost certainly the far-away point $10$, giving well-separated starting centres.
+\end{example}
+
+\textbf{Real results.} We ran K-Means with $k=4$ on 300 points from four well-separated blobs, using a \emph{single} initialisation each time, 100 different random seeds:
+
+\begin{center}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Initialisation} & \textbf{Mean inertia} & \textbf{Worst inertia} & \textbf{Runs reaching the best solution}\\
+\midrule
+Random points & 1513.6 & 6825.4 & 60 of 100\\
+K-Means++ & 279.9 & 279.9 & \textbf{100 of 100}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent With random starts, 40\% of the runs got stuck in a bad local minimum (the worst had inertia 24 times larger!), while K-Means++ found the best solution every time. In practice we also run the algorithm several times (\texttt{n\_init=10}) and keep the run with the lowest inertia.
+
+\subsection{Choosing the Number of Clusters $k$}
+
+K-Means needs $k$ \emph{in advance}. Inertia always decreases as $k$ grows (with $k=n$ it is $0$), so we cannot simply minimise it. Two standard methods help.
+
+\paragraph{1. The elbow method.} Run K-Means for $k=1,2,3,\dots$ and plot the inertia against $k$. Choose the $k$ at the ``elbow'', where adding more clusters stops giving a big improvement.
+
+\paragraph{2. The silhouette score.}
+
+\begin{definition}[: Silhouette coefficient]
+For a point $i$ let $a(i)$ be the \textbf{average distance to the other points in its own cluster} (cohesion) and $b(i)$ the \textbf{smallest average distance to the points of any other cluster} (separation). Then
+\[
+  s(i)=\frac{b(i)-a(i)}{\max\{a(i),b(i)\}}\in[-1,1].
+\]
+$s\approx1$: the point is well inside its cluster; $s\approx0$: it lies on the border between two clusters; $s<0$: it is probably in the wrong cluster. The \textbf{silhouette score} of a clustering is the mean of $s(i)$ over all points; we choose the $k$ with the highest score.
+\end{definition}
+
+\begin{example}[: Silhouette by hand]
+Four points on a line, clustered as $\{1,2\}$ and $\{8,9\}$.
+
+\medskip
+\textbf{Point 1:} $a=|1-2|=1$. $b=$ mean distance to $\{8,9\}=\frac{7+8}{2}=7.5$. $s=\frac{7.5-1}{7.5}=0.867$.\\
+\textbf{Point 2:} $a=1$, $b=\frac{6+7}{2}=6.5$, $s=\frac{6.5-1}{6.5}=0.846$.\\
+\textbf{Point 8:} $a=1$, $b=\frac{7+6}{2}=6.5$, $s=0.846$.\quad \textbf{Point 9:} $a=1$, $b=7.5$, $s=0.867$.
+
+\medskip
+Mean silhouette $=\frac{0.867+0.846+0.846+0.867}{4}=\mathbf{0.856}$: a very good clustering. If instead the clusters were $\{1,2,8\}$ and $\{9\}$, the point $8$ would have $a=\frac{7+6}2=6.5$ and $b=1$, so $s=\frac{1-6.5}{6.5}=-0.846<0$: a clearly wrong assignment.
+\end{example}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1,horizontal sep=1.6cm},width=7cm,height=5.4cm,grid=both,grid style={gray!18},
+  title style={font=\small\bfseries},xlabel={number of clusters $k$},xtick={1,2,3,4,5,6,7,8}]
+\nextgroupplot[title={(a) Elbow: inertia vs.\ $k$},ylabel={inertia},ymin=0,ymax=23000]
+\addplot[very thick,mlblue,mark=*] coordinates {(1,21990.4)(2,8805.1)(3,2236.3)(4,279.9)(5,250.4)(6,223.3)(7,197.5)(8,171.1)};
+\draw[mlred,thick,-{Stealth}] (axis cs:5.6,9000)--(axis cs:4.1,1200);
+\node[font=\scriptsize,mlred,align=center] at (axis cs:6,10500) {elbow\\at $k=4$};
+\nextgroupplot[title={(b) Silhouette score vs.\ $k$},ylabel={mean silhouette},ymin=0.3,ymax=0.95]
+\addplot[very thick,mlgreen,mark=*] coordinates {(2,0.610)(3,0.796)(4,0.866)(5,0.749)(6,0.611)(7,0.469)(8,0.355)};
+\draw[mlred,thick,-{Stealth}] (axis cs:5.6,0.9)--(axis cs:4.1,0.87);
+\node[font=\scriptsize,mlred,anchor=west] at (axis cs:5.5,0.92) {best: $k=4$};
+\end{groupplot}
+\end{tikzpicture}
+\caption{Choosing $k$ for 300 points drawn from 4 blobs (real K-Means results).}\label{fig:elbow}
+\end{figure}
+
+\begin{explain}
+\textbf{(a) Elbow plot.} Going from 1 to 2 to 3 to 4 clusters the inertia collapses (21\,990 $\to$ 8\,805 $\to$ 2\,236 $\to$ 280). After $k=4$ it decreases only slowly (280 $\to$ 250 $\to$ 223 $\ldots$): extra clusters are just splitting blobs that were already compact. The \textbf{bend (elbow) at $k=4$} gives the answer, matching the four blobs that generated the data.
+
+\medskip
+\textbf{(b) Silhouette plot.} The score peaks at $k=4$ ($0.866$) and falls on both sides: with $k=3$ two blobs are forced together and with $k=5$ a blob is cut in two. The highest silhouette agrees with the elbow.
+\end{explain}
+
+\begin{warning}
+The elbow is not always sharp, and for real data different methods may disagree. Use the elbow and silhouette as guidance together with \emph{domain knowledge} (for example, a company may only want 3 customer segments because it has 3 marketing teams).
+\end{warning}
+
+\begin{tryit}
+\begin{lstlisting}
+from sklearn.datasets import make_blobs
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+
+X, y = make_blobs(n_samples=300, centers=4, cluster_std=0.7,
+                  random_state=7)
+
+for k in range(2, 9):
+    km = KMeans(n_clusters=k, init="k-means++", n_init=10,
+                random_state=0).fit(X)
+    print(k, round(km.inertia_, 1),
+          round(silhouette_score(X, km.labels_), 3))
+# k=4 -> inertia 279.9, silhouette 0.866 (best)
+\end{lstlisting}
+\emph{Challenge:} cluster the \textbf{iris} measurements with $k=3$ and compare the clusters with the true species using \texttt{adjusted\_rand\_score}.
+\end{tryit}
+
+\procon{K-Means}
+{\item Simple, fast and easy to implement
+ \item Scales to very large datasets (cost $O(nkd)$ per iteration)
+ \item Always converges
+ \item Gives centroids that summarise each group}
+{\item Must choose $k$ in advance
+ \item Result depends on initialisation (local minimum)
+ \item Assumes round, similar-sized clusters
+ \item Sensitive to outliers and feature scaling}
+{\item Customer segmentation
+ \item Image compression and segmentation
+ \item Document and news grouping
+ \item Vector quantisation, feature engineering}
+
+%====================================================================
+\section{Limits of K-Means}
+
+K-Means is fast and popular, but it quietly assumes that clusters are \textbf{round blobs of similar size and density}. When this is not true, it fails. The main limits are:
+
+\begin{enumerate}
+  \item \textbf{$k$ must be chosen} before running the algorithm.
+  \item \textbf{Local minima:} different starts can give different answers (reduce with K-Means++ and \texttt{n\_init}).
+  \item \textbf{Cluster shape:} it uses distance to a centroid, so it can only produce convex, roughly spherical clusters. Moons, rings and elongated clusters are cut incorrectly.
+  \item \textbf{Cluster size and density:} it tends to split a big cluster and merge small ones.
+  \item \textbf{Outliers:} one extreme point drags a centroid away (the mean is not robust).
+  \item \textbf{Feature scale:} features with a large range dominate the distance, so features must be standardised.
+  \item \textbf{Hard assignments:} every point belongs to exactly one cluster, with no notion of uncertainty.
+\end{enumerate}
+
+\begin{example}[: The outlier problem]
+One-dimensional data $\{1,2,3,100\}$ with a single cluster centre. The centroid is the mean
+\[
+  \mu=\frac{1+2+3+100}{4}=26.5,
+\]
+which is nowhere near the three points that actually form the group ($1,2,3$) and is not even close to the outlier. A single bad point has pulled the centre far away. (The \emph{median}, $2.5$, would have been unaffected: this is why K-Medians and K-Medoids exist.)
+\end{example}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1,horizontal sep=1.2cm,group name=M},width=7.4cm,height=6cm,
+  xmin=-1.5,xmax=2.5,ymin=-1,ymax=1.5,ticks=none,grid=both,grid style={gray!15},title style={font=\small\bfseries,align=center}]
+\nextgroupplot[title={(a) K-Means with $k=2$\\ARI $=0.22$ (wrong)}]
+\kmAplot
+\kmBplot
+\addplot[very thick,mlgreen,dashed,domain=-0.2:1.3]{0.229+2.291*(x-0.55)};
+\addplot[only marks,mark=star,black,mark size=5pt,very thick] coordinates {(1.26,-0.08)(-0.16,0.54)};
+\nextgroupplot[title={(b) DBSCAN ($\varepsilon=0.3$)\\ARI $=0.97$ (correct)}]
+\dbAplot
+\dbBplot
+\dbNplot
+\end{groupplot}
+\pic[scale=1.1] at ([shift={(-0.7,-0.7)}]M c1r1.north east) {sad};
+\pic[scale=1.1] at ([shift={(-0.7,-0.7)}]M c2r1.north east) {smile};
+\end{tikzpicture}
+\caption{Two interleaving half-moons (a 70-point sample): K-Means cuts them with a straight line, while DBSCAN follows their shape.}\label{fig:moons}
+\end{figure}
+
+\begin{explain}
+The data are two half-moon shapes. \textbf{Panel (a):} K-Means looks for two round clusters. Its two centroids (stars) lie between the moons, and the cluster boundary is the \emph{straight green dashed line} halfway between them. This line slices \emph{through both moons}, so each cluster contains a piece of each moon: the \textbf{adjusted Rand index} (ARI, $1$ = perfect agreement with the true groups, $0$ = random) is only $0.22$. \textbf{Panel (b):} DBSCAN (Section~\ref{sec:dbscan}) follows the dense curved bands and recovers both moons exactly ($\text{ARI}=0.97$; the red cross is a point it declares noise).
+\end{explain}
+
+\begin{center}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Dataset (300 points)} & \textbf{K-Means} & \textbf{DBSCAN} & \textbf{Gaussian mixture}\\
+\midrule
+Round blobs & \textbf{1.00} & 0.93 (14 noise) & \textbf{1.00}\\
+Unequal sizes and spreads & 0.99 & 0.91 (9 noise) & \textbf{1.00}\\
+Stretched (elongated) blobs & 0.52 & 0.99 (2 noise) & \textbf{1.00}\\
+Two moons & 0.23 & \textbf{1.00} & 0.46\\
+Two concentric circles & $-0.00$ & \textbf{1.00} & $-0.00$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent \textit{Adjusted Rand index; real results; DBSCAN parameters were chosen per dataset ($\varepsilon=0.2$ for moons and circles, $0.5$--$0.7$ for blobs, 5 points minimum).} \textbf{Read the table:} on round blobs all methods succeed, but K-Means collapses on the elongated blobs ($0.52$), the moons ($0.23$) and the circles ($0.00$, no better than random). Gaussian mixtures cope with elongated clusters, and DBSCAN with arbitrary shapes. No single algorithm is best for every shape.
+
+%====================================================================
+\section{Using Clustering for Image Segmentation}\label{sec:seg}
+
+\begin{definition}[: Image segmentation]
+\textbf{Image segmentation} is the task of dividing an image into regions of pixels that belong together (for example sky, grass and a house). \textbf{Colour segmentation} with K-Means treats every pixel as a point $(R,G,B)$ in three-dimensional colour space, clusters the pixels into $k$ groups, and replaces every pixel by the \emph{centroid colour} of its cluster.
+\end{definition}
+
+\paragraph{Procedure.}
+\begin{enumerate}
+  \item Reshape the image of size $H\times W\times3$ into a list of $H\cdot W$ points with 3 features.
+  \item Run K-Means with $k$ clusters (here $k$ = the number of colours wanted).
+  \item Replace each pixel by the centroid of its cluster and reshape back to $H\times W\times3$.
+\end{enumerate}
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[scale=0.62]
+\node[font=\bfseries] at (2.6,4.4) {Original};
+\node[font=\footnotesize] at (2.6,-0.6) {383 different colours};
+\begin{scope}\input{figs/seg_orig}\end{scope}
+\draw[-{Stealth},very thick,mlpurple] (5.8,1.8)--(7.2,1.8);
+\begin{scope}[xshift=7.6cm]
+\node[font=\bfseries] at (2.6,4.4) {$k=2$ colours};
+\node[font=\footnotesize] at (2.6,-0.6) {inertia $1.41\times10^{6}$};
+\input{figs/seg_k2}
+\end{scope}
+\draw[-{Stealth},very thick,mlpurple] (13.4,1.8)--(14.8,1.8);
+\begin{scope}[xshift=15.2cm]
+\node[font=\bfseries] at (2.6,4.4) {$k=4$ colours};
+\node[font=\footnotesize] at (2.6,-0.6) {inertia $2.18\times10^{5}$};
+\input{figs/seg_k4}
+\end{scope}
+\end{tikzpicture}}
+\caption{Colour segmentation of a small synthetic landscape (24$\times$16 pixels) with K-Means.}\label{fig:seg}
+\end{figure}
+
+\begin{explain}
+The picture on the left is a tiny cartoon landscape (sky, sun, grass, a house with a roof and a door), with a little random noise added to every pixel so that there are 383 different colours among the 384 pixels. In the middle, K-Means with $k=2$ finds only two colour groups: ``sky-like'' (light blue) and ``ground-like'' (dark green): the sun, house and roof are lost. On the right, with $k=4$ the centroid colours are sky blue $(133,189,224)$, grass green $(61,148,58)$, sun yellow $(247,221,58)$ and house brown $(165,86,56)$, so the \textbf{main objects reappear} and the noise vanishes. The inertia falls from $1.41\times10^6$ to $2.18\times10^5$ as $k$ grows from 2 to 4 (and to $1.26\times10^5$ for $k=6$).
+\end{explain}
+
+\paragraph{Segmentation as compression (vector quantisation).} After clustering, each pixel needs only an \textbf{index} into a small \textbf{palette} of $k$ colours.
+
+\begin{example}[: How much smaller is the image?]
+An image of $N$ pixels stored with $24$ bits per pixel needs $24N$ bits. After K-Means with $k$ colours it needs $N\lceil\log_2k\rceil$ bits for the indices plus $24k$ bits for the palette.
+
+\medskip
+\begin{center}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Image} & \textbf{Original} & \textbf{After K-Means} & \textbf{Reduction}\\
+\midrule
+Our $24\times16=384$ pixels, $k=4$ & $9216$ bits & $384\cdot2+96=864$ bits & $10.7\times$\\
+$100\times100$ pixels, $k=8$ & $240\,000$ bits & $10\,000\cdot3+192=30\,192$ bits & $7.9\times$\\
+1 megapixel photo, $k=16$ & $24\,000\,000$ bits & $4\,000\,384$ bits & $6.0\times$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{example}
+
+\begin{warning}
+Colour segmentation uses \emph{only colour}, not position or meaning. Two different objects with similar colours (a green car and green grass) will fall in the same cluster, and shadows can split one object into several clusters. For real object recognition we use richer methods (such as neural networks, Unit~V).
+\end{warning}
+
+\begin{tryit}
+\begin{lstlisting}
+import numpy as np
+from sklearn.cluster import KMeans
+
+# image: a NumPy array of shape (height, width, 3), values 0-255
+X = image.reshape(-1, 3)                       # one row per pixel
+km = KMeans(n_clusters=4, n_init=10, random_state=0).fit(X)
+segmented = km.cluster_centers_[km.labels_]    # centroid colour
+segmented = segmented.reshape(image.shape).astype(np.uint8)
+print(km.cluster_centers_.round())             # the 4-colour palette
+\end{lstlisting}
+\emph{Challenge:} load a photograph with \texttt{matplotlib.image.imread} and try $k=2,4,8,16$; look at how the picture and its palette change.
+\end{tryit}
+
+\procon{Image segmentation with K-Means}
+{\item Very simple and fast
+ \item Reduces the number of colours (compression)
+ \item Removes noise and gives clean regions
+ \item No training labels needed}
+{\item Uses only colour, not position or shape
+ \item Must choose $k$
+ \item Same-coloured objects merge; shadows split objects
+ \item Not a true object-recognition method}
+{\item Image compression and posterisation
+ \item Pre-segmentation for medical and satellite images
+ \item Background removal in simple scenes
+ \item Colour palette extraction}
+
+%====================================================================
+\section{Using Clustering for Preprocessing}\label{sec:pre}
+
+Clustering can be used \emph{before} supervised learning to create better input features.
+
+\begin{definition}[: Clustering as preprocessing]
+After fitting K-Means with $k$ clusters, every instance $\vect x$ can be represented by its $k$ \textbf{distances to the centroids}, $\big(\|\vect x-\vect\mu_1\|,\dots,\|\vect x-\vect\mu_k\|\big)$ (or by a one-hot cluster index). This new representation replaces, or is added to, the original features, and a supervised model is trained on it.
+\end{definition}
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[b/.style={draw,rounded corners,thick,align=center,font=\small,minimum height=1.1cm,inner sep=6pt},arr/.style={-{Stealth},ultra thick,gray!70!black}]
+\node[b,fill=mlblue!10,draw=mlblue] (x) at (0,0) {Raw data\\64 pixel features};
+\node[b,fill=mlorange!14,draw=mlorange] (km) at (5,0) {K-Means\\($k=50$ clusters)};
+\node[b,fill=mlpurple!12,draw=mlpurple] (f) at (10.3,0) {New features\\50 distances\\to centroids};
+\node[b,fill=gray!14] (c) at (15.2,0) {Classifier\\(logistic regression)};
+\node[b,fill=mlgreen!18,draw=mlgreen] (y) at (19.4,0) {Prediction};
+\foreach \a/\b in {x/km,km/f,f/c,c/y} \draw[arr] (\a)--(\b);
+\pic[scale=1.1] at (5,1.7) {smile};
+\bubble[text width=3.6cm]{9.0,2.2}{5.5,1.8}{Describe each digit by which \textbf{typical shapes} it is close to!}
+\end{tikzpicture}}
+\caption{K-Means as a preprocessing step in a pipeline.}\label{fig:prepipe}
+\end{figure}
+
+\begin{explain}
+Read the pipeline from left to right. The raw data (here, handwritten digits as 64 pixel values) are first given to K-Means, which finds 50 \emph{typical shapes} (the centroids). Each digit is then described by 50 numbers: how far it is from each typical shape. A digit that looks like a ``typical 7'' will be very close to the centroid of a 7-cluster and far from the others. A classifier then learns from these distance features. The cartoon says it best: instead of describing a digit pixel by pixel, we describe it by which typical shapes it resembles.
+\end{explain}
+
+\textbf{Real results} on the 8$\times$8 handwritten digits (1347 training and 450 test images):
+
+\begin{center}
+\begin{tabular}{@{}lc@{}}
+\toprule
+\textbf{Model} & \textbf{Test accuracy}\\
+\midrule
+Logistic regression on the 64 raw pixels & 0.973\\
+K-Means ($k=50$) $\rightarrow$ logistic regression on 50 distances & 0.976\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The clustered features reach the same accuracy while using fewer inputs ($50$ instead of $64$) and the improvement is small ($0.973\to0.976$), because logistic regression is already strong on this easy dataset. Preprocessing with clustering helps most when the original data are high-dimensional, noisy, or not linearly separable. The value of $k$ is a hyperparameter chosen by cross-validation on the final accuracy.
+
+\procon{Clustering for preprocessing}
+{\item Reduces dimensionality (many raw features $\to$ $k$ distances)
+ \item Adds non-linear, ``typical shape'' features that help simple models
+ \item Fully automatic, no labels needed to build the features
+ \item Can reveal useful structure}
+{\item Adds a hyperparameter $k$ to tune
+ \item Information about fine details can be lost
+ \item Gain is small if the data are already easy to classify
+ \item Needs scaled features}
+{\item Digit and image recognition pipelines
+ \item Customer-behaviour features for prediction
+ \item Text and sensor-data feature engineering
+ \item Speeding up classifiers on large data}
+
+%====================================================================
+\section{Using Clustering for Semi-Supervised Learning}\label{sec:semi}
+
+In many projects we have \textbf{lots of unlabelled data but only a few labels}, because labelling is slow and expensive (Chapter~1). Clustering gives a clever way to use the unlabelled data.
+
+\begin{definition}[: Label propagation by clustering]
+(1)~Cluster all the data (labelled and unlabelled) into $k$ clusters with K-Means. (2)~For each cluster pick the \textbf{representative instance} (the one closest to the centroid) and obtain its label from a human. (3)~\textbf{Propagate} that label to all other instances of the cluster. (4)~Train an ordinary supervised classifier on the (partly pseudo-)labelled data.
+\end{definition}
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}
+\def\offs{0.55/0.3, -0.45/0.5, 0.2/-0.55, -0.55/-0.2, 0.7/-0.35, -0.1/0.7, 0.45/0.65}
+% ---- left : only representatives labelled
+\node[font=\small\bfseries] at (3.3,6.3) {(a) Label only the representatives};
+\foreach \cx/\cy/\L/\col in {1.6/1.6/A/mlblue, 5.0/2.2/B/mlorange, 3.0/4.8/C/mlgreen} {
+  \foreach \dx/\dy in \offs \fill[gray!55] (\cx+\dx,\cy+\dy) circle (0.1);
+  \draw[\col,thick,dashed] (\cx,\cy) circle (1.0);
+  \node[star,star points=5,fill=\col,draw=black,minimum size=0.55cm,inner sep=0pt] at (\cx,\cy) {};
+  \node[font=\scriptsize\bfseries,fill=white,inner sep=1pt] at (\cx+0.0,\cy-0.55) {\L};
+}
+\pic[scale=1.3] at (6.4,5.6) {smile};
+\bubble[text width=3.0cm]{6.9,4.1}{6.4,5.3}{I label just \textbf{three} houses!}
+\draw[-{Stealth},ultra thick,mlpurple] (7.7,2.6)--(9.1,2.6);
+% ---- right : propagation
+\begin{scope}[xshift=9.4cm]
+\node[font=\small\bfseries] at (3.3,6.3) {(b) The label spreads to the whole cluster};
+\foreach \cx/\cy/\L/\col in {1.6/1.6/A/mlblue, 5.0/2.2/B/mlorange, 3.0/4.8/C/mlgreen} {
+  \foreach \dx/\dy in \offs \fill[\col] (\cx+\dx,\cy+\dy) circle (0.1);
+  \draw[\col,thick,dashed] (\cx,\cy) circle (1.0);
+  \node[star,star points=5,fill=\col,draw=black,minimum size=0.55cm,inner sep=0pt] at (\cx,\cy) {};
+  \node[font=\scriptsize\bfseries,fill=white,inner sep=1pt] at (\cx+0.0,\cy-0.55) {\L};
+}
+\node[font=\small,align=center] at (3.3,-0.3) {train a classifier on all coloured points};
+\end{scope}
+\end{tikzpicture}}
+\caption{Label propagation: a few labels become many pseudo-labels.}\label{fig:semi}
+\end{figure}
+
+\begin{explain}
+\textbf{(a)} The data have been clustered into three groups (dashed circles). Grey dots are unlabelled; the \textbf{stars} are the cluster representatives (closest to each centre), the only instances a human has to label (as classes A, B and C). \textbf{(b)} Every point inherits the label of its cluster's representative (shown by colour), so three human labels have turned into labels for all the points. A classifier is then trained on this large, mostly correct, training set. The assumption is that points in the same cluster usually share the same class.
+\end{explain}
+
+\textbf{Real results} on the digits data (1347 training images, 450 test images). We can afford to label only $50$ images:
+
+\begin{center}
+\begin{tabular}{@{}p{8.2cm}cc@{}}
+\toprule
+\textbf{Strategy (50 labels only)} & \textbf{Training labels used} & \textbf{Test accuracy}\\
+\midrule
+Label 50 \emph{random} images & 50 & 0.813\\
+Cluster ($k=50$), label the 50 \emph{representative} images & 50 & 0.896\\
+Propagate each representative's label to its \emph{whole} cluster & 1347 (93.5\% correct) & 0.909\\
+Propagate only to the 20\% of each cluster closest to the centroid & 288 (98.3\% correct) & \textbf{0.924}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent \textbf{Read the table:} the same budget of 50 human labels gives accuracy $0.813$ if the images are chosen at random, but $0.896$ if we label the \emph{cluster representatives}, because they cover every kind of digit. Propagating labels adds more: $0.909$ for the full cluster, and $0.924$ when we propagate only to the points \emph{close to the centroid}, where the label is most reliable (98.3\% correct instead of 93.5\%). For comparison, a classifier trained on all 1347 true labels reaches $0.973$.
+
+\procon{Clustering for semi-supervised learning}
+{\item Needs very few human labels
+ \item Chooses \emph{which} instances to label (cheap and effective)
+ \item Uses the structure of the unlabelled data
+ \item Easy to combine with any classifier}
+{\item Assumes points in a cluster share a class
+ \item Wrong propagated labels add noise
+ \item Depends on a good clustering and on $k$
+ \item Less accurate than having all true labels}
+{\item Labelling large image collections (photo tagging)
+ \item Medical imaging where experts' time is costly
+ \item Text and speech corpora
+ \item Active learning workflows}
+
+%====================================================================
+\section{DBSCAN}\label{sec:dbscan}
+
+\subsection{The Idea: Crowds at a Party}
+
+Imagine a big party seen from above. Wherever people stand in a \textbf{dense crowd}, you see a group. People standing alone at the edges are not part of any group. Two crowds separated by an empty space are two different groups, even if each crowd has a strange shape (a ring around the dance floor, a long queue). \textbf{DBSCAN} (Density-Based Spatial Clustering of Applications with Noise) clusters exactly like that: it finds \emph{dense regions} and treats isolated points as \textbf{noise}.
+
+\subsection{Definitions}
+
+DBSCAN has two parameters: the \textbf{radius} $\varepsilon$ (``arm's reach'') and the \textbf{minimum number of points} MinPts (``how many friends make a crowd'').
+
+\begin{definition}[: $\varepsilon$-neighbourhood]
+The $\varepsilon$-neighbourhood of a point $p$ is the set of all points within distance $\varepsilon$ of $p$ (including $p$ itself): $N_\varepsilon(p)=\{q:\ d(p,q)\le\varepsilon\}$.
+\end{definition}
+
+\begin{definition}[: Core, border and noise points]
+\begin{itemize}
+  \item A \textbf{core point} has at least MinPts points in its $\varepsilon$-neighbourhood: $|N_\varepsilon(p)|\ge\text{MinPts}$. It is in the \emph{inside} of a dense region.
+  \item A \textbf{border point} is \emph{not} a core point but lies within $\varepsilon$ of a core point. It is on the \emph{edge} of a cluster.
+  \item A \textbf{noise point} (outlier) is neither core nor border.
+\end{itemize}
+\end{definition}
+
+\begin{definition}[: Density-reachable and density-connected]
+A point $q$ is \textbf{directly density-reachable} from $p$ if $p$ is a core point and $q\in N_\varepsilon(p)$. $q$ is \textbf{density-reachable} from $p$ if there is a chain of points $p=p_1,p_2,\dots,p_m=q$ in which each $p_{i+1}$ is directly density-reachable from $p_i$. Two points are \textbf{density-connected} if both are density-reachable from a common core point.
+\end{definition}
+
+\begin{definition}[: DBSCAN cluster and algorithm]
+A \textbf{cluster} is a maximal set of density-connected points. The algorithm:
+\begin{enumerate}
+  \item Pick an unvisited point $p$ and find its $\varepsilon$-neighbourhood.
+  \item If $p$ is \textbf{not} a core point, mark it provisionally as noise (it may later turn out to be a border point of some cluster).
+  \item If $p$ \textbf{is} a core point, start a \textbf{new cluster}: add all points in its neighbourhood; then for every core point added, add \emph{its} neighbours too, and so on until the cluster cannot grow.
+  \item Repeat until every point has been visited.
+\end{enumerate}
+\end{definition}
+
+\subsection{Worked Example: DBSCAN by Hand}
+
+\textbf{Data:} ten points $A(1,1)$, $B(1,2)$, $C(2,1)$, $D(2,2)$, $E(3,2)$, $F(8,8)$, $G(8,9)$, $H(9,8)$, $I(9,9)$, $J(5,5)$ with $\varepsilon=1.2$ and MinPts $=3$ (counting the point itself).
+
+\begin{example}[: Classifying each point]
+Neighbours within distance $1.2$ (note that $d(A,D)=\sqrt2=1.414>1.2$):
+
+\begin{center}
+\begin{tabular}{@{}c|l|c|l@{}}
+\toprule
+Point & $\varepsilon$-neighbourhood & Size & Type\\
+\midrule
+A & $\{A,B,C\}$ & 3 & \textbf{core}\\
+B & $\{B,A,D\}$ & 3 & \textbf{core}\\
+C & $\{C,A,D\}$ & 3 & \textbf{core}\\
+D & $\{D,B,C,E\}$ & 4 & \textbf{core}\\
+E & $\{E,D\}$ & 2 & \textbf{border} (within $\varepsilon$ of the core point D)\\
+F & $\{F,G,H\}$ & 3 & \textbf{core}\\
+G & $\{G,F,I\}$ & 3 & \textbf{core}\\
+H & $\{H,F,I\}$ & 3 & \textbf{core}\\
+I & $\{I,G,H\}$ & 3 & \textbf{core}\\
+J & $\{J\}$ & 1 & \textbf{noise}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Building the clusters.} Start at A (core): add B and C. B is core: add D. D is core: add E (border; E is not core, so the cluster does not grow from E). The first cluster is $\{A,B,C,D,E\}$. Next, F (core): add G and H, then I. The second cluster is $\{F,G,H,I\}$. Finally J belongs to no cluster: \textbf{noise}.
+
+\medskip
+\textbf{Result: 2 clusters and 1 noise point.} We never had to say ``two clusters''; DBSCAN found them from the density.
+
+\medskip
+\textbf{Effect of $\varepsilon$.} If we enlarge $\varepsilon$ to $1.5$, then $d(A,D)=1.414$ and $d(C,E)=1.414$ are now within reach, so E has two neighbours (D and C) besides itself, i.e.\ $|N_\varepsilon(E)|=3$, and becomes a core point; the clusters stay the same but the first cluster is now more tightly connected. If we enlarge $\varepsilon$ to $8$ every point is a neighbour of many others and all ten points merge into a single cluster.
+\end{example}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[x=0.62cm,y=0.62cm]
+\draw[gray!25] (0,0) grid (10,10);
+\foreach \n/\x/\y in {A/1/1,B/1/2,C/2/1,D/2/2,F/8/8,G/8/9,H/9/8,I/9/9}
+  {\fill[mlblue] (\x,\y) circle (0.2); \node[font=\scriptsize,anchor=south west] at (\x+0.15,\y+0.15) {\n};}
+\draw[mlblue,fill=white,thick] (3,2) circle (0.2); \node[font=\scriptsize,anchor=south west] at (3.15,2.15) {E};
+\draw[red,very thick] (4.8,4.8)--(5.2,5.2); \draw[red,very thick] (4.8,5.2)--(5.2,4.8); \node[font=\scriptsize,anchor=south west] at (5.2,5.2) {J};
+\draw[dashed,mlgreen!60!black,thick] (2,2) circle [radius=0.744cm];
+\draw[dashed,mlorange!80!black,thick] (3,2) circle [radius=0.744cm];
+\node[font=\scriptsize,mlgreen!50!black,anchor=north] at (2,0.6) {$\varepsilon$-ball of D};
+\node[font=\scriptsize,mlorange!70!black,anchor=west] at (4.3,1.0) {$\varepsilon$-ball of E};
+\pic[scale=1.2] at (5.2,6.7) {sad};
+\node[font=\scriptsize,align=center] at (5.2,7.8) {``Nobody is\\near me!''};
+\pic[scale=1.0] at (1.5,4.2) {smile};
+\node[font=\scriptsize,align=center] at (1.5,5.3) {crowd 1};
+\pic[scale=1.0] at (8.5,6.0) {smile};
+\node[font=\scriptsize,align=center] at (8.5,7.0) {crowd 2};
+% legend
+\begin{scope}[xshift=11cm]
+\fill[mlblue] (0,9) circle (0.2); \node[font=\small,anchor=west] at (0.4,9) {core point};
+\draw[mlblue,fill=white,thick] (0,7.8) circle (0.2); \node[font=\small,anchor=west] at (0.4,7.8) {border point};
+\draw[red,very thick] (-0.2,6.4)--(0.2,6.8); \draw[red,very thick] (-0.2,6.8)--(0.2,6.4); \node[font=\small,anchor=west] at (0.4,6.6) {noise point};
+\end{scope}
+\end{tikzpicture}
+\caption{DBSCAN on the ten-point example ($\varepsilon=1.2$, MinPts $=3$).}\label{fig:dbscantoy}
+\end{figure}
+
+\begin{explain}
+\textbf{Filled blue dots} are core points: each has at least 3 points (itself included) within the dashed radius. The \textbf{white-filled dot E} is a border point: the orange dashed circle around it contains only two points (E and D), so it is not core, but it lies inside the green circle of the core point D, so it joins D's cluster. The \textbf{red cross J} has nobody nearby: noise (the sad face). There are two crowds (the smiley faces): the lower-left group with five points and the upper-right group with four. Clusters were \emph{not} given in advance.
+\end{explain}
+
+\subsection{Choosing $\varepsilon$ and MinPts}
+
+\begin{itemize}
+  \item \textbf{MinPts:} a common rule is MinPts $\ge d+1$ and often $2d$ ($d$ = number of features); larger values make DBSCAN more robust to noise. For 2-D data MinPts $=4$ or $5$ is typical.
+  \item \textbf{$\varepsilon$:} use the \textbf{k-distance graph}. For every point compute the distance to its MinPts-th nearest neighbour, sort these distances from small to large and plot them; choose $\varepsilon$ at the \emph{knee} (sharp bend) of the curve.
+\end{itemize}
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=10.5cm,height=6cm,xlabel={points sorted by their 5-th neighbour distance},ylabel={distance to 5-th nearest neighbour},
+  xmin=0,xmax=300,ymin=0,ymax=0.26,grid=both,grid style={gray!18}]
+\addplot[very thick,mlblue,mark=*,mark size=1.5pt] coordinates {(0,0.038)(15,0.059)(30,0.063)(45,0.066)(60,0.069)(75,0.073)(90,0.076)(105,0.080)(120,0.082)(135,0.085)(150,0.089)(165,0.092)(180,0.096)(195,0.100)(210,0.104)(225,0.110)(240,0.116)(255,0.124)(270,0.137)(285,0.150)(299,0.230)};
+\draw[dashed,mlred,thick] (axis cs:0,0.16)--(axis cs:300,0.16);
+\node[font=\small,mlred,anchor=south west] at (axis cs:5,0.165) {choose $\varepsilon\approx0.15$--$0.2$ (knee)};
+\end{axis}
+\end{tikzpicture}
+\caption{k-distance graph for 300 points of the two-moons data (real values, MinPts $=5$).}\label{fig:kdist}
+\end{figure}
+
+\begin{explain}
+Each point on the curve is a data point, sorted by how far its 5-th nearest neighbour is. Most points have a small value ($<0.1$): they sit inside dense regions. Only at the far right does the curve \textbf{bend upward sharply}: those are the few isolated points whose neighbours are far away (noise candidates). The $\varepsilon$ value at the knee separates ``dense'' from ``sparse'', so $\varepsilon\approx0.15$--$0.2$ is a good choice here. (We used $\varepsilon=0.2$ and obtained a perfect clustering.)
+\end{explain}
+
+\textbf{Sensitivity to $\varepsilon$} (real results on two moons with noise, MinPts $=5$):
+
+\begin{center}
+\begin{tabular}{@{}cccccl@{}}
+\toprule
+$\varepsilon$ & 0.05 & 0.1 & \textbf{0.2} & 0.3 & 0.5 and 1.0\\
+\midrule
+Clusters found & 4 & 14 & \textbf{2} & 1 & 1\\
+Noise points & 278 & 38 & \textbf{1} & 0 & 0\\
+ARI & 0.00 & 0.20 & \textbf{0.99} & 0.00 & 0.00\\
+Diagnosis & almost all noise & fragmented & \textbf{correct} & moons merged & all merged\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent A radius that is too small labels almost everything as noise, and one that is too large merges everything into one cluster, so $\varepsilon$ must be chosen with care.
+
+\begin{tryit}
+\begin{lstlisting}
+from sklearn.datasets import make_moons
+from sklearn.cluster import DBSCAN
+from sklearn.metrics import adjusted_rand_score
+
+X, y = make_moons(n_samples=300, noise=0.08, random_state=0)
+db = DBSCAN(eps=0.2, min_samples=5).fit(X)
+
+labels = db.labels_                      # -1 means noise
+print(set(labels), (labels == -1).sum()) # {0, 1}  1 noise point
+print(adjusted_rand_score(y, labels))    # 0.99
+print(len(db.core_sample_indices_))      # number of core points
+\end{lstlisting}
+\emph{Challenge:} change \texttt{eps} to 0.05, 0.1 and 0.5 and observe the number of clusters and noise points.
+\end{tryit}
+
+\procon{DBSCAN}
+{\item Finds clusters of \emph{any shape}
+ \item No need to specify the number of clusters
+ \item Identifies \textbf{noise/outliers} automatically
+ \item Robust to outliers; only two parameters}
+{\item Hard to choose $\varepsilon$ (sensitive!)
+ \item Struggles when clusters have \emph{different densities}
+ \item Poor in very high dimensions (distances lose meaning)
+ \item No cluster centres, no soft membership}
+{\item Geographic and location clustering
+ \item Anomaly and fraud detection
+ \item Astronomy, sensor and trajectory data
+ \item Image and spatial data analysis}
+
+%====================================================================
+\section{Gaussian Mixture Models}\label{sec:gmm}
+
+\subsection{The Idea: Overlapping Hills}
+
+K-Means says ``this point belongs to cluster 2, full stop''. But what about a point right between two groups? A more honest answer is ``60\% cluster~1, 40\% cluster~2''. A \textbf{Gaussian mixture model (GMM)} gives exactly this kind of \textbf{soft} answer. It assumes that the data were produced by several overlapping bell-shaped (Gaussian) hills, and tries to find the hills.
+
+\begin{definition}[: Gaussian mixture model]
+A \textbf{Gaussian mixture model} assumes that the data come from a mixture of $K$ Gaussian distributions:
+\[
+  p(\vect x)=\sum_{k=1}^{K}\pi_k\,\mathcal N(\vect x\mid\vect\mu_k,\vect\Sigma_k),\qquad \pi_k\ge0,\ \ \sum_k\pi_k=1.
+\]
+Each component $k$ has a \textbf{mixing weight} $\pi_k$ (the probability of picking this cluster), a \textbf{mean} $\vect\mu_k$ (its centre) and a \textbf{covariance matrix} $\vect\Sigma_k$ (its shape, size and orientation). Clustering means finding the parameters and then computing, for each point, the \textbf{responsibility}
+\[
+  \gamma_{ik}=P(\text{cluster }k\mid\vect x_i)=\frac{\pi_k\,\mathcal N(\vect x_i\mid\vect\mu_k,\vect\Sigma_k)}{\sum_{j=1}^{K}\pi_j\,\mathcal N(\vect x_i\mid\vect\mu_j,\vect\Sigma_j)},
+\]
+the probability that point $i$ was generated by component $k$. This is \textbf{soft clustering}.
+\end{definition}
+
+\subsection{The EM Algorithm}
+
+The parameters are learned by the \textbf{Expectation--Maximisation (EM)} algorithm, which alternates two steps, very much like K-Means.
+
+\begin{definition}[: EM algorithm for a Gaussian mixture]
+Initialise $\pi_k,\vect\mu_k,\vect\Sigma_k$ (e.g.\ with K-Means). Then repeat:
+\begin{enumerate}
+  \item \textbf{E-step (Expectation):} compute the responsibilities $\gamma_{ik}$ of every component for every point with the formula above.
+  \item \textbf{M-step (Maximisation):} re-estimate the parameters using the responsibilities as \emph{soft weights}. With $N_k=\sum_i\gamma_{ik}$:
+  \[
+    \vect\mu_k=\frac{1}{N_k}\sum_i\gamma_{ik}\vect x_i,\qquad
+    \vect\Sigma_k=\frac{1}{N_k}\sum_i\gamma_{ik}(\vect x_i-\vect\mu_k)(\vect x_i-\vect\mu_k)^{\!\top},\qquad
+    \pi_k=\frac{N_k}{n}.
+  \]
+\end{enumerate}
+until the log-likelihood $\sum_i\ln p(\vect x_i)$ stops improving.
+\end{definition}
+
+\textbf{Relation to K-Means.} The E-step is a \emph{soft} version of K-Means' assignment step (a point is shared among clusters instead of being given to one), and the M-step is a \emph{weighted} version of the centroid update. K-Means is the special case of a GMM with equal spherical covariances and \emph{hard} assignments.
+
+\subsection{Worked Example: One EM Iteration by Hand}
+
+\begin{example}[: One-dimensional EM]
+Five points $x=1,\ 2,\ 5,\ 8,\ 9$ and $K=2$ components. Start with $\mu_1=2$, $\mu_2=8$, $\sigma_1^2=\sigma_2^2=1$ and $\pi_1=\pi_2=0.5$.
+
+\medskip
+\textbf{E-step (responsibilities).} Use $\mathcal N(x\mid\mu,1)=\varphi(x-\mu)$ with $\varphi(z)=\frac1{\sqrt{2\pi}}e^{-z^2/2}$.
+\begin{center}
+\begin{tabular}{@{}c|cc|cc@{}}
+\toprule
+$x$ & $\varphi(x-2)$ & $\varphi(x-8)$ & $\gamma_{1}$ & $\gamma_{2}$\\
+\midrule
+1 & $0.2420$ & $\approx0$ & $\approx1$ & $\approx0$\\
+2 & $0.3989$ & $\approx0$ & $\approx1$ & $\approx0$\\
+5 & $0.0044$ & $0.0044$ & $\mathbf{0.5}$ & $\mathbf{0.5}$\\
+8 & $\approx0$ & $0.3989$ & $\approx0$ & $\approx1$\\
+9 & $\approx0$ & $0.2420$ & $\approx0$ & $\approx1$\\
+\bottomrule
+\end{tabular}
+\end{center}
+The middle point $x=5$ is equally far from both centres, so it is shared 50/50. This \emph{soft} sharing is what K-Means cannot do.
+
+\medskip
+\textbf{M-step (new parameters).} $N_1=1+1+0.5=2.5$ and $N_2=0.5+1+1=2.5$.
+\begin{align*}
+\mu_1&=\tfrac{1(1)+1(2)+0.5(5)}{2.5}=\tfrac{5.5}{2.5}=\mathbf{2.2},\\
+\mu_2&=\tfrac{0.5(5)+1(8)+1(9)}{2.5}=\tfrac{19.5}{2.5}=\mathbf{7.8},\\
+\sigma_1^2&=\tfrac{1(1-2.2)^2+1(2-2.2)^2+0.5(5-2.2)^2}{2.5}=\tfrac{1.44+0.04+3.92}{2.5}=\mathbf{2.16},\\
+\sigma_2^2&=\tfrac{0.5(5-7.8)^2+1(8-7.8)^2+1(9-7.8)^2}{2.5}=\mathbf{2.16},\\
+\pi_1&=\pi_2=\tfrac{2.5}{5}=\mathbf{0.5}.
+\end{align*}
+Both centres moved towards the middle point (because it contributed half a point to each), and the variances grew from $1$ to $2.16$.
+
+\medskip
+\textbf{Using the new model.} Classify a new point $x=4$:
+\begin{align*}
+  \mathcal N(4\mid2.2,2.16)&=\tfrac{1}{\sqrt{2\pi\cdot2.16}}\,e^{-1.8^2/(2\cdot2.16)}=0.2714\,e^{-0.75}=0.1282,\\
+  \mathcal N(4\mid7.8,2.16)&=0.2714\,e^{-3.8^2/(2\cdot2.16)}=0.2714\,e^{-3.34}=0.0096 .
+\end{align*}
+\[
+  \gamma_{1}=\frac{0.5(0.1282)}{0.5(0.1282)+0.5(0.0096)}=\mathbf{0.930},\qquad\gamma_2=0.070 .
+\]
+The point belongs to component~1 with probability $93\%$ and to component~2 with probability $7\%$.
+\end{example}
+
+\subsection{Covariance Types and Choosing the Number of Components}
+
+The covariance matrix $\vect\Sigma_k$ controls the shape of each hill. The library offers four choices:
+
+\begin{center}
+\begin{tabular}{@{}p{2.4cm}p{6.1cm}p{5.2cm}@{}}
+\toprule
+\textbf{Type} & \textbf{Shape of the clusters} & \textbf{Parameters per component}\\
+\midrule
+\texttt{spherical} & Circles, each with its own radius & 1 variance\\
+\texttt{diag} & Axis-aligned ellipses & $d$ variances\\
+\texttt{tied} & Ellipses with the \emph{same} shape and orientation for all components & one shared full matrix\\
+\texttt{full} & Free ellipses of any shape and orientation & a full $d\times d$ matrix\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Increasing the number of components $K$ always increases the likelihood, so as with K-Means we cannot just maximise it. We penalise complexity with the \textbf{Bayesian information criterion}:
+\[
+  \text{BIC}=p\ln n-2\ln\hat L,
+\]
+where $p$ is the number of free parameters, $n$ the number of points and $\hat L$ the maximised likelihood. \textbf{Lower BIC is better}: the first term punishes too many parameters, the second rewards a good fit.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1,horizontal sep=1.1cm,group name=G},width=7.4cm,height=6.4cm,
+  xmin=-6,xmax=3.5,ymin=-3.6,ymax=7.5,ticks=none,grid=both,grid style={gray!15},title style={font=\small\bfseries,align=center}]
+\nextgroupplot[title={(a) K-Means ($k=3$)\\ARI $=0.52$}]
+\kmPAplot
+\kmPBplot
+\kmPCplot
+\kmcentersplot
+\nextgroupplot[title={(b) Gaussian mixture ($K=3$)\\ARI $=1.00$}]
+\gmmPAplot
+\gmmPBplot
+\gmmPCplot
+\ellAplot
+\ellBplot
+\ellCplot
+\end{groupplot}
+\pic[scale=1.1] at ([shift={(0.7,-0.7)}]G c1r1.north west) {sad};
+\pic[scale=1.1] at ([shift={(0.7,-0.7)}]G c2r1.north west) {smile};
+\end{tikzpicture}
+\caption{Three elongated clusters (90 of the 300 points shown). K-Means cuts them into round pieces; the Gaussian mixture fits tilted ellipses.}\label{fig:gmm}
+\end{figure}
+
+\begin{explain}
+The three clusters are \emph{stretched and tilted}. \textbf{Panel (a):} K-Means (stars are its centroids) can only draw boundaries halfway between its centres, which is right for round clusters but wrong here: two of the elongated clusters are cut crosswise ($\text{ARI}=0.52$). \textbf{Panel (b):} the Gaussian mixture learns a \textbf{covariance} for each component. The coloured \textbf{ellipses} are the contours (two standard deviations) of the fitted hills: each is long and thin and tilted in the same direction as its cluster, so the three groups are recovered perfectly ($\text{ARI}=1.00$).
+\end{explain}
+
+\begin{center}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Covariance type} & spherical & diag & \textbf{tied} & \textbf{full}\\
+\midrule
+ARI (true clusters known) & 0.50 & 0.50 & 1.00 & 1.00\\
+BIC (lower is better) & 2089.3 & 2085.9 & \textbf{1608.8} & 1639.2\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent The spherical and diagonal models cannot represent the tilted ellipses and perform like K-Means. The tied model has the lowest BIC because these three clusters have the \emph{same shape} (the data were generated that way), so it needs fewer parameters than the full model for the same fit.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=10cm,height=5.6cm,xlabel={number of components $K$},ylabel={BIC (lower is better)},xmin=0.7,xmax=6.3,ymin=1500,ymax=2300,xtick={1,2,3,4,5,6},grid=both,grid style={gray!18}]
+\addplot[very thick,mlpurple,mark=*] coordinates {(1,2191.9)(2,1868.4)(3,1639.2)(4,1668.0)(5,1699.1)(6,1714.6)};
+\draw[mlred,thick,-{Stealth}] (axis cs:4.6,1950)--(axis cs:3.1,1650);
+\node[font=\small,mlred,anchor=west] at (axis cs:4.2,2000) {minimum at $K=3$};
+\end{axis}
+\end{tikzpicture}
+\caption{BIC for Gaussian mixtures (full covariance) with $K=1,\dots,6$ on the elongated-clusters data.}\label{fig:bic}
+\end{figure}
+
+\begin{explain}
+The BIC drops sharply from $K=1$ ($2192$) to $K=3$ ($1639$) because the model fits the data much better. After $K=3$ it \emph{rises} again ($1668,1699,1715$): extra components improve the fit only slightly, and the penalty for the extra parameters outweighs the gain. The lowest point, $K=3$, is the model BIC selects, and it matches the true number of clusters.
+\end{explain}
+
+\subsection{Other Uses and Cautions}
+
+\begin{itemize}
+  \item \textbf{Anomaly detection:} points with very low density $p(\vect x)$ are outliers.
+  \item \textbf{Generating data:} a fitted GMM can \emph{sample} new, realistic points.
+  \item \textbf{Local optima and singularities:} EM can converge to a poor solution (use several initialisations), and a component can collapse onto a single point ($\vect\Sigma_k\to0$, likelihood $\to\infty$); libraries add a small regularisation term to prevent this.
+  \item \textbf{Gaussian assumption:} GMMs work well for blob-like (even elongated) clusters but not for crescents or rings (see the moons result, ARI $0.46$).
+\end{itemize}
+
+\begin{tryit}
+\begin{lstlisting}
+from sklearn.datasets import make_blobs
+from sklearn.mixture import GaussianMixture
+import numpy as np
+
+X, y = make_blobs(n_samples=300, centers=3, random_state=170)
+X = X @ np.array([[0.6, -0.64], [-0.4, 0.85]])   # stretch the blobs
+
+for k in range(1, 7):
+    g = GaussianMixture(n_components=k, covariance_type="full",
+                        n_init=5, random_state=0).fit(X)
+    print(k, round(g.bic(X), 1))        # lowest at k = 3 (1639.2)
+
+g = GaussianMixture(3, covariance_type="full", n_init=5,
+                    random_state=0).fit(X)
+print(g.weights_.round(3))              # mixing weights pi_k
+print(g.predict_proba(X[:2]).round(3))  # soft responsibilities
+\end{lstlisting}
+\emph{Challenge:} compare \texttt{covariance\_type} values \texttt{"spherical"}, \texttt{"diag"}, \texttt{"tied"}, \texttt{"full"} using BIC and the adjusted Rand index.
+\end{tryit}
+
+\procon{Gaussian mixture models}
+{\item \textbf{Soft clustering}: gives membership probabilities
+ \item Handles elongated, tilted and different-sized clusters
+ \item Probabilistic model: BIC for choosing $K$, anomaly detection, sampling
+ \item Generalises K-Means}
+{\item Must choose $K$; assumes Gaussian-shaped clusters
+ \item Can get stuck in local optima; sensitive to initialisation
+ \item More parameters and slower than K-Means
+ \item Fails on crescents and rings}
+{\item Customer and market segmentation with overlap
+ \item Speaker and speech recognition
+ \item Anomaly detection and density estimation
+ \item Image and background modelling}
+
+%====================================================================
+\section{Choosing a Clustering Algorithm}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{3.1cm}p{3.5cm}p{3.5cm}p{3.5cm}@{}}
+\toprule
+ & \textbf{K-Means} & \textbf{DBSCAN} & \textbf{Gaussian mixture}\\
+\midrule
+Type & Centroid-based & Density-based & Model-based (probabilistic)\\
+Needs number of clusters? & Yes ($k$) & No & Yes ($K$)\\
+Other parameters & Initialisation & $\varepsilon$, MinPts & Covariance type\\
+Cluster shape & Round, similar size & \textbf{Any shape} & Elliptical\\
+Membership & Hard & Hard (plus noise) & \textbf{Soft (probabilities)}\\
+Outliers / noise & Sensitive & \textbf{Detects noise} & Can model low density\\
+Speed on big data & \textbf{Fast} & Fast with an index & Slower\\
+Main weakness & Non-convex clusters & Varying densities, $\varepsilon$ & Non-Gaussian shapes\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[q/.style={draw,rounded corners,thick,fill=mlblue!10,draw=mlblue,align=center,font=\small,inner sep=6pt,text width=3.9cm},
+ a/.style={draw,rounded corners,very thick,align=center,font=\small\bfseries,inner sep=6pt,text width=2.7cm},arr/.style={-{Stealth},thick}]
+\node[q] (q1) at (0,0) {Clusters of arbitrary shape or noise points?};
+\node[a,fill=mlorange!18,draw=mlorange] (db) at (5.5,1.4) {DBSCAN};
+\node[q] (q2) at (0,-2.8) {Need soft (probability) memberships or elongated clusters?};
+\node[a,fill=mlpurple!14,draw=mlpurple] (gm) at (5.5,-1.4) {Gaussian mixture};
+\node[a,fill=mlgreen!18,draw=mlgreen] (km) at (5.5,-4.2) {K-Means (fast baseline)};
+\draw[arr] (q1)--(db) node[midway,above,font=\footnotesize]{yes};
+\draw[arr] (q1)--(q2) node[midway,left,font=\footnotesize]{no};
+\draw[arr] (q2)--(gm) node[midway,above,font=\footnotesize]{yes};
+\draw[arr] (q2)--(km) node[pos=0.45,below left,font=\footnotesize]{no (round blobs)};
+\pic[scale=1.2] at (9.8,-1.4) {smile};
+\bubble[text width=3.6cm]{11.7,-3.4}{9.9,-1.8}{When in doubt, start with K-Means, then try the others!}
+\end{tikzpicture}}
+\caption{A simple guide for choosing a clustering algorithm.}\label{fig:choose}
+\end{figure}
+
+\begin{explain}
+Start at the top question. If the clusters may have \textbf{arbitrary shapes} (rings, crescents) or you need to find outliers, use \textbf{DBSCAN}. If not, ask whether you need \textbf{soft memberships} or the clusters are elongated ellipses: then use a \textbf{Gaussian mixture}. Otherwise (round, similar-sized blobs) \textbf{K-Means} is fast and sufficient. In practice it is common to try K-Means first as a baseline, then compare with the others using the silhouette score or domain knowledge.
+\end{explain}
+
+%====================================================================
+\begin{summary}
+\begin{itemize}
+  \item \textbf{Clustering} groups unlabelled data so that similar items fall together.
+  \item \textbf{K-Means:} minimise inertia $J=\sum_j\sum_{x\in C_j}\|x-\mu_j\|^2$; alternate assignment (nearest centroid) and update (mean). Converges to a local minimum; use \textbf{K-Means++} and several runs. Choose $k$ by the \textbf{elbow} and the \textbf{silhouette} $s=\frac{b-a}{\max(a,b)}$.
+  \item \textbf{Limits of K-Means:} needs $k$; local minima; round same-sized clusters only; sensitive to outliers and scale; hard assignments (moons ARI $0.23$, circles $0.00$).
+  \item \textbf{Image segmentation:} cluster pixel colours; replace each pixel by its centroid colour; also compresses the image (e.g.\ $k=4$: $10.7\times$ smaller).
+  \item \textbf{Preprocessing:} represent instances by distances to $k$ centroids; \textbf{semi-supervised:} label representatives and propagate (50 labels: $0.813\to0.924$).
+  \item \textbf{DBSCAN:} core, border and noise points with parameters $\varepsilon$ and MinPts; finds arbitrary-shaped clusters and noise; choose $\varepsilon$ from the k-distance knee.
+  \item \textbf{Gaussian mixture:} $p(x)=\sum\pi_k\mathcal N(x\mid\mu_k,\Sigma_k)$; EM alternates E-step (responsibilities) and M-step (weighted $\mu,\Sigma,\pi$); soft clustering; choose $K$ by BIC.
+\end{itemize}
+\end{summary}
+
+%====================================================================
+\section*{Exam Corner}
+\addcontentsline{toc}{section}{Exam Corner}
+
+\subsection*{A.\ Very Short Answer Questions (2 marks each)}
+\begin{enumerate}
+  \item Define clustering. How is it different from classification? \qmarks{2}
+  \item Define inertia (within-cluster sum of squares). \qmarks{2}
+  \item Write the two steps of the K-Means algorithm. \qmarks{2}
+  \item Why does K-Means need several random initialisations? What is K-Means++? \qmarks{2}
+  \item What is the elbow method? \qmarks{2}
+  \item Define the silhouette coefficient. What does a negative value mean? \qmarks{2}
+  \item Name any three limitations of K-Means. \qmarks{2}
+  \item What is colour segmentation using K-Means? \qmarks{2}
+  \item Define core point, border point and noise point in DBSCAN. \qmarks{2}
+  \item What do $\varepsilon$ and MinPts mean in DBSCAN? \qmarks{2}
+  \item What is a Gaussian mixture model? What is a responsibility? \qmarks{2}
+  \item Differentiate between hard and soft clustering. \qmarks{2}
+\end{enumerate}
+
+\begin{modelans}[: Q3, Q6 and Q9]
+\textbf{Q3.} (i) \emph{Assignment step:} assign every point to its nearest centroid. (ii) \emph{Update step:} move each centroid to the mean of the points assigned to it. The two steps are repeated until the assignments stop changing.\par
+\textbf{Q6.} For a point $i$, $a(i)$ is its mean distance to the other points of its own cluster and $b(i)$ its smallest mean distance to another cluster; $s(i)=\frac{b(i)-a(i)}{\max\{a(i),b(i)\}}\in[-1,1]$. A negative value ($b<a$) means that the point is closer on average to another cluster than to its own, so it is probably misassigned.\par
+\textbf{Q9.} A \emph{core point} has at least MinPts points (including itself) within distance $\varepsilon$. A \emph{border point} is not core but lies within $\varepsilon$ of a core point. A \emph{noise point} is neither core nor border.
+\end{modelans}
+
+\subsection*{B.\ Short Answer Questions (5 marks each)}
+\begin{enumerate}
+  \item Explain the K-Means algorithm with a suitable example. \qmarks{5}
+  \item Explain how the number of clusters $k$ is chosen (elbow and silhouette methods). \qmarks{5}
+  \item Explain K-Means++ initialisation and why it is better than random initialisation. \qmarks{5}
+  \item Explain the limitations of K-Means with examples. \qmarks{5}
+  \item Explain how K-Means is used for image segmentation. \qmarks{5}
+  \item Explain how clustering can be used for preprocessing. \qmarks{5}
+  \item Explain how clustering is used for semi-supervised learning. \qmarks{5}
+  \item Explain the DBSCAN algorithm. How are $\varepsilon$ and MinPts chosen? \qmarks{5}
+  \item Explain Gaussian mixture models and the EM algorithm. \qmarks{5}
+  \item Compare K-Means, DBSCAN and Gaussian mixtures. \qmarks{5}
+\end{enumerate}
+
+\begin{modelans}[: B10 (comparison for 5 marks)]
+\begin{center}\small
+\begin{tabular}{@{}p{2.6cm}p{3.5cm}p{3.5cm}p{3.5cm}@{}}
+\toprule
+\textbf{Basis} & \textbf{K-Means} & \textbf{DBSCAN} & \textbf{Gaussian mixture}\\
+\midrule
+Idea & Nearest centroid & Dense regions & Mixture of Gaussians (EM)\\
+Number of clusters & Given ($k$) & Found automatically & Given ($K$)\\
+Shape & Round & Arbitrary & Elliptical\\
+Membership & Hard & Hard; noise labelled & Soft (probability)\\
+Outliers & Sensitive & Detected as noise & Low-density points\\
+Parameters & $k$ & $\varepsilon$, MinPts & $K$, covariance type\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{modelans}
+
+\subsection*{C.\ Long Answer Questions (10 marks each)}
+\begin{enumerate}
+  \item Explain the K-Means algorithm in detail. Perform two iterations on a small two-dimensional dataset and compute the inertia. \qmarks{10}
+  \item Explain how to choose $k$ in K-Means and the limitations of K-Means. Why does it fail on non-spherical clusters? \qmarks{10}
+  \item Explain the use of clustering for (a)~image segmentation, (b)~preprocessing and (c)~semi-supervised learning, with examples. \qmarks{10}
+  \item Explain the DBSCAN algorithm with the definitions of core, border and noise points and density-reachability. Classify the points of a given small dataset. \qmarks{10}
+  \item Explain Gaussian mixture models: the model, responsibilities, the EM algorithm and the choice of the number of components. Work out one E-step and one M-step. \qmarks{10}
+  \item Compare K-Means, DBSCAN and Gaussian mixture models in terms of working, cluster shape, parameters, advantages and disadvantages. \qmarks{10}
+\end{enumerate}
+
+\begin{modelans}[: C1 (numerical part)]
+Data (one dimension): $\{2,4,6,12,14,16\}$, $k=2$, initial centroids $\mu_1=3$, $\mu_2=13$.\par
+\emph{Iteration 1.} Assignment: $2,4,6\to\mu_1$ (distances $1,1,3$ against $11,9,7$); $12,14,16\to\mu_2$. Update: $\mu_1=\frac{2+4+6}{3}=4$, $\mu_2=\frac{12+14+16}3=14$.\par
+\emph{Iteration 2.} Assignments are unchanged, so the algorithm has converged.\par
+Inertia: cluster 1: $(2-4)^2+(4-4)^2+(6-4)^2=8$; cluster 2: $(12-14)^2+0+(16-14)^2=8$; $J=\mathbf{16}$.
+\end{modelans}
+
+\subsection*{D.\ Numerical Problems}
+\begin{enumerate}
+  \item Find the new centroid of the cluster $\{(1,2),(3,4),(5,0)\}$. \textit{(Answer: $(3,2)$.)}
+  \item Data $\{2,4,6,12,14,16\}$ with initial centroids $3$ and $13$: perform K-Means and give the final centroids and inertia. \textit{(Answer: $4$ and $14$; $J=16$.)}
+  \item A point has $a=2$ and $b=6$. Find its silhouette. Find it also for $a=5$, $b=3$. \textit{(Answer: $\frac{6-2}6=0.667$; $\frac{3-5}5=-0.4$.)}
+  \item K-Means++: points $0,2,10$, first centroid $0$. Find the probability of choosing each point as the second centroid. \textit{(Answer: $D^2=0,4,100$; $P=0,\ 0.038,\ 0.962$.)}
+  \item One-dimensional points $\{1,2,3,100\}$: find the mean and the median and comment. \textit{(Answer: mean $26.5$, median $2.5$; the mean is dragged by the outlier.)}
+  \item DBSCAN with $\varepsilon=1$, MinPts $=3$ on the one-dimensional points $1,\ 1.5,\ 2,\ 2.4,\ 5,\ 9$. Classify each point. \textit{(Answer: neighbourhood sizes $3,4,4,3,1,1$; the first four are core and form one cluster; $5$ and $9$ are noise.)}
+  \item A GMM has $\pi=(0.4,0.6)$. For a point $x$ the component densities are $0.2$ and $0.1$. Find the responsibilities. \textit{(Answer: $\gamma_1=\frac{0.08}{0.08+0.06}=0.571$, $\gamma_2=0.429$.)}
+  \item M-step: points $x=1,3,5$ with responsibilities $\gamma_{i1}=(1,0.5,0)$. Find $N_1$, $\mu_1$, $\pi_1$ and $\sigma_1^2$. \textit{(Answer: $N_1=1.5$; $\mu_1=\frac{1+1.5}{1.5}=1.667$; $\pi_1=0.5$; $\sigma_1^2=\frac{(1-1.667)^2+0.5(3-1.667)^2}{1.5}=0.889$.)}
+  \item BIC values for $K=1,2,3,4$ are $2000,1700,1650,1690$. Which $K$ is chosen? \textit{(Answer: $K=3$, the lowest BIC.)}
+  \item An image of $100\times100$ pixels (24 bits per pixel) is quantised to $k=8$ colours. Find the compressed size and reduction factor. \textit{(Answer: $10\,000\times3+8\times24=30\,192$ bits; $240\,000/30\,192=7.95$.)}
+\end{enumerate}
+
+\subsection*{E.\ Multiple-Choice Questions}
+\begin{enumerate}
+  \item K-Means minimises: \\
+  (a) the number of clusters \quad (b) the within-cluster sum of squares \quad (c) the silhouette \quad (d) the entropy
+  \item In the update step of K-Means each centroid becomes the: \\
+  (a) median of its points \quad (b) mean of its points \quad (c) farthest point \quad (d) first point
+  \item K-Means++ is a method for: \\
+  (a) choosing $k$ \quad (b) initialising centroids \quad (c) scaling features \quad (d) removing noise
+  \item The best $k$ by the silhouette method is the one with the: \\
+  (a) lowest score \quad (b) highest score \quad (c) score nearest 0 \quad (d) largest inertia
+  \item K-Means fails on two interleaving half-moons because: \\
+  (a) it is too slow \quad (b) it assumes round, convex clusters \quad (c) it needs labels \quad (d) it ignores distance
+  \item In colour segmentation with K-Means each pixel is a point in: \\
+  (a) 1-D \quad (b) 2-D position space \quad (c) 3-D RGB space \quad (d) 4-D space
+  \item In DBSCAN a point with fewer than MinPts neighbours but within $\varepsilon$ of a core point is a: \\
+  (a) core point \quad (b) border point \quad (c) noise point \quad (d) centroid
+  \item DBSCAN does \emph{not} require: \\
+  (a) $\varepsilon$ \quad (b) MinPts \quad (c) the number of clusters \quad (d) a distance measure
+  \item A Gaussian mixture model gives each point: \\
+  (a) one label \quad (b) a probability for each cluster \quad (c) no label \quad (d) only a distance
+  \item The EM algorithm alternates: \\
+  (a) assignment and update \quad (b) E-step and M-step \quad (c) split and merge \quad (d) train and test
+  \item Which criterion is used to choose the number of Gaussian components? \\
+  (a) Elbow only \quad (b) BIC \quad (c) Accuracy \quad (d) Gini
+  \item Which algorithm detects noise points automatically? \\
+  (a) K-Means \quad (b) DBSCAN \quad (c) both \quad (d) none
+\end{enumerate}
+\textbf{Answers:} 1-b,\ 2-b,\ 3-b,\ 4-b,\ 5-b,\ 6-c,\ 7-b,\ 8-c,\ 9-b,\ 10-b,\ 11-b,\ 12-b.
+
+\subsection*{F.\ Practice Problems}
+\begin{enumerate}
+  \item Run K-Means by hand on $\{1,2,3,10,11,12\}$ with $k=2$ and initial centroids $1$ and $2$. \textit{(Answer: $\mu=(2,\ 11)$ after two iterations; $J=4$.)}
+  \item Compute the silhouette of each point for the clustering $\{1,2,3\}$, $\{10,11,12\}$.
+  \item Apply DBSCAN with $\varepsilon=1.5$, MinPts $=3$ to the points in Figure~\ref{fig:dbscantoy} and explain why E becomes a core point.
+  \item \textbf{Coding:} cluster the \emph{iris} data with K-Means, DBSCAN and a Gaussian mixture, and compare their adjusted Rand indices with the true species.
+  \item \textbf{Coding:} segment a photograph with $k=2,4,8,16$ colours and plot the palette of each.
+  \item \textbf{Coding:} implement K-Means from scratch with \texttt{numpy} (assignment and update steps) and verify it on the six-point example.
+\end{enumerate}
+
+\begin{revision}
+\begin{center}\small
+\begin{tabular}{@{}p{3.6cm}p{9.6cm}@{}}
+\toprule
+\textbf{Topic} & \textbf{One-line recall}\\
+\midrule
+Clustering & Unsupervised grouping of similar items; no labels.\\
+K-Means & Assign to nearest centroid; centroid $=$ mean; minimise inertia $J$.\\
+K-Means++ & Pick far-apart starting centroids with probability $\propto D^2$.\\
+Choose $k$ & Elbow of inertia curve; maximum mean silhouette.\\
+Silhouette & $s=\frac{b-a}{\max(a,b)}\in[-1,1]$.\\
+Limits & Needs $k$; local minima; round clusters; outliers; scaling; hard labels.\\
+Image segmentation & Cluster RGB pixels; replace by centroid; palette compression.\\
+Preprocessing & Use distances to $k$ centroids as features.\\
+Semi-supervised & Label representatives, propagate to clusters.\\
+DBSCAN & Core ($\ge$MinPts in $\varepsilon$), border, noise; arbitrary shapes; $\varepsilon$ from k-distance knee.\\
+GMM & $p(x)=\sum\pi_k\mathcal N(x\mid\mu_k,\Sigma_k)$; EM (E: responsibilities, M: weighted updates); BIC.\\
+Choosing algorithm & Round blobs: K-Means; odd shapes/noise: DBSCAN; soft/elliptical: GMM.\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{revision}

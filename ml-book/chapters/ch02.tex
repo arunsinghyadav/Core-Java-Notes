@@ -23,6 +23,10 @@ All models are wrong, but some are useful.
 
 Chapter~1 told us \emph{what} machine learning is. \textbf{Statistical learning} is the mathematical framework that tells us \emph{why it works}, \emph{how well} it works, and \emph{how to measure that}. It treats data as random samples drawn from some unknown real-world process and asks: how can we learn that process from a finite sample?
 
+\begin{definition}[: Statistical learning]
+\textbf{Statistical learning} is a set of tools for \emph{estimating the unknown relationship} $Y=f(X)+\varepsilon$ between inputs $X$ and a response $Y$ from data, either to \textbf{predict} $Y$ for new $X$ or to \textbf{infer} how $Y$ depends on each $X_j$.
+\end{definition}
+
 \subsection{The Statistical Model}
 
 Suppose we observe $p$ input variables $X=(X_1,\dots,X_p)$ (the \emph{features}) and one output variable $Y$ (the \emph{response}). We assume that they are related by
@@ -87,45 +91,16 @@ Examples & Linear / logistic regression, Naive Bayes & k-NN, decision trees\\
 \end{center}
 
 %====================================================================
-\begin{theory}{Statistical Learning}
-\tpart{Definition}
-\textbf{Statistical learning} is a set of tools for \emph{estimating the unknown relationship} $Y=f(X)+\varepsilon$ between inputs $X$ and a response $Y$ from data, either to \textbf{predict} $Y$ for new $X$ or to \textbf{infer} how $Y$ depends on each $X_j$.
 
-\tpart{Working}
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
-  \item Assume a model family for $f$ (parametric or non-parametric).
-  \item Choose a loss function that measures prediction error.
-  \item Estimate $\hat f$ by minimising the training loss.
-  \item Estimate the risk on unseen data (test set or cross-validation).
-\end{enumerate}
-
-\tpart{Assumptions}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Observations are independent and identically distributed (i.i.d.)
-  \item The error $\varepsilon$ has mean $0$, variance $\sigma^2$ and is independent of $X$
-\end{itemize}
-
-\tpart{Advantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Gives a principled way to measure error and uncertainty
-  \item Supports both prediction and inference
-\end{itemize}
-
-\tpart{Disadvantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Conclusions depend on the assumptions made
-  \item The irreducible error $\sigma^2$ can never be removed
-  \item Needs enough data to estimate $f$ reliably
-\end{itemize}
-
-\tpart{Applications}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Forecasting and risk modelling
-  \item Scientific data analysis
-  \item Design and evaluation of ML algorithms
-\end{itemize}
-
-\end{theory}
+\procon{Statistical learning}
+{\item Gives a principled way to measure error and uncertainty
+ \item Supports both prediction and inference}
+{\item Conclusions depend on the assumptions made
+ \item The irreducible error $\sigma^2$ can never be removed
+ \item Needs enough data to estimate $f$ reliably}
+{\item Forecasting and risk modelling
+ \item Scientific data analysis
+ \item Design and evaluation of ML algorithms}
 
 \section{Supervised and Unsupervised Learning: The Statistical View}
 
@@ -276,43 +251,14 @@ for d in [1, 3, 9]:
 Notice that the degree-9 model has the \emph{lowest} training loss but a test loss twice that of degree~3. Training loss alone would have picked the wrong model.
 \end{tryit}
 
-\begin{theory}{Empirical Risk Minimisation (ERM)}
-\tpart{Definition}
-\textbf{Empirical risk minimisation} chooses the model $\hat f=\argmin_{f\in\mathcal F}\frac1n\sum_{i}L(y_i,f(x_i))$, i.e.\ the function in a chosen family $\mathcal F$ with the \emph{lowest average loss on the training data}, as a stand-in for the true (unknown) risk.
 
-\tpart{Working}
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
-  \item Choose a model family $\mathcal F$ and a loss $L$.
-  \item Compute the training loss (empirical risk) of candidate functions.
-  \item Optimise to find the minimiser $\hat f$.
-  \item Estimate the true risk of $\hat f$ using the test loss.
-\end{enumerate}
-
-\tpart{Assumptions}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Training and test data come from the same distribution
-  \item $\mathcal F$ is rich enough to contain a good function but not so rich that it memorises noise
-\end{itemize}
-
-\tpart{Advantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Simple and general; underlies most ML algorithms
-\end{itemize}
-
-\tpart{Disadvantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Training loss is an \emph{optimistic} estimate of risk
-  \item Overfits if $\mathcal F$ is too flexible (needs regularisation or validation)
-\end{itemize}
-
-\tpart{Applications}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Least-squares regression
-  \item Logistic regression and SVMs
-  \item Neural network training
-\end{itemize}
-
-\end{theory}
+\procon{Empirical risk minimisation}
+{\item Simple and general; underlies most ML algorithms}
+{\item Training loss is an \emph{optimistic} estimate of risk
+ \item Overfits if $\mathcal F$ is too flexible (needs regularisation or validation)}
+{\item Least-squares regression
+ \item Logistic regression and SVMs
+ \item Neural network training}
 
 \subsection{Splitting the Data}
 
@@ -429,29 +375,14 @@ At a test point, a model has $\Bias^2=4$, $\Var=3$ and noise $\sigma^2=2$.
 If we switch to a more flexible model with $\Bias^2=1$ and $\Var=5$, the error becomes $1+5+2=8$: lower, even though variance rose, because the bias fell more. If flexibility is pushed further to $\Bias^2=0.5$, $\Var=9$, error is $0.5+9+2=11.5$: worse. This is the trade-off.
 \end{example}
 
-\begin{theory}{Bias--Variance Trade-off}
-\tpart{Definition}
-The expected squared prediction error at a point splits into three parts: $\E[(y_0-\hat f(x_0))^2]=\Bias^2+\Var+\sigma^2$. \textbf{Bias} is the error from simplifying assumptions; \textbf{variance} is the sensitivity of $\hat f$ to the particular training sample; $\sigma^2$ is irreducible noise. The \textbf{trade-off} is that lowering one usually raises the other.
 
-\tpart{Explanation}
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
-  \item Simple, inflexible model: \emph{high bias, low variance} $\Rightarrow$ underfitting.
-  \item Complex, flexible model: \emph{low bias, high variance} $\Rightarrow$ overfitting.
-  \item Test error is U-shaped in flexibility; the best model lies at the bottom.
-\end{enumerate}
-
-\tpart{How to control}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
+\paragraph{How to control the trade-off}
+\begin{itemize}
   \item Choose flexibility with cross-validation
   \item Regularise to reduce variance
   \item Collect more data to reduce variance
   \item Ensemble methods (Chapter~5) reduce variance further
 \end{itemize}
-
-\tpart{Example}
-With $\Bias^2=4$, $\Var=3$, $\sigma^2=2$ the expected test MSE is $9$; a more flexible model with $\Bias^2=1$, $\Var=5$ gives $8$ (better), while $\Bias^2=0.5$, $\Var=9$ gives $11.5$ (worse).
-
-\end{theory}
 
 \subsection{Other Trade-offs}
 
@@ -547,38 +478,6 @@ Validation errors: $E=(4.2,\ 3.8,\ 4.6,\ 4.0,\ 3.9)$.
 Deviations from 4.1: $0.1,\,-0.3,\,0.5,\,-0.1,\,-0.2$; squares sum to $0.40$; $s^2=0.40/4=0.10$, $s=0.316$; $\SE=s/\sqrt5=0.141$. So the estimated risk is $4.1\pm0.14$.
 \end{example}
 
-\begin{theory}{k-fold Cross-Validation}
-\tpart{Definition}
-\textbf{k-fold cross-validation} estimates the risk of a model by splitting the data into $k$ equal folds, training on $k-1$ folds and validating on the remaining fold, repeating $k$ times, and averaging the $k$ validation errors.
-
-\tpart{Working}
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
-  \item Shuffle the data and split it into $k$ folds.
-  \item For $i=1,\dots,k$: train on all folds except fold $i$; compute the error $E_i$ on fold $i$.
-  \item Report $\mathrm{CV}_{(k)}=\frac1k\sum_iE_i$ (and its standard error).
-\end{enumerate}
-
-\tpart{Advantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Uses all data for both training and validation
-  \item More reliable than a single hold-out split
-  \item Standard tool for model selection and tuning
-\end{itemize}
-
-\tpart{Disadvantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Needs $k$ model fits, so it is $k$ times slower
-  \item Not suitable as-is for time-series data (order matters)
-\end{itemize}
-
-\tpart{Applications}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Hyperparameter tuning
-  \item Comparing different models
-  \item Small datasets
-\end{itemize}
-
-\end{theory}
 
 \paragraph{Choosing $k$.} \textbf{Leave-one-out CV (LOOCV)} is the extreme $k=n$: nearly unbiased but expensive and with high variance. In practice $k=5$ or $k=10$ gives a good bias--variance balance. For classification use \emph{stratified} folds, which keep the class proportions the same in each fold.
 
@@ -595,6 +494,16 @@ Typical use & Large datasets & Default choice & Very small datasets\\
 \bottomrule
 \end{tabular}
 \end{center}
+
+\procon{k-fold cross-validation}
+{\item Uses all data for both training and validation
+ \item More reliable than a single hold-out split
+ \item Standard tool for model selection and tuning}
+{\item Needs $k$ model fits, so it is $k$ times slower
+ \item Not suitable as-is for time-series data (order matters)}
+{\item Hyperparameter tuning
+ \item Comparing different models
+ \item Small datasets}
 
 \subsection{Risk Statistics for Classification}
 
@@ -623,36 +532,6 @@ F_1=\frac{2\cdot\text{Precision}\cdot\text{Recall}}{\text{Precision}+\text{Recal
 \]
 \emph{Precision} answers ``of the items I flagged, how many were truly positive?''; \emph{recall} answers ``of all true positives, how many did I find?''; $F_1$ is their harmonic mean.
 
-\begin{theory}{Confusion Matrix and Classification Metrics}
-\tpart{Definition}
-The \textbf{confusion matrix} tabulates a classifier's predictions against the true classes: true positives (TP), false negatives (FN), false positives (FP) and true negatives (TN). All classification metrics are computed from these four counts.
-
-\tpart{Metrics}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item \textbf{Accuracy} $=\frac{TP+TN}{TP+TN+FP+FN}$
-  \item \textbf{Precision} $=\frac{TP}{TP+FP}$ (how many flagged items were correct)
-  \item \textbf{Recall} $=\frac{TP}{TP+FN}$ (how many true positives were found)
-  \item \textbf{$F_1$-score} $=\frac{2PR}{P+R}$ (harmonic mean of precision and recall)
-\end{itemize}
-
-\tpart{Advantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Shows \emph{what kind} of errors are made, not only how many
-  \item Works for imbalanced data when precision/recall are used
-\end{itemize}
-
-\tpart{Disadvantages}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Accuracy misleads on imbalanced classes
-  \item Depends on the chosen decision threshold
-\end{itemize}
-
-\tpart{Applications}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Medical screening, fraud detection, spam filtering
-\end{itemize}
-
-\end{theory}
 
 \begin{example}[: Spam filter on 100 test e-mails]
 Actual spam $=50$, actual non-spam $=50$. The filter finds $TP=40$ spam mails, misses $FN=10$, wrongly flags $FP=5$ good mails and correctly passes $TN=45$.
@@ -668,6 +547,13 @@ F_1&=\tfrac{2(0.889)(0.80)}{0.889+0.80}\approx 0.842 . & &
 \end{warning}
 
 %====================================================================
+\procon{Confusion matrix and classification metrics}
+{\item Shows \emph{what kind} of errors are made, not only how many
+ \item Works for imbalanced data when precision/recall are used}
+{\item Accuracy misleads on imbalanced classes
+ \item Depends on the chosen decision threshold}
+{\item Medical screening, fraud detection, spam filtering}
+
 \section{Sampling Distribution of an Estimator}
 
 Everything we compute from data (a mean, a test error, a regression coefficient) is a \emph{statistic} calculated from a random sample. Draw a different sample and you get a different number. This section studies that randomness.
@@ -680,34 +566,6 @@ An \textbf{estimator} $\hat\theta=g(X_1,\dots,X_n)$ is a \emph{rule} (a function
 The \textbf{sampling distribution} of an estimator is its probability distribution over all possible samples of size $n$ from the population. Its \emph{standard deviation} is called the \textbf{standard error}, $\SE(\hat\theta)=\sqrt{\Var(\hat\theta)}$.
 \end{definition}
 
-\begin{theory}{Sampling Distribution of an Estimator}
-\tpart{Definition}
-An \textbf{estimator} $\hat\theta=g(X_1,\dots,X_n)$ is a rule for guessing a population quantity $\theta$ from a sample. Because the sample is random, $\hat\theta$ is a random variable; its probability distribution over all possible samples of size $n$ is its \textbf{sampling distribution}, and the standard deviation of that distribution is the \textbf{standard error} $\SE(\hat\theta)$.
-
-\tpart{Working}
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
-  \item Imagine drawing many samples of size $n$ from the population.
-  \item Compute the statistic $\hat\theta$ for every sample.
-  \item The spread of these values is the sampling distribution; its mean shows bias, its standard deviation gives the standard error.
-\end{enumerate}
-
-\tpart{Key properties}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item \textbf{Unbiased:} $\E[\hat\theta]=\theta$
-  \item \textbf{Low variance / standard error}: precise estimates
-  \item \textbf{Consistent:} $\hat\theta\to\theta$ as $n\to\infty$
-\end{itemize}
-
-\tpart{Example}
-For the sample mean, $\E[\bar X]=\mu$ and $\SE(\bar X)=\sigma/\sqrt n$; by the Central Limit Theorem $\bar X\approx\mathcal N(\mu,\sigma^2/n)$ for large $n$.
-
-\tpart{Importance}
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Gives confidence intervals: $\bar x\pm1.96\,\SE$
-  \item Tells us how much to trust an estimate such as test error
-\end{itemize}
-
-\end{theory}
 
 \subsection{Properties of Good Estimators}
 

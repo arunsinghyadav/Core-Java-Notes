@@ -43,54 +43,21 @@ SVM & $\hat y=\operatorname{sign}(z)$ & class $-1$ or $+1$ & Spam or not spam\\
 %====================================================================
 \section{Linear Regression}
 
-\begin{theory}{Linear Regression}
-\tpart{Definition}
+
+\begin{definition}[: Linear regression]
 \textbf{Linear regression} is a \emph{supervised, parametric} learning method for \emph{regression} problems. It models the target $y$ as a \textbf{linear function of the input features} plus random error, $y=\theta_0+\theta_1x_1+\cdots+\theta_dx_d+\varepsilon$, and chooses the parameters that minimise the sum of squared prediction errors (\textbf{method of least squares}).
-\tpart{Working}
+\end{definition}
 
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
-  \item Assume the linear model $\hat y=\theta_0+\theta_1x_1+\dots+\theta_dx_d$.
-  \item Define the loss $J(\theta)=\frac1{2n}\sum_i(\hat y_i-y_i)^2$.
-  \item Find $\theta$ that minimises $J$ using the \emph{normal equation} or \emph{gradient descent}.
-  \item Predict for new inputs and evaluate with MSE, RMSE and $R^2$ on test data
-\end{enumerate}
 
-\tpart{Assumptions}
 
-\begin{itemize}[itemsep=2pt,topsep=3pt]
+\paragraph{Assumptions of linear regression}
+\begin{itemize}
   \item Linearity of the relationship
   \item Independence of errors
   \item Constant error variance (homoscedasticity)
   \item Normally distributed errors (for inference)
   \item No strong multicollinearity among features
 \end{itemize}
-
-\tpart{Advantages}
-
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Simple, fast, easy to interpret (each coefficient is the effect of one feature)
-  \item Needs little data
-  \item A good baseline
-\end{itemize}
-
-\tpart{Disadvantages}
-
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Cannot capture non-linear relationships unless features are transformed
-  \item Sensitive to outliers
-  \item Affected by correlated features
-\end{itemize}
-
-\tpart{Applications}
-
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item House-price prediction
-  \item Sales forecasting
-  \item Estimating marks or salary
-  \item Demand and risk modelling
-\end{itemize}
-
-\end{theory}
 
 \subsection{Simple Linear Regression}
 
@@ -374,60 +341,35 @@ print(Ridge(alpha=1.0).fit(hours, marks).coef_)
 \end{tryit}
 
 %====================================================================
+\procon{Linear regression}
+{\item Simple, fast, easy to interpret (each coefficient is the effect of one feature)
+ \item Needs little data
+ \item A good baseline}
+{\item Cannot capture non-linear relationships unless features are transformed
+ \item Sensitive to outliers
+ \item Affected by correlated features}
+{\item House-price prediction
+ \item Sales forecasting
+ \item Estimating marks or salary
+ \item Demand and risk modelling}
+
 \section{Logistic Regression}
 
-\begin{theory}{Logistic Regression}
-\tpart{Definition}
+
+\begin{definition}[: Logistic regression]
 \textbf{Logistic regression} is a \emph{supervised, parametric} method for \emph{classification}. It models the \textbf{probability} that an instance belongs to the positive class by passing a linear score through the \textbf{sigmoid} function, $P(y=1\mid\vect x)=\sigma(\vect w\cdot\vect x+b)=\dfrac{1}{1+e^{-(\vect w\cdot\vect x+b)}}$, and predicts class 1 if this probability exceeds a threshold (usually $0.5$). Despite its name it is a classification algorithm.
-\tpart{Working}
+\end{definition}
 
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
-  \item Compute $z=\vect w\cdot\vect x+b$.
-  \item Convert to a probability $p=\sigma(z)$.
-  \item Learn $\vect w,b$ by minimising the \textbf{cross-entropy (log) loss}, equivalent to \emph{maximum likelihood}, using gradient descent.
-  \item Predict class 1 if $p\ge0.5$ (that is, $z\ge0$), else class 0
-\end{enumerate}
 
-\tpart{Assumptions}
 
-\begin{itemize}[itemsep=2pt,topsep=3pt]
+\paragraph{Assumptions of logistic regression}
+\begin{itemize}
   \item Binary (or categorical) target
   \item Independent observations
   \item Log-odds is a linear function of the features
   \item Little multicollinearity
   \item Enough data per class
 \end{itemize}
-
-\tpart{Advantages}
-
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Gives \emph{probabilities}, not only labels
-  \item Simple, fast and interpretable (coefficients are log-odds ratios)
-  \item Linear decision boundary
-  \item Works well as a baseline
-  \item Can be regularised
-\end{itemize}
-
-\tpart{Disadvantages}
-
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Only linear boundaries unless features are transformed
-  \item May underperform on complex data
-  \item Sensitive to outliers and correlated features
-  \item Fails on perfectly separable data without regularisation
-\end{itemize}
-
-\tpart{Applications}
-
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Spam detection
-  \item Disease diagnosis
-  \item Loan default
-  \item Customer churn
-  \item Pass/fail prediction
-\end{itemize}
-
-\end{theory}
 
 \subsection{Why Not Use Linear Regression for Classes?}
 
@@ -631,49 +573,37 @@ Fitted coefficients: intercept $-4.079$, slope $1.505$, boundary at $2.71$ hours
 \end{tryit}
 
 %====================================================================
+\procon{Logistic regression}
+{\item Gives \emph{probabilities}, not only labels
+ \item Simple, fast and interpretable (coefficients are log-odds ratios)
+ \item Linear decision boundary
+ \item Works well as a baseline
+ \item Can be regularised}
+{\item Only linear boundaries unless features are transformed
+ \item May underperform on complex data
+ \item Sensitive to outliers and correlated features
+ \item Fails on perfectly separable data without regularisation}
+{\item Spam detection
+ \item Disease diagnosis
+ \item Loan default
+ \item Customer churn
+ \item Pass/fail prediction}
+
 \section{Generalized Linear Models (GLMs)}
 
-\begin{theory}{Generalized Linear Model}
-\tpart{Definition}
-A \textbf{generalized linear model (GLM)} is a flexible extension of linear regression that allows the response $y$ to follow any distribution from the \textbf{exponential family} (normal, Bernoulli/binomial, Poisson, gamma, \dots) and relates its \textbf{mean} $\mu=\E[y\mid\vect x]$ to a linear predictor through a \textbf{link function}: $g(\mu)=\vect\theta^{\!\top}\vect x$.
-\tpart{Three components}
 
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
+\begin{definition}[: Generalized linear model (GLM)]
+A \textbf{generalized linear model (GLM)} is a flexible extension of linear regression that allows the response $y$ to follow any distribution from the \textbf{exponential family} (normal, Bernoulli/binomial, Poisson, gamma, \dots) and relates its \textbf{mean} $\mu=\E[y\mid\vect x]$ to a linear predictor through a \textbf{link function}: $g(\mu)=\vect\theta^{\!\top}\vect x$.
+\end{definition}
+
+
+
+\paragraph{The three components of a GLM}
+\begin{enumerate}
   \item \emph{Random component:} the distribution of $y$ (exponential family).
   \item \emph{Systematic component:} the linear predictor $\eta=\theta_0+\theta_1x_1+\cdots+\theta_dx_d$.
   \item \emph{Link function:} $g$, with $g(\mu)=\eta$, i.e.\ $\mu=g^{-1}(\eta)$
 \end{enumerate}
-
-\tpart{Working}
-Choose the distribution suited to the type of target, choose the matching link, and estimate $\vect\theta$ by \textbf{maximum likelihood} (usually by iteratively re-weighted least squares, IRLS, or gradient descent).
-\tpart{Advantages}
-
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item One unified framework
-  \item Handles counts, proportions and binary data properly
-  \item Predictions always stay in the valid range
-  \item Coefficients remain interpretable
-\end{itemize}
-
-\tpart{Disadvantages}
-
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Still assumes a linear relationship on the link scale
-  \item Sensitive to outliers
-  \item The distribution must be chosen correctly (e.g.\ over-dispersed counts break the Poisson model)
-\end{itemize}
-
-\tpart{Applications}
-
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Insurance claim counts
-  \item Accident/call counts
-  \item Binary outcomes (credit default)
-  \item Proportions
-  \item Waiting times
-\end{itemize}
-
-\end{theory}
 
 \begin{figure}[!htbp]
 \centering
@@ -726,6 +656,20 @@ A city fire-control room counts the number of emergency calls per day. The count
 \end{example}
 
 %====================================================================
+\procon{Generalized linear models}
+{\item One unified framework
+ \item Handles counts, proportions and binary data properly
+ \item Predictions always stay in the valid range
+ \item Coefficients remain interpretable}
+{\item Still assumes a linear relationship on the link scale
+ \item Sensitive to outliers
+ \item The distribution must be chosen correctly (e.g.\ over-dispersed counts break the Poisson model)}
+{\item Insurance claim counts
+ \item Accident/call counts
+ \item Binary outcomes (credit default)
+ \item Proportions
+ \item Waiting times}
+
 \section{Binary Classification and Support Vector Machines}
 
 \subsection{Binary Classification}
@@ -742,54 +686,12 @@ Many different lines can separate the same two classes perfectly. Which one is \
 
 \subsection{The Support Vector Machine (Linear, Hard Margin)}
 
-\begin{theory}{Support Vector Machine}
-\tpart{Definition}
+
+\begin{definition}[: Support vector machine (hard margin)]
 A \textbf{Support Vector Machine (SVM)} is a \emph{supervised} learning algorithm for \emph{classification} (and regression) that finds the \textbf{maximum-margin hyperplane}: the separating hyperplane $\vect w\cdot\vect x+b=0$ that is \textbf{as far as possible from the nearest training points of both classes}. The nearest points that fix the boundary are called \textbf{support vectors}.
-\tpart{Working}
+\end{definition}
 
-\begin{enumerate}[itemsep=2pt,topsep=3pt]
-  \item Label the classes $y_i\in\{-1,+1\}$.
-  \item Find $\vect w,b$ with the widest margin such that every point is on the correct side: $y_i(\vect w\cdot\vect x_i+b)\ge1$.
-  \item The margin width is $2/\|\vect w\|$, so we \emph{minimise} $\tfrac12\|\vect w\|^2$ subject to those constraints.
-  \item Classify new points by $\operatorname{sign}(\vect w\cdot\vect x+b)$. For overlapping classes, a \emph{soft margin} (parameter $C$) allows some errors; for non-linear data, \emph{kernels} are used (Chapter~6)
-\end{enumerate}
 
-\tpart{Assumptions}
-
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Data are (nearly) linearly separable in the chosen feature space
-  \item Features should be scaled
-\end{itemize}
-
-\tpart{Advantages}
-
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Effective in high dimensions
-  \item Only the support vectors matter, so it is memory-efficient
-  \item Strong generalisation because of the maximum margin
-  \item Flexible through kernels
-\end{itemize}
-
-\tpart{Disadvantages}
-
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Slow on very large datasets
-  \item Requires feature scaling
-  \item Sensitive to the choice of $C$ and the kernel
-  \item Does not directly output probabilities
-  \item Hard to interpret with non-linear kernels
-\end{itemize}
-
-\tpart{Applications}
-
-\begin{itemize}[itemsep=2pt,topsep=3pt]
-  \item Text and spam classification
-  \item Image and face recognition
-  \item Handwriting recognition
-  \item Bioinformatics (gene and protein classification)
-\end{itemize}
-
-\end{theory}
 
 \paragraph{Geometry.} The distance from a point $\vect x_0$ to the hyperplane $\vect w\cdot\vect x+b=0$ is $\dfrac{|\vect w\cdot\vect x_0+b|}{\|\vect w\|}$. We scale $\vect w,b$ so that the closest points satisfy $|\vect w\cdot\vect x+b|=1$. Then the two \emph{margin lines} are $\vect w\cdot\vect x+b=+1$ and $\vect w\cdot\vect x+b=-1$ and the \textbf{margin width} is
 \[
@@ -931,6 +833,21 @@ The output reproduces $\vect w=(0.5,0.5)$, $b=-2$, the two support vectors and $
 \end{tryit}
 
 %====================================================================
+\procon{Support vector machines}
+{\item Effective in high dimensions
+ \item Only the support vectors matter, so it is memory-efficient
+ \item Strong generalisation because of the maximum margin
+ \item Flexible through kernels}
+{\item Slow on very large datasets
+ \item Requires feature scaling
+ \item Sensitive to the choice of $C$ and the kernel
+ \item Does not directly output probabilities
+ \item Hard to interpret with non-linear kernels}
+{\item Text and spam classification
+ \item Image and face recognition
+ \item Handwriting recognition
+ \item Bioinformatics (gene and protein classification)}
+
 \section{Choosing Among the Methods of Unit II}
 
 \begin{center}

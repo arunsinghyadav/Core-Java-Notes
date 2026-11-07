@@ -1,0 +1,160 @@
+\chapter{Clustering}\label{n:cluster}
+\studytime{2.5 hours}
+
+\begin{dfn}{Clustering}
+\textbf{Clustering} is an \textbf{unsupervised} learning task that groups unlabelled instances into \textbf{clusters} so that instances in the same cluster are similar to each other and dissimilar to instances in other clusters.
+\end{dfn}
+\textbf{Applications:} customer segmentation, data analysis, dimensionality reduction, anomaly (outlier) detection, semi-supervised learning, search engines (similar images), image segmentation.
+
+\textbf{Types:} centroid-based (K-Means), density-based (DBSCAN), distribution-based (Gaussian mixtures), hierarchical (agglomerative).
+
+\section{K-Means}
+\begin{dfn}{K-Means}
+\textbf{K-Means} partitions $n$ instances into $k$ clusters, each represented by its \textbf{centroid} (mean), by minimising the \textbf{inertia} (within-cluster sum of squared distances):
+$\ J=\sum_{j=1}^k\sum_{\vect x_i\in C_j}\|\vect x_i-\vect\mu_j\|^2$.
+\end{dfn}
+\textbf{Algorithm (Lloyd's):}
+\begin{enumerate}
+  \item Choose $k$; initialise $k$ centroids (e.g.\ $k$ random instances).
+  \item \textbf{Assign} each instance to its nearest centroid.
+  \item \textbf{Update} each centroid to the mean of its assigned instances.
+  \item Repeat 2--3 until the centroids stop moving.
+\end{enumerate}
+Inertia never increases, so K-Means always converges, but possibly to a \textbf{local} optimum.
+
+\begin{numer}[: K-Means, $k=2$]
+Points $A(2,3)$, $B(5,3)$, $C(5,2)$, $D(1,1)$, $E(4,4)$, $F(4,2)$. Start $\vect\mu_1=C(5,2)$, $\vect\mu_2=F(4,2)$.\\
+\textbf{Iter 1:} distances to $(5,2)$ and $(4,2)$: A $3.16/2.24\to2$; B $1.0/1.41\to1$; C $0/1\to1$; D $4.12/3.16\to2$; E $2.24/2.0\to2$; F $1/0\to2$.\\
+Clusters $\{B,C\}$, $\{A,D,E,F\}$. New $\vect\mu_1=(5,2.5)$, $\vect\mu_2=(2.75,2.5)$.\\
+\textbf{Iter 2:} E ($1.80$ vs $1.95$) and F ($1.12$ vs $1.35$) move to cluster 1. Clusters $\{B,C,E,F\}$, $\{A,D\}$; $\vect\mu_1=(4.5,2.75)$, $\vect\mu_2=(1.5,2)$.\\
+\textbf{Iter 3:} no change $\Rightarrow$ \textbf{converged}. Inertia $=3.75+2.5=6.25$.
+\end{numer}
+
+\subsection{Choosing $k$ and better initialisation}
+\begin{itemize}
+  \item \textbf{K-Means++:} choose the first centroid at random, then each next one with probability $\propto D(\vect x)^2$ (distance to nearest chosen centroid) $\Rightarrow$ well spread starting centroids.
+  \item \textbf{Multiple runs:} run with different random starts (\texttt{n\_init}) and keep the lowest inertia.
+  \item \textbf{Mini-batch K-Means:} uses small batches; much faster on big data.
+  \item \textbf{Elbow method:} plot inertia vs.\ $k$; choose the $k$ at the ``elbow'' where the decrease slows.
+  \item \textbf{Silhouette coefficient:} $s(i)=\frac{b-a}{\max(a,b)}\in[-1,1]$, $a$ = mean distance to own cluster, $b$ = mean distance to nearest other cluster. $+1$: well placed; $0$: on boundary; $-1$: wrong cluster. Choose $k$ with highest mean silhouette.
+\end{itemize}
+\begin{numer}[: silhouette]
+$a=2$, $b=5$: $s=\frac{5-2}{5}=\mathbf{0.6}$ (well clustered).
+\end{numer}
+
+\begin{drawit}{Elbow curve}
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=6.5cm,height=4cm,xlabel={$k$},ylabel={inertia},xtick={1,...,8},yticklabels={},xmin=0.5,xmax=8.5]
+\addplot[thick,mlblue,mark=*] coordinates {(1,100)(2,55)(3,30)(4,15)(5,12)(6,10)(7,9)(8,8)};
+\node[mlred,font=\scriptsize,pin={[pin edge={mlred}]60:elbow $k=4$}] at (axis cs:4,15) {};
+\end{axis}
+\end{tikzpicture}
+\end{drawit}
+
+\subsection{Limits of K-Means}
+\begin{itemize}
+  \item $k$ must be specified in advance; result depends on initialisation.
+  \item Assumes \textbf{spherical, equal-size, equal-density} clusters; fails on elongated or non-convex shapes (e.g.\ moons, rings).
+  \item Sensitive to \textbf{outliers} (the mean is pulled) and to \textbf{feature scale}.
+  \item Hard assignment only (no probabilities).
+\end{itemize}
+\apa{simple, fast, scales to large data, easy to interpret}{needs $k$, local optima, only spherical clusters, sensitive to outliers and scaling}{customer segmentation, image compression/segmentation, document clustering, vector quantisation}
+
+\section{Uses of Clustering}
+\begin{itemize}
+  \item \textbf{Image segmentation:} partition an image into segments. \textbf{Colour segmentation} clusters the pixel colours (RGB vectors) with K-Means and replaces each pixel by its cluster's mean colour. Example: with $k=8$ colours each pixel needs 3 bits instead of 24 $\Rightarrow$ about $8\times$ smaller.
+  \item \textbf{Preprocessing:} replace each instance by its distances to the $k$ centroids (a new, often smaller, feature set) before a classifier. Example: digits data, K-Means with 50 clusters then logistic regression improves accuracy; $k$ tuned with grid search.
+  \item \textbf{Semi-supervised learning:} cluster all data and label only the instance nearest each centroid, called a \textbf{representative instance}; then \textbf{propagate} the label to all instances of the cluster. Few labels give high accuracy.
+  \item \textbf{Active learning:} the model asks a human to label the instances it is least sure about.
+\end{itemize}
+
+\section{DBSCAN}
+\begin{dfn}{DBSCAN}
+\textbf{DBSCAN} (Density-Based Spatial Clustering of Applications with Noise) defines clusters as continuous regions of \textbf{high density}. With parameters $\varepsilon$ (radius) and \textbf{MinPts}, every instance is a \textbf{core point} (at least MinPts instances, including itself, within distance $\varepsilon$), a \textbf{border point} (not core but within $\varepsilon$ of a core point), or \textbf{noise} (neither).
+\end{dfn}
+\textbf{Algorithm:}
+\begin{enumerate}
+  \item For each instance count its $\varepsilon$-neighbours; mark core points.
+  \item Connect core points that are within $\varepsilon$ of each other; each connected group is a cluster.
+  \item Assign border points to a neighbouring core point's cluster.
+  \item Remaining points are noise (anomalies).
+\end{enumerate}
+\begin{numer}[: DBSCAN, $\varepsilon=1.5$, MinPts $=3$]
+$A(1,1)$, $B(1,2)$, $C(2,1)$, $D(2,2)$, $E(3,3)$, $F(8,8)$.\\
+A: neighbours B, C, D ($\le1.41$) $\Rightarrow$ 4 $\ge3$: \textbf{core}. Similarly B, C, D are core (D also reaches E at $1.41$).\\
+E: only D within $1.5$ $\Rightarrow$ 2 $<3$, but near core D: \textbf{border}. F: alone: \textbf{noise}.\\
+Result: one cluster $\{A,B,C,D,E\}$, noise $\{F\}$.
+\end{numer}
+\begin{drawit}{Core, border and noise points}
+\centering
+\begin{tikzpicture}[scale=0.8]
+\foreach \x/\y in {0/0,0.6/0.3,0.3/0.9,1.0/0.8,1.3/0.2}{\fill[mlblue] (\x,\y) circle(3pt);}
+\draw[mlblue,dashed] (0.6,0.3) circle(0.9);
+\fill[mlorange] (2.2,1.1) circle(3pt); \fill[mlred] (4.5,1.8) circle(3pt);
+\node[font=\scriptsize,mlblue] at (0.6,-1) {core points ($\varepsilon$-circle)};
+\node[font=\scriptsize,mlorange,right] at (2.3,1.1) {border};
+\node[font=\scriptsize,mlred,right] at (4.6,1.8) {noise};
+\end{tikzpicture}
+\end{drawit}
+\apa{no need to specify $k$, finds clusters of any shape, detects outliers}{hard to choose $\varepsilon$ and MinPts, fails when densities vary, slow in high dimensions, cannot predict new points directly}{anomaly detection, geographic (GPS) data, fraud detection, astronomy}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{3cm}p{6.6cm}p{6.6cm}@{}}
+\toprule
+ & \textbf{K-Means} & \textbf{DBSCAN}\\
+\midrule
+Basis & distance to centroids & density\\
+Number of clusters & must give $k$ & found automatically\\
+Cluster shape & spherical & arbitrary\\
+Outliers & pulled into clusters & labelled as noise\\
+Parameters & $k$ & $\varepsilon$, MinPts\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Gaussian Mixture Models (GMM)}
+\begin{dfn}{Gaussian mixture model}
+A \textbf{GMM} is a probabilistic model that assumes the data are generated from a mixture of $k$ Gaussian distributions with unknown parameters:
+$\ p(\vect x)=\sum_{j=1}^k\pi_j\,\mathcal N(\vect x\mid\vect\mu_j,\mathbf\Sigma_j)$, $\ \sum\pi_j=1$.
+Each cluster is an ellipse with its own mean, covariance (shape/size/orientation) and weight $\pi_j$.
+\end{dfn}
+\textbf{Expectation--Maximisation (EM) algorithm:}
+\begin{enumerate}
+  \item Initialise $\pi_j,\vect\mu_j,\mathbf\Sigma_j$ (e.g.\ from K-Means).
+  \item \textbf{E-step:} compute the \textbf{responsibility} of each cluster for each instance:
+  $\gamma_{ij}=\dfrac{\pi_j\mathcal N(\vect x_i\mid\vect\mu_j,\mathbf\Sigma_j)}{\sum_l\pi_l\mathcal N(\vect x_i\mid\vect\mu_l,\mathbf\Sigma_l)}$.
+  \item \textbf{M-step:} update parameters using the responsibilities as weights: $N_j=\sum_i\gamma_{ij}$, $\vect\mu_j=\frac1{N_j}\sum_i\gamma_{ij}\vect x_i$, $\pi_j=N_j/n$, $\mathbf\Sigma_j$ = weighted covariance.
+  \item Repeat until the log-likelihood stops increasing.
+\end{enumerate}
+\begin{numer}[: E-step in 1-D]
+$\pi_1=\pi_2=0.5$, $\mu_1=0$, $\mu_2=4$, $\sigma=1$, point $x=1$.\\
+$\mathcal N(1\mid0,1)=0.3989e^{-0.5}=0.2420$; $\mathcal N(1\mid4,1)=0.3989e^{-4.5}=0.0044$.\\
+$\gamma_1=\frac{0.2420}{0.2420+0.0044}=\mathbf{0.982}$: the point belongs 98\% to cluster 1 (\textbf{soft clustering}).
+\end{numer}
+\begin{itemize}
+  \item EM is like K-Means with \textbf{soft} assignments and elliptical clusters.
+  \item \textbf{Choosing $k$:} minimise \textbf{BIC} $=p\ln n-2\ln\hat L$ or \textbf{AIC} $=2p-2\ln\hat L$.
+  \item \textbf{Anomaly detection:} instances in low-density regions (below a density threshold) are anomalies.
+  \item GMM is a \textbf{generative} model: it can sample new instances.
+\end{itemize}
+\apa{soft (probabilistic) clustering, elliptical clusters of different sizes, density estimation and anomaly detection, generative}{needs $k$, local optima, slow, many parameters, assumes Gaussian shape}{speaker identification, anomaly detection, image segmentation, finance}
+
+\begin{imp}
+Most asked: K-Means algorithm with numerical; limits of K-Means; elbow and silhouette; DBSCAN core/border/noise; K-Means vs.\ DBSCAN; GMM with EM; image segmentation and semi-supervised learning using clustering.
+\end{imp}
+
+\begin{iq}
+\item \twom Define clustering. Give two applications.
+\item \twom What is inertia?
+\item \twom Define core point, border point and noise in DBSCAN.
+\item \twom What is a responsibility in GMM?
+\item \fivem Explain the elbow method and silhouette score.
+\item \fivem Explain the limits of K-Means.
+\item \fivem How is clustering used for image segmentation and preprocessing?
+\item \fivem Explain semi-supervised learning using clustering.
+\item \tenm Explain K-Means with an example and its limitations.
+\item \tenm Explain DBSCAN and compare it with K-Means.
+\item \tenm Explain Gaussian mixture models and the EM algorithm.
+\end{iq}

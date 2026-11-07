@@ -1,0 +1,211 @@
+\chapter{Statistical Learning}\label{n:stat}
+\studytime{2.5 hours}
+
+\section{Statistical Learning: the Basic Model}
+
+\begin{dfn}{Statistical learning}
+\textbf{Statistical learning} is a set of tools for estimating the relationship $f$ between input variables $X=(X_1,\dots,X_p)$ (predictors, features) and an output $Y$ (response):
+\[ Y=f(X)+\varepsilon, \]
+where $f$ is fixed but unknown and $\varepsilon$ is a random error with mean zero, independent of $X$.
+\end{dfn}
+
+\begin{itemize}
+  \item \textbf{Why estimate $f$?} (i)~\textbf{Prediction}: $\hat Y=\hat f(X)$ (treat $\hat f$ as a black box). (ii)~\textbf{Inference}: understand \emph{how} $Y$ depends on each $X_j$.
+  \item \textbf{Reducible error:} $[f(X)-\hat f(X)]^2$, can be reduced with a better model.
+  \item \textbf{Irreducible error:} $\Var(\varepsilon)=\sigma^2$, cannot be removed by any model.
+\end{itemize}
+\[ \E[(Y-\hat Y)^2]=\underbrace{[f(X)-\hat f(X)]^2}_{\text{reducible}}+\underbrace{\sigma^2}_{\text{irreducible}} \]
+
+\textbf{How to estimate $f$:}
+\begin{itemize}
+  \item \textbf{Parametric methods:} assume a form (e.g.\ linear), then estimate a few parameters. Simple, but wrong form $\Rightarrow$ poor fit.
+  \item \textbf{Non-parametric methods:} no fixed form (e.g.\ k-NN, splines). Flexible, but need much data and may overfit.
+\end{itemize}
+
+\section{Supervised vs.\ Unsupervised Learning}
+\begin{itemize}
+  \item \textbf{Supervised:} for every $x_i$ there is a response $y_i$; fit a model to predict $y$. Regression (quantitative $y$) or classification (qualitative $y$).
+  \item \textbf{Unsupervised:} only $x_i$, no $y_i$. Goal: understand relationships between variables or observations, e.g.\ \textbf{cluster analysis}.
+  \item \textbf{Semi-supervised:} $y$ known for only some observations.
+\end{itemize}
+
+\section{Loss Functions, Training and Test Loss}
+
+\begin{dfn}{Loss function}
+A \textbf{loss function} $L(y,\hat y)$ measures the penalty for predicting $\hat y$ when the true value is $y$.
+\end{dfn}
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Loss} & \textbf{Formula} & \textbf{Used for}\\
+\midrule
+Squared loss & $(y-\hat y)^2$ & regression (MSE)\\
+Absolute loss & $|y-\hat y|$ & regression (MAE), robust to outliers\\
+0--1 loss & $\mathbb 1[y\ne\hat y]$ & classification (error rate)\\
+Log-loss & $-[y\ln p+(1-y)\ln(1-p)]$ & probabilistic classification\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{dfn}{Training loss and test loss}
+\textbf{Training loss} is the average loss on the data used to fit the model: $\frac1n\sum_{i=1}^nL(y_i,\hat f(x_i))$. \textbf{Test loss} is the average loss on new, unseen data. The test loss measures how well the model \textbf{generalises}.
+\end{dfn}
+
+\begin{itemize}
+  \item Training loss always falls as model \textbf{flexibility} increases.
+  \item Test loss is \textbf{U-shaped}: it falls, reaches a minimum, then rises (overfitting).
+  \item A small training loss does \textbf{not} guarantee a small test loss.
+\end{itemize}
+
+\begin{drawit}{Training and test loss vs.\ flexibility}
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=8cm,height=4.8cm,xlabel={model flexibility},ylabel={loss},ticks=none,xmin=0,xmax=10,ymin=0,ymax=6,legend style={font=\small,at={(1.02,0.5)},anchor=west}]
+\addplot[thick,mlblue,domain=0.5:10,samples=50]{4.5*exp(-0.35*x)+0.2}; \addlegendentry{training loss}
+\addplot[thick,mlred,domain=0.5:10,samples=50]{4.5*exp(-0.45*x)+0.06*(x-1)^2+1}; \addlegendentry{test loss}
+\addplot[dashed,gray,domain=0:10]{1}; \addlegendentry{irreducible $\sigma^2$}
+\node[font=\scriptsize] at (axis cs:1.6,5.3) {underfit};
+\node[font=\scriptsize] at (axis cs:8.7,5.3) {overfit};
+\end{axis}
+\end{tikzpicture}
+\end{drawit}
+
+\begin{numer}[: computing losses]
+$y=(3,5,2)$, $\hat y=(2.5,5,4)$. Errors $=(0.5,0,-2)$.\\
+MSE $=\frac{0.25+0+4}{3}=1.417$;\quad RMSE $=\sqrt{1.417}=1.190$;\quad MAE $=\frac{0.5+0+2}{3}=0.833$.
+\end{numer}
+
+\section{Risk and Its Estimation}
+\begin{dfn}{Risk and empirical risk}
+The \textbf{risk} of a model $f$ is its \textbf{expected loss} over the whole population: $\mathcal R(f)=\E[L(Y,f(X))]$. Because the population is unknown, we use the \textbf{empirical risk} (average loss on a sample): $\hat{\mathcal R}(f)=\frac1n\sum_iL(y_i,f(x_i))$.
+\end{dfn}
+
+\textbf{Estimating risk (test error):}
+\begin{enumerate}
+  \item \textbf{Validation-set approach:} split into training and validation parts. Simple, but the estimate varies a lot and uses less data.
+  \item \textbf{Leave-one-out CV (LOOCV):} train on $n-1$ points, test on 1, repeat $n$ times. Low bias, but costly.
+  \item \textbf{k-fold cross-validation:} split data into $k$ folds; each fold is the validation set once:
+  \[ \mathrm{CV}_{(k)}=\frac1k\sum_{i=1}^kE_i \qquad (k=5\text{ or }10). \]
+\end{enumerate}
+
+\begin{drawit}{5-fold cross-validation}
+\centering
+\begin{tikzpicture}[font=\scriptsize]
+\foreach \r in {1,...,5}{
+  \node[anchor=east] at (-0.1,-\r*0.5) {Round \r};
+  \foreach \c in {1,...,5}{
+    \ifnum\c=\r \fill[mlorange!60] (\c*1.3-1.3,-\r*0.5-0.2) rectangle ++(1.25,0.4);
+    \else \fill[mlblue!25] (\c*1.3-1.3,-\r*0.5-0.2) rectangle ++(1.25,0.4); \fi}
+  \node[anchor=west] at (6.6,-\r*0.5) {$E_\r$};}
+\fill[mlblue!25] (8,-1) rectangle ++(0.4,0.3); \node[anchor=west] at (8.45,-0.85) {train};
+\fill[mlorange!60] (8,-1.6) rectangle ++(0.4,0.3); \node[anchor=west] at (8.45,-1.45) {validate};
+\end{tikzpicture}
+\end{drawit}
+
+\begin{numer}[: 5-fold CV]
+Fold errors $0.20,0.25,0.15,0.22,0.18$. $\ \mathrm{CV}_{(5)}=\frac{1.00}{5}=\mathbf{0.20}$.
+\end{numer}
+
+\section{Trade-offs in Statistical Learning}
+
+\subsection{Bias--variance trade-off}
+\begin{dfn}{Bias and variance of a model}
+\textbf{Bias} is the error from approximating a complex real problem by a simpler model (systematic error). \textbf{Variance} is the amount by which $\hat f$ would change if it were trained on a different training set (sensitivity to data).
+\end{dfn}
+\[
+\E\big[(y_0-\hat f(x_0))^2\big]=\Bias\big[\hat f(x_0)\big]^2+\Var\big[\hat f(x_0)\big]+\sigma^2
+\]
+\begin{itemize}
+  \item More flexible model $\Rightarrow$ bias $\downarrow$, variance $\uparrow$.
+  \item Simple model: high bias (underfit). Complex model: high variance (overfit).
+  \item The best model balances both, at the minimum of the test-error curve.
+\end{itemize}
+
+\begin{drawit}{Bias--variance trade-off; darts board}
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=7.2cm,height=4.6cm,xlabel={complexity},ylabel={error},ticks=none,xmin=0,xmax=10,ymin=0,ymax=6,legend style={font=\scriptsize,at={(0.5,1.03)},anchor=south,legend columns=3}]
+\addplot[thick,mlblue,domain=0.5:10]{5*exp(-0.45*x)}; \addlegendentry{bias$^2$}
+\addplot[thick,mlorange,domain=0.5:10]{0.05*x^2}; \addlegendentry{variance}
+\addplot[very thick,mlred,domain=0.5:10]{5*exp(-0.45*x)+0.05*x^2+0.5}; \addlegendentry{total}
+\end{axis}
+\begin{scope}[xshift=7.6cm,yshift=0.4cm]
+\foreach \i/\bx/\by/\sp/\t in {0/0/1.9/0.12/{low bias, low var},1/2.2/1.9/0.5/{low bias, high var},2/0/0/0.12/{high bias, low var},3/2.2/0/0.5/{high bias, high var}}{
+\begin{scope}[shift={(\i*0+\bx,\by)}]
+\draw (0,0) circle(0.75); \draw (0,0) circle(0.45); \fill[mlred!60] (0,0) circle(0.15);
+\node[font=\tiny,below] at (0,-0.75) {\t};
+\end{scope}}
+\foreach \x/\y in {0.05/1.95,-0.08/1.88,0.1/1.82,-0.02/2.0}{\fill[mlblue] (\x,\y) circle(1.3pt);}
+\foreach \x/\y in {2.6/2.2,1.8/1.5,2.5/1.5,1.9/2.3}{\fill[mlblue] (\x,\y) circle(1.3pt);}
+\foreach \x/\y in {0.38/0.32,0.45/0.25,0.32/0.38,0.4/0.42}{\fill[mlblue] (\x,\y) circle(1.3pt);}
+\foreach \x/\y in {2.8/0.5,2.3/-0.4,2.9/-0.1,2.5/0.65}{\fill[mlblue] (\x,\y) circle(1.3pt);}
+\end{scope}
+\end{tikzpicture}
+\end{drawit}
+
+\subsection{Other trade-offs}
+\begin{itemize}
+  \item \textbf{Prediction accuracy vs.\ interpretability:} linear regression and trees are easy to explain; boosting and neural networks are accurate but black boxes.
+  \item \textbf{Flexibility vs.\ data size:} flexible models need more data.
+  \item \textbf{Parsimony (Occam's razor):} prefer the simplest model that explains the data.
+\end{itemize}
+
+\section{Classification Metrics}
+\begin{center}
+\small
+\begin{tabular}{@{}c|cc@{}}
+ & \textbf{Predicted +} & \textbf{Predicted $-$}\\ \hline
+\textbf{Actual +} & TP & FN\\
+\textbf{Actual $-$} & FP & TN\\
+\end{tabular}
+\end{center}
+\[
+\text{Accuracy}=\frac{TP+TN}{\text{all}},\quad \text{Precision}=\frac{TP}{TP+FP},\quad \text{Recall}=\frac{TP}{TP+FN},\quad F_1=\frac{2PR}{P+R}.
+\]
+\begin{itemize}
+  \item \textbf{Precision:} of predicted positives, how many are correct. Important when FP is costly (spam folder).
+  \item \textbf{Recall (sensitivity):} of actual positives, how many are found. Important when FN is costly (cancer test).
+  \item Accuracy misleads on \textbf{imbalanced} data (99\% ``not fraud'' is 99\% accurate yet useless).
+\end{itemize}
+
+\begin{numer}[: confusion matrix]
+100 e-mails: $TP=40$, $FN=10$, $FP=5$, $TN=45$. Accuracy $=0.85$; Precision $=40/45=0.889$; Recall $=40/50=0.80$; $F_1=\frac{2(0.889)(0.8)}{1.689}=0.842$.
+\end{numer}
+
+\section{Sampling Distribution of an Estimator}
+
+\begin{dfn}{Estimator and sampling distribution}
+An \textbf{estimator} $\hat\theta$ is a rule (statistic) that computes an estimate of a population parameter $\theta$ from a sample (e.g.\ the sample mean $\bar X$ for $\mu$). The \textbf{sampling distribution} of $\hat\theta$ is the probability distribution of its values over all possible samples of the same size.
+\end{dfn}
+
+\begin{itemize}
+  \item \textbf{Bias:} $\Bias(\hat\theta)=\E[\hat\theta]-\theta$; unbiased if $0$. $\ \mathrm{MSE}(\hat\theta)=\Var(\hat\theta)+\Bias^2$.
+  \item \textbf{Standard error:} standard deviation of the sampling distribution. For the mean: $\mathrm{SE}(\bar X)=\sigma/\sqrt n$.
+  \item \textbf{Central Limit Theorem:} for large $n$ ($\ge30$), $\bar X\approx\mathcal N(\mu,\sigma^2/n)$, whatever the population shape.
+  \item \textbf{95\% confidence interval:} $\bar x\pm1.96\,s/\sqrt n$.
+  \item \textbf{Sample variance} $s^2=\frac{1}{n-1}\sum(x_i-\bar x)^2$ is unbiased; dividing by $n$ is biased (too small).
+  \item \textbf{Bootstrap:} estimate SE by resampling the data with replacement many times.
+  \item 4 times more data $\Rightarrow$ SE halves.
+\end{itemize}
+
+\begin{numer}[: standard error and CI]
+$\bar x=70$, $\sigma=10$, $n=25$. $\ \mathrm{SE}=10/\sqrt{25}=2$. 95\% CI $=70\pm1.96(2)=70\pm3.92=(66.08,\,73.92)$.
+\end{numer}
+
+\begin{imp}
+Most asked: bias--variance trade-off (formula + diagram), training vs.\ test loss (U-curve), k-fold cross-validation, standard error and CLT, precision/recall numerical.
+\end{imp}
+
+\begin{iq}
+\item \twom What is statistical learning? Write $Y=f(X)+\varepsilon$ and explain.
+\item \twom Differentiate reducible and irreducible error.
+\item \twom Define risk and empirical risk.
+\item \twom What is the standard error of the mean?
+\item \fivem Compare parametric and non-parametric methods.
+\item \fivem Explain k-fold cross-validation with a diagram.
+\item \fivem Explain training loss and test loss with a graph.
+\item \fivem State the central limit theorem and its importance.
+\item \tenm Explain the bias--variance trade-off with formula and diagram.
+\item \tenm Explain the sampling distribution of an estimator, bias, standard error and confidence interval with an example.
+\end{iq}

@@ -1,0 +1,142 @@
+\chapter{Support Vector Machines and Naive Bayes Classifiers}\label{n:svm}
+\studytime{2 hours}
+
+\section{Linear SVM Classification}
+\begin{dfn}{Large-margin classification}
+A \textbf{linear SVM} separates two classes with the hyperplane $\vect w\cdot\vect x+b=0$ that has the \textbf{widest possible margin} (``widest street'') between the classes. Only the \textbf{support vectors} (instances on the edge of the street) determine it; adding points outside the street does not change it.
+\end{dfn}
+\begin{itemize}
+  \item Decision: $\hat y=+1$ if $\vect w\cdot\vect x+b\ge0$, else $-1$. Margin $=2/\|\vect w\|$; maximising it $\equiv$ minimising $\frac12\|\vect w\|^2$.
+  \item \textbf{Hard-margin:} all instances off the street; works only if data is linearly separable; very sensitive to outliers.
+  \item \textbf{Soft-margin:} balance wide street vs.\ margin violations using slack $\xi_i\ge0$:
+  \[\min\ \tfrac12\|\vect w\|^2+C\textstyle\sum_i\xi_i\quad\text{s.t.}\quad y_i(\vect w\cdot\vect x_i+b)\ge1-\xi_i.\]
+  \item \textbf{Hyperparameter $C$:} large $C$ $\Rightarrow$ narrow margin, few violations (overfit risk); small $C$ $\Rightarrow$ wide margin, more violations (better generalisation). If the SVM overfits, \textbf{reduce} $C$.
+  \item SVMs are sensitive to \textbf{feature scaling}: always standardise.
+  \item \textbf{Dual form:} $f(\vect x)=\sum_i\alpha_iy_i(\vect x_i\cdot\vect x)+b$, with $0\le\alpha_i\le C$; $\alpha_i>0$ only for support vectors. The data appears only through dot products $\Rightarrow$ kernel trick.
+\end{itemize}
+
+\section{Non-linear SVM Classification}
+\begin{itemize}
+  \item \textbf{Idea:} map data to a higher-dimensional space $\varphi(\vect x)$ where it becomes linearly separable. Example: 1-D points $x$ not separable $\to$ add $x^2$ $\to$ separable in 2-D.
+  \item Adding polynomial features explicitly is slow for high degrees.
+\end{itemize}
+\begin{dfn}{Kernel trick}
+A \textbf{kernel} is a function $K(\vect a,\vect b)=\varphi(\vect a)\cdot\varphi(\vect b)$ that computes the dot product in the transformed space \textbf{without computing the transformation}. The \textbf{kernel trick} replaces every dot product in the SVM by $K$, giving a non-linear classifier at the cost of a linear one.
+\end{dfn}
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Kernel} & \textbf{Formula} & \textbf{Hyperparameters}\\
+\midrule
+Linear & $\vect a\cdot\vect b$ & $C$\\
+Polynomial & $(\gamma\,\vect a\cdot\vect b+r)^d$ & degree $d$, $r$, $C$\\
+Gaussian RBF & $\exp(-\gamma\|\vect a-\vect b\|^2)$ & $\gamma$, $C$\\
+Sigmoid & $\tanh(\gamma\,\vect a\cdot\vect b+r)$ & $\gamma$, $r$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+  \item \textbf{RBF $\gamma$:} large $\gamma$ $\Rightarrow$ narrow bell, wiggly boundary (overfit); small $\gamma$ $\Rightarrow$ smooth boundary (underfit). If overfitting, reduce $\gamma$ (and $C$).
+  \item Try linear first (large data, text); then RBF.
+\end{itemize}
+\begin{numer}[: kernels]
+\textbf{Polynomial} $K=(\vect a\cdot\vect b)^2$, $\vect a=(1,2)$, $\vect b=(3,4)$: $\vect a\cdot\vect b=11$, $K=\mathbf{121}$.\\
+Check with $\varphi(\vect x)=(x_1^2,\sqrt2x_1x_2,x_2^2)$: $\varphi(\vect a)=(1,2.83,4)$, $\varphi(\vect b)=(9,16.97,16)$, dot $=9+48+64=121$ \checkmark.\\
+\textbf{RBF} $\gamma=0.1$, $\vect a=(1,2)$, $\vect b=(2,4)$: $\|\vect a-\vect b\|^2=5$, $K=e^{-0.5}=\mathbf{0.607}$ (similarity).
+\end{numer}
+\begin{drawit}{Lifting 1-D data with $x^2$}
+\centering
+\begin{tikzpicture}[scale=0.8]
+\draw[-Stealth] (-3.2,0)--(3.2,0) node[right]{$x$};
+\foreach \x in {-2.5,-2,2,2.5}{\fill[mlorange] (\x,0) circle(3pt);}
+\foreach \x in {-0.8,-0.3,0.4,0.9}{\fill[mlblue] (\x,0) circle(3pt);}
+\node[font=\scriptsize] at (0,-0.5) {not linearly separable};
+\begin{scope}[xshift=8cm,yshift=-0.5cm]
+\draw[-Stealth] (-3.2,0)--(3.2,0) node[right]{$x$}; \draw[-Stealth] (0,0)--(0,3.4) node[left]{$x^2$};
+\foreach \x in {-2.5,-2,2,2.5}{\fill[mlorange] (\x,{0.45*\x*\x}) circle(3pt);}
+\foreach \x in {-0.8,-0.3,0.4,0.9}{\fill[mlblue] (\x,{0.45*\x*\x}) circle(3pt);}
+\draw[thick,mlred,dashed] (-3,1.1)--(3,1.1) node[right,font=\scriptsize]{separating line};
+\end{scope}
+\end{tikzpicture}
+\end{drawit}
+
+\section{SVM Regression (SVR)}
+\begin{dfn}{Support vector regression}
+\textbf{SVR} reverses the SVM objective: it fits as many instances as possible \textbf{inside} a tube (street) of half-width $\varepsilon$ around the regression function, while keeping the function as flat as possible. Errors inside the tube are ignored ($\varepsilon$-\textbf{insensitive}); only points outside the tube are penalised.
+\end{dfn}
+\begin{itemize}
+  \item $\varepsilon$-insensitive loss: $L_\varepsilon=\max\big(0,\ |y-f(\vect x)|-\varepsilon\big)$.
+  \item Problem: $\min\ \frac12\|\vect w\|^2+C\sum(\xi_i+\xi_i^*)$. Support vectors lie on or outside the tube.
+  \item Larger $\varepsilon$ $\Rightarrow$ fewer support vectors, flatter model. Kernels (polynomial, RBF) give non-linear SVR.
+\end{itemize}
+\begin{numer}[: $\varepsilon$-insensitive loss, $\varepsilon=0.5$, $y=10$]
+$f=10.3$: $|{-0.3}|<0.5\Rightarrow L=0$. $\quad f=11$: $L=1-0.5=\mathbf{0.5}$. $\quad f=9$: $L=0.5$.
+\end{numer}
+\apa{effective in high dimensions, memory efficient (uses only support vectors), flexible with kernels, robust (max margin)}{slow on very large data ($O(n^2)$--$O(n^3)$), needs scaling and tuning of $C,\gamma$, no direct probabilities, hard to interpret}{text and image classification, face detection, bioinformatics, handwriting recognition, stock prediction (SVR)}
+
+\section{Naive Bayes Classifiers}
+All use $\hat y=\argmax_c\big[\ln P(c)+\sum_j\ln P(x_j\mid c)\big]$ (logs avoid underflow); they differ in how $P(x_j\mid c)$ is modelled.
+
+\begin{dfn}{Gaussian Naive Bayes}
+For \textbf{continuous} features, assumes each feature in each class is normally distributed:
+$\ P(x_j\mid c)=\dfrac1{\sqrt{2\pi}\sigma_{jc}}\exp\!\Big(-\dfrac{(x_j-\mu_{jc})^2}{2\sigma_{jc}^2}\Big)$, with mean and variance estimated per class. Example: classify fruit by weight and sweetness.
+\end{dfn}
+\begin{dfn}{Multinomial Naive Bayes}
+For \textbf{count} features (word frequencies in text): $\ P(w\mid c)=\dfrac{N_{wc}+\alpha}{N_c+\alpha V}$, where $N_{wc}$ = count of word $w$ in class $c$, $N_c$ = total words in class $c$, $V$ = vocabulary size.
+\end{dfn}
+\begin{dfn}{Bernoulli Naive Bayes}
+For \textbf{binary} features (word present or absent): $P(x_j\mid c)=p_{jc}^{x_j}(1-p_{jc})^{1-x_j}$. Unlike multinomial, it also penalises \textbf{absent} words. Good for short texts.
+\end{dfn}
+
+\begin{numer}[: Multinomial NB]
+Spam: ``free win'', ``free offer''. Ham: ``meeting today'', ``free meeting''. $V=5$, $N_{\text{spam}}=4$, $N_{\text{ham}}=4$, priors $0.5$. Test: ``free win'' ($\alpha=1$).\\
+Spam: $P(\text{free})=\frac{2+1}{9}$, $P(\text{win})=\frac{1+1}9$ $\Rightarrow$ $0.5\times\frac39\times\frac29=0.0370$.\\
+Ham: $P(\text{free})=\frac{1+1}{9}$, $P(\text{win})=\frac{0+1}9$ $\Rightarrow$ $0.5\times\frac29\times\frac19=0.0123$.\\
+\textbf{Spam} ($P=\frac{0.0370}{0.0493}=0.75$).
+\end{numer}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{2.6cm}p{4.3cm}p{4.3cm}p{4.3cm}@{}}
+\toprule
+ & \textbf{Gaussian NB} & \textbf{Multinomial NB} & \textbf{Bernoulli NB}\\
+\midrule
+Feature type & continuous & counts & binary (0/1)\\
+Likelihood & normal density & word frequency & presence/absence\\
+Absent features & --- & ignored & penalised\\
+Use & sensor, medical data & document classification & short text, spam\\
+\bottomrule
+\end{tabular}
+\end{center}
+\apa{fast to train and predict, works with small data and many features, good baseline for text}{independence assumption, zero-frequency problem (needs smoothing), poor probability estimates}{spam filtering, sentiment analysis, news categorisation, real-time prediction}
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{3.0cm}p{6.6cm}p{6.6cm}@{}}
+\toprule
+ & \textbf{SVM} & \textbf{Naive Bayes}\\
+\midrule
+Type & discriminative (boundary) & generative (probabilistic)\\
+Speed & slow on large data & very fast\\
+Data needed & medium & small\\
+Output & class (score) & class probabilities\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{imp}
+Most asked: soft vs.\ hard margin and $C$; kernel trick with polynomial/RBF kernels; effect of $\gamma$; SVR and the $\varepsilon$-tube; three types of Naive Bayes with a table.
+\end{imp}
+
+\begin{iq}
+\item \twom What is the kernel trick?
+\item \twom Write the RBF kernel and explain $\gamma$.
+\item \twom What is the $\varepsilon$-insensitive loss?
+\item \twom Differentiate multinomial and Bernoulli Naive Bayes.
+\item \fivem Explain hard-margin and soft-margin classification.
+\item \fivem Explain the role of hyperparameters $C$ and $\gamma$ in SVM.
+\item \fivem Explain SVM regression with a diagram.
+\item \tenm Explain linear and non-linear SVM classification with the kernel trick.
+\item \tenm Explain Gaussian, multinomial and Bernoulli Naive Bayes with an example.
+\end{iq}

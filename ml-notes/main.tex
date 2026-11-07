@@ -1,0 +1,41 @@
+\documentclass[11pt,a4paper,oneside]{book}
+\input{preamble}
+\begin{document}
+\frontmatter
+\begin{titlepage}
+\centering
+\vspace*{2.5cm}
+{\color{mlblue}\rule{\linewidth}{1.2pt}}\par\vspace{0.6cm}
+{\Huge\bfseries\color{mlblue} Machine Learning\par}\vspace{0.3cm}
+{\LARGE\bfseries Exam Notes\par}\vspace{0.4cm}
+{\large Short, precise, to-the-point theory for NBCA-601\par}
+\vspace{0.4cm}{\color{mlblue}\rule{\linewidth}{1.2pt}}\par
+\vspace{1.5cm}
+\begin{tikzpicture}
+\foreach \h/\c/\t [count=\i] in {2/mlblue/Units I,2.5/mlgreen/Units II,2.5/mlorange/Units III,2.5/mlpurple/Units IV,2/mlred/Units V}{
+  \fill[\c!70] (\i*1.6,0) rectangle ++(1.1,\h);
+}
+\node[font=\bfseries\color{mlblue}] at (4.8,3.4) {\faClock\ 10 chapters $\cdot$ 24 hours $\cdot$ exam ready};
+\end{tikzpicture}
+\vfill
+{\large Companion to the textbook \emph{Machine Learning: A Friendly Course for BCA Students}\par}
+\vspace{0.5cm}
+{\small Definitions $\cdot$ Key points $\cdot$ Formulas $\cdot$ Algorithms $\cdot$ Diagrams to draw $\cdot$ Numericals $\cdot$ Important questions\par}
+\vspace{1cm}
+\end{titlepage}
+\input{chapters/n00_plan}
+\tableofcontents
+\mainmatter
+\input{chapters/n01}
+\input{chapters/n02}
+\input{chapters/n03}
+\input{chapters/n04}
+\input{chapters/n05}
+\input{chapters/n06}
+\input{chapters/n07}
+\input{chapters/n08}
+\input{chapters/n09}
+\input{chapters/n10}
+\backmatter
+\input{chapters/n11_lasthour}
+\end{document}

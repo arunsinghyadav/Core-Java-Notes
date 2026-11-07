@@ -1,0 +1,125 @@
+\chapter{TensorFlow: Loading and Preprocessing Data}\label{n:tf}
+\studytime{1.5 hours}
+
+\section{TensorFlow}
+\begin{dfn}{TensorFlow}
+\textbf{TensorFlow} is an open-source library by Google for numerical computation, especially suited to large-scale machine learning. Its core is like NumPy with \textbf{GPU/TPU support}, \textbf{automatic differentiation}, \textbf{computation graphs} and \textbf{distributed} computing.
+\end{dfn}
+\textbf{Features:} runs on CPU, GPU, TPU; mobile (TF Lite), browser (TensorFlow.js), production serving (TF Serving); high-level API Keras; data API \texttt{tf.data}; TensorBoard visualisation.
+
+\textbf{Architecture (top to bottom):} Keras / \texttt{tf.data} (high-level) $\to$ low-level Python API $\to$ C++ execution engine (kernels) $\to$ CPU / GPU / TPU.
+
+\begin{dfn}{Tensor}
+A \textbf{tensor} is a multi-dimensional array of values with a fixed \textbf{data type} (\texttt{dtype}) and \textbf{shape}. Rank 0 = scalar, rank 1 = vector, rank 2 = matrix, rank 3+ = higher-order tensor.
+\end{dfn}
+\begin{itemize}
+  \item \texttt{tf.constant} = immutable tensor; \texttt{tf.Variable} = mutable (model weights), changed with \texttt{assign()}.
+  \item Operations: \texttt{tf.add}, \texttt{tf.matmul}, \texttt{tf.reduce\_mean}, \texttt{tf.square}, \texttt{tf.reshape}. NumPy arrays convert to tensors and back.
+  \item \textbf{No automatic type conversion} (float + int is an error); use \texttt{tf.cast}.
+  \item \textbf{Broadcasting:} $[[1,2],[3,4]]+[10,20]=[[11,22],[13,24]]$.
+  \item Other structures: sparse tensors, ragged tensors, string tensors, tensor arrays, sets, queues.
+  \item Elements of a tensor $=$ product of its shape: $(32,28,28,1)\to25\,088$.
+\end{itemize}
+
+\begin{dfn}{Automatic differentiation (autodiff)}
+TensorFlow records operations on a \textbf{\texttt{tf.GradientTape}} and then computes the \textbf{exact gradients} of a result with respect to variables (reverse-mode autodiff). This is how backpropagation is implemented.
+\end{dfn}
+\begin{dfn}{TF functions and graphs}
+\texttt{@tf.function} converts a Python function into a \textbf{computation graph} (via AutoGraph and tracing). Graphs are optimised (pruned, parallelised), run faster and can be exported (e.g.\ $1.45\times$ speed-up in the textbook example).
+\end{dfn}
+\textbf{Customisation:} custom loss functions, metrics, layers, models and training loops can be written with the low-level API.
+
+\section{Loading Data: the \texttt{tf.data} API}
+\begin{dfn}{\texttt{tf.data} API}
+The \textbf{\texttt{tf.data} API} represents a dataset as a sequence of elements (\texttt{tf.data.Dataset}) and provides chainable transformations to \textbf{load, transform, shuffle, batch and prefetch} data efficiently, even when it does not fit in memory.
+\end{dfn}
+\begin{center}
+\small
+\begin{tabular}{@{}p{4.4cm}p{11.9cm}@{}}
+\toprule
+\textbf{Method} & \textbf{Purpose}\\
+\midrule
+\texttt{from\_tensor\_slices()} & create a dataset from arrays/tensors (one element per row)\\
+\texttt{map(f)} & apply preprocessing to each element (parallel with \texttt{num\_parallel\_calls})\\
+\texttt{filter(f)} & keep elements satisfying a condition\\
+\texttt{shuffle(buffer)} & shuffle using a buffer; do it \textbf{before} batching\\
+\texttt{batch(n)} & group elements into batches (\texttt{drop\_remainder} option)\\
+\texttt{repeat(k)} & repeat the dataset $k$ times (epochs)\\
+\texttt{cache()} & keep data in memory after first epoch\\
+\texttt{prefetch(1)} & prepare the next batch while the current one trains (CPU--GPU overlap)\\
+\texttt{interleave()} & read several files in parallel\\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Standard pipeline order:} files, \texttt{interleave}, \texttt{shuffle}, \texttt{map} (parse and preprocess), \texttt{batch}, \texttt{prefetch}, and finally \texttt{model.fit(dataset)}.
+
+\begin{drawit}{Data pipeline}
+\centering
+\begin{tikzpicture}[font=\scriptsize,b/.style={draw,thick,rounded corners,minimum height=0.6cm,fill=mlblue!10}]
+\node[b,fill=gray!15] (a) at (0,0) {files / arrays};
+\node[b] (b) at (2.3,0) {shuffle}; \node[b] (c) at (4.2,0) {map}; \node[b] (d) at (6.1,0) {batch}; \node[b] (e) at (8.0,0) {prefetch};
+\node[b,fill=mlgreen!15] (f) at (10.3,0) {model.fit};
+\draw[-Stealth] (a)--(b); \draw[-Stealth] (b)--(c); \draw[-Stealth] (c)--(d); \draw[-Stealth] (d)--(e); \draw[-Stealth] (e)--(f);
+\end{tikzpicture}
+\end{drawit}
+
+\begin{numer}[: number of batches]
+$n=1000$, batch size $32$: $\lceil1000/32\rceil=\lceil31.25\rceil=\mathbf{32}$ batches (31 full $+$ one of 8).\\ With \texttt{drop\_remainder=True}: $31$ batches.
+\end{numer}
+
+\subsection{The TFRecord format}
+\begin{dfn}{TFRecord}
+\textbf{TFRecord} is TensorFlow's preferred \textbf{binary} format for storing large data: a sequence of binary records, usually serialised \textbf{protocol buffers} (\texttt{tf.train.Example} with features of type bytes, float or int64). Read with \texttt{TFRecordDataset}; can be compressed (GZIP).
+\end{dfn}
+Advantages: fast to read, compact, supports any data (images, text), works well with \texttt{tf.data}.
+
+\section{Preprocessing Data}
+\textbf{Where to preprocess:} (1) beforehand (NumPy/Pandas), (2) in the \texttt{tf.data} pipeline with \texttt{map}, (3) with \textbf{Keras preprocessing layers} inside the model, so the same preprocessing is used in training and production (no \textbf{training/serving skew}).
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{4.6cm}p{11.7cm}@{}}
+\toprule
+\textbf{Layer} & \textbf{What it does}\\
+\midrule
+\texttt{Normalization} & standardise: $x'=(x-\mu)/\sigma$; $\mu,\sigma$ learned by \texttt{adapt()} on training data\\
+\texttt{Discretization} & convert numbers into bins (categories)\\
+\texttt{StringLookup}, \texttt{IntegerLookup} & map categories to integer indices (vocabulary, OOV buckets)\\
+\texttt{CategoryEncoding} & one-hot / multi-hot encoding\\
+\texttt{Hashing} & hash categories into a fixed number of bins\\
+\texttt{Embedding} & dense trainable vector for each category (\#categories $\times$ dim parameters)\\
+\texttt{TextVectorization} & split text into words and map to indices (or TF-IDF)\\
+\texttt{Rescaling}, \texttt{Resizing}, \texttt{CenterCrop} & image preprocessing; \texttt{RandomFlip}, \texttt{RandomRotation} for augmentation\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{dfn}{One-hot encoding vs.\ embedding}
+\textbf{One-hot encoding} represents a category with $K$ categories as a vector of length $K$ with a single 1 (good for few categories). An \textbf{embedding} represents each category by a small \textbf{dense, trainable vector}; similar categories get similar vectors (good for many categories, e.g.\ words).
+\end{dfn}
+\begin{numer}[: preprocessing]
+\textbf{Normalization} of $[2,4,6]$: $\mu=4$, $\sigma=\sqrt{8/3}=1.633$ $\Rightarrow$ $[-1.225,\,0,\,1.225]$.\\
+\textbf{One-hot} with categories (red, green, blue): green $\to[0,1,0]$.\\
+\textbf{Embedding} 50 categories, dimension 8: $50\times8=\mathbf{400}$ parameters.
+\end{numer}
+\begin{itemize}
+  \item \textbf{TensorFlow Datasets (TFDS):} ready-made datasets (MNIST, IMDb, \dots) loaded with the function \texttt{tfds.load()}.
+  \item \textbf{TF Transform:} preprocessing for production pipelines (TFX).
+\end{itemize}
+\apa{fast, scalable pipelines, GPU/TPU and distributed support, same preprocessing in training and deployment, production tools}{steeper learning curve than Keras alone, debugging graphs is harder, verbose low-level API}{training on huge image/text datasets, mobile and web deployment, recommendation systems, research}
+
+\begin{imp}
+Most asked: what is TensorFlow and its features; tensors and variables; \texttt{tf.data} methods and pipeline order; TFRecord; Keras preprocessing layers; one-hot vs.\ embedding.
+\end{imp}
+
+\begin{iq}
+\item \twom What is a tensor? Give its rank examples.
+\item \twom Differentiate \texttt{tf.constant} and \texttt{tf.Variable}.
+\item \twom What is prefetching?
+\item \twom What is a TFRecord file?
+\item \fivem Explain automatic differentiation using \texttt{GradientTape}.
+\item \fivem Explain the main methods of the \texttt{tf.data} API.
+\item \fivem Compare one-hot encoding and embeddings.
+\item \tenm Explain TensorFlow: architecture, tensors, operations and features.
+\item \tenm Explain how data is loaded and preprocessed in TensorFlow using \texttt{tf.data}, TFRecord and Keras preprocessing layers.
+\end{iq}

@@ -1,0 +1,161 @@
+\chapter{Artificial Neural Networks with Keras}\label{n:ann}
+\studytime{2.5 hours}
+
+\section{From Biological to Artificial Neurons}
+\begin{dfn}{Artificial neural network (ANN)}
+An \textbf{artificial neural network} is a machine-learning model inspired by the network of biological neurons in the brain. It consists of layers of simple connected units (\textbf{artificial neurons}); each connection has a \textbf{weight} that is learned from data. ANNs are the core of \textbf{deep learning}.
+\end{dfn}
+\begin{center}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Biological neuron} & \textbf{Artificial neuron}\\
+\midrule
+dendrites (receive signals) & inputs $x_j$\\
+synapse strength & weights $w_j$\\
+cell body (sums signals) & weighted sum $z=\vect w\cdot\vect x+b$\\
+axon fires if above threshold & activation $a=\varphi(z)$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Why now:} huge data, powerful GPUs, better algorithms (ReLU, Adam, dropout), better initialisation.
+
+\begin{drawit}{Artificial neuron}
+\centering
+\begin{tikzpicture}[font=\small]
+\foreach \i/\y in {1/1.2,2/0,3/-1.2}{\node[draw,circle,fill=mlblue!10] (x\i) at (0,\y) {$x_\i$};}
+\node[draw,circle,thick,fill=mlorange!15,minimum size=1.2cm] (s) at (3,0) {$\Sigma\ |\ \varphi$};
+\foreach \i in {1,2,3}{\draw[-Stealth] (x\i)--(s) node[midway,above,font=\scriptsize]{$w_\i$};}
+\node (b) at (3,1.6) {$b$}; \draw[-Stealth] (b)--(s);
+\draw[-Stealth,thick] (s)--(5.6,0) node[right]{$a=\varphi(\vect w\cdot\vect x+b)$};
+\end{tikzpicture}
+\end{drawit}
+
+\section{The Perceptron}
+\begin{dfn}{Perceptron (Rosenblatt, 1957)}
+The \textbf{perceptron} is the simplest ANN: a single layer of \textbf{threshold logic units (TLUs)}. Each TLU computes $z=\vect w\cdot\vect x+b$ and outputs a \textbf{step function}: $\hat y=1$ if $z>0$, else $0$. It is a linear binary classifier.
+\end{dfn}
+\textbf{Perceptron learning rule:} for each training instance, $\ w_j\leftarrow w_j+\eta(y-\hat y)x_j$, $\ b\leftarrow b+\eta(y-\hat y)$. Weights change only on mistakes.
+\textbf{Perceptron convergence theorem:} if the data is linearly separable, the rule converges to a solution.
+
+\begin{numer}[: perceptron learns AND ($\eta=1$, start $\vect w=(0,0)$, $b=0$)]
+Epoch 1: $(1,1)$ predicted 0, $y=1$ $\Rightarrow$ $\vect w=(1,1)$, $b=1$.\\
+Continuing, after epoch 5: $\vect w=(2,1)$, $b=-2$; epoch 6 makes no mistakes.\\
+Check: $(1,1)\to1>0\Rightarrow1$; $(1,0)\to0\Rightarrow0$; $(0,1)\to-1\Rightarrow0$; $(0,0)\to-2\Rightarrow0$ \checkmark. Boundary $2x_1+x_2=2$.
+\end{numer}
+
+\begin{itemize}
+  \item \textbf{XOR problem} (Minsky \& Papert, 1969): XOR is not linearly separable, so a single perceptron cannot learn it. Solution: \textbf{stack} perceptrons $\Rightarrow$ multilayer perceptron. E.g.\ XOR $=$ AND(OR, NAND).
+\end{itemize}
+
+\section{Multilayer Perceptron (MLP) and Backpropagation}
+\begin{dfn}{Multilayer perceptron}
+An \textbf{MLP} consists of an \textbf{input layer}, one or more \textbf{hidden layers} of neurons, and an \textbf{output layer}; every neuron is connected to all neurons of the next layer (\textbf{dense / fully connected}). Signals flow only forward (\textbf{feedforward network}). An ANN with many hidden layers is a \textbf{deep neural network (DNN)}.
+\end{dfn}
+\begin{drawit}{MLP with one hidden layer}
+\centering
+\begin{tikzpicture}[n/.style={circle,draw,thick,minimum size=0.6cm}]
+\foreach \i in {1,2,3}{\node[n,fill=mlblue!10] (i\i) at (0,1.5-\i) {};}
+\foreach \i in {1,...,4}{\node[n,fill=mlorange!15] (h\i) at (2.5,2-\i) {};}
+\foreach \i in {1,2}{\node[n,fill=mlgreen!15] (o\i) at (5,1-\i) {};}
+\foreach \a in {1,2,3}{\foreach \b in {1,...,4}{\draw[gray] (i\a)--(h\b);}}
+\foreach \a in {1,...,4}{\foreach \b in {1,2}{\draw[gray] (h\a)--(o\b);}}
+\node[font=\scriptsize] at (0,-2.6) {input}; \node[font=\scriptsize] at (2.5,-2.6) {hidden}; \node[font=\scriptsize] at (5,-2.6) {output};
+\end{tikzpicture}
+\end{drawit}
+
+\begin{numer}[: forward pass of a 2--2--1 network (sigmoid)]
+$\vect x=(1,0.5)$; hidden: $z_1=0.4(1)-0.6(0.5)+0.1=0.2$, $a_1=\sigma(0.2)=0.5498$; $z_2=0.7(1)+0.2(0.5)-0.2=0.6$, $a_2=0.6457$.\\
+Output: $z=0.5(0.5498)-0.3(0.6457)+0.05=0.1312$, $\hat y=\sigma(0.1312)=\mathbf{0.533}$. Parameters $=(2\cdot2+2)+(2+1)=9$.
+\end{numer}
+\textbf{Parameters of a dense layer} $=n_{\text{in}}n_{\text{out}}+n_{\text{out}}$. MLP 784--300--100--10: $235\,500+30\,100+1\,010=\mathbf{266\,610}$.
+
+\begin{dfn}{Backpropagation}
+\textbf{Backpropagation} is the algorithm used to train MLPs. For each mini-batch it makes a \textbf{forward pass} (compute outputs and loss), then a \textbf{backward pass} that uses the \textbf{chain rule} to compute the gradient of the loss with respect to every weight, layer by layer from output to input, and finally a \textbf{gradient descent step} to update the weights.
+\end{dfn}
+\textbf{Steps:}
+\begin{enumerate}
+  \item Initialise weights randomly (not zero: symmetry breaking).
+  \item Forward pass: compute every layer's output and the loss.
+  \item Output error: $\delta^{(L)}=\frac{\partial J}{\partial a^{(L)}}\odot\varphi'(z^{(L)})$.
+  \item Propagate back: $\delta^{(l)}=(\mathbf W^{(l+1)\top}\delta^{(l+1)})\odot\varphi'(z^{(l)})$.
+  \item Gradients: $\frac{\partial J}{\partial\mathbf W^{(l)}}=\delta^{(l)}a^{(l-1)\top}$; update $\mathbf W\leftarrow\mathbf W-\eta\frac{\partial J}{\partial\mathbf W}$.
+  \item Repeat for all mini-batches; one pass over the training set is an \textbf{epoch}.
+\end{enumerate}
+Step function has zero gradient, so MLPs use smooth activations.
+
+\section{Activation Functions}
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\textbf{Function} & \textbf{Formula} & \textbf{Range} & \textbf{Note}\\
+\midrule
+Sigmoid & $\frac1{1+e^{-z}}$ & $(0,1)$ & binary output; vanishing gradient\\
+Tanh & $\frac{e^z-e^{-z}}{e^z+e^{-z}}$ & $(-1,1)$ & zero-centred\\
+ReLU & $\max(0,z)$ & $[0,\infty)$ & default for hidden layers; fast; ``dying ReLU''\\
+Leaky ReLU & $\max(\alpha z,z)$ & $(-\infty,\infty)$ & fixes dying ReLU\\
+Softmax & $\frac{e^{z_k}}{\sum_je^{z_j}}$ & $(0,1)$, sum 1 & multi-class output\\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Why non-linear?} Without non-linear activations, many layers collapse into a single linear transformation and cannot learn complex patterns.
+
+\begin{center}
+\small
+\begin{tabular}{@{}p{3.0cm}p{3.2cm}p{3.2cm}p{5.5cm}@{}}
+\toprule
+\textbf{Task} & \textbf{Output neurons} & \textbf{Output activation} & \textbf{Loss}\\
+\midrule
+Regression & 1 per value & none (linear) & MSE (or MAE, Huber)\\
+Binary classification & 1 & sigmoid & binary cross-entropy\\
+Multi-label & 1 per label & sigmoid & binary cross-entropy\\
+Multi-class & 1 per class & softmax & (sparse) categorical cross-entropy\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Implementing MLPs with Keras}
+\begin{dfn}{Keras}
+\textbf{Keras} is a high-level deep-learning API (part of TensorFlow as \texttt{tf.keras}) for building, training, evaluating and running neural networks easily.
+\end{dfn}
+\textbf{Workflow (5 steps):}
+\begin{enumerate}
+  \item \textbf{Load and prepare data:} split train/validation/test; scale inputs (e.g.\ pixels $/255$).
+  \item \textbf{Build the model:} \texttt{Sequential} API (stack of layers: \texttt{Flatten}, \texttt{Dense(300, activation="relu")}, \dots, \texttt{Dense(10, activation="softmax")}).
+  \item \textbf{Compile:} choose loss (\texttt{sparse\_categorical\_crossentropy}), optimizer (\texttt{sgd}, \texttt{adam}) and metrics (\texttt{accuracy}).
+  \item \textbf{Train:} \texttt{fit(X, y, epochs, batch\_size, validation\_data)}; returns a \texttt{History} (learning curves).
+  \item \textbf{Evaluate and predict:} \texttt{evaluate()} on the test set, \texttt{predict()} for new data; \texttt{save()} the model.
+\end{enumerate}
+\begin{itemize}
+  \item \textbf{Three APIs:} \textbf{Sequential} (simple stack), \textbf{Functional} (multiple inputs/outputs, wide-and-deep networks), \textbf{Subclassing} (fully dynamic models).
+  \item \textbf{Callbacks:} \texttt{ModelCheckpoint} (save best model), \texttt{EarlyStopping} (stop when validation loss stops improving), \texttt{TensorBoard} (visualise).
+  \item Updates per epoch $=\lceil n/\text{batch size}\rceil$; e.g.\ $55\,000/32\to1719$.
+  \item Example: Fashion-MNIST MLP reaches about 88\% test accuracy.
+\end{itemize}
+
+\section{Training Deep Networks: Key Ideas}
+\begin{itemize}
+  \item \textbf{Hyperparameters:} number of hidden layers, neurons per layer, learning rate (most important), batch size, optimizer, activation, epochs. Tune with validation data or random search (Keras Tuner).
+  \item \textbf{Vanishing/exploding gradients:} gradients shrink or grow through many layers. Fixes: ReLU, He/Glorot initialisation, batch normalisation, gradient clipping.
+  \item \textbf{Optimizers:} SGD, momentum ($\vect v\leftarrow\beta\vect v-\eta\vect g$), RMSProp, \textbf{Adam} (momentum + adaptive rates; default choice).
+  \item \textbf{Regularisation (avoid overfitting):} L1/L2 weight penalty, \textbf{dropout} (randomly switch off neurons during training, e.g.\ 20--50\%), \textbf{early stopping}, more data / data augmentation.
+\end{itemize}
+\apa{learns complex non-linear patterns, automatic feature learning, scales with data and GPUs, state of the art for images, speech and text}{needs large data and compute, black box, many hyperparameters, can overfit}{image recognition, speech recognition, translation, recommendation, self-driving cars, medical imaging}
+
+\begin{imp}
+Most asked: perceptron and its learning rule; XOR problem; MLP architecture; backpropagation steps; activation functions table; Keras workflow (build--compile--fit--evaluate); dropout and early stopping.
+\end{imp}
+
+\begin{iq}
+\item \twom What is a perceptron?
+\item \twom Why can a perceptron not solve XOR?
+\item \twom Define an activation function. Why is ReLU popular?
+\item \twom What is an epoch?
+\item \fivem Compare biological and artificial neurons.
+\item \fivem Explain activation functions with formulas.
+\item \fivem Explain the Sequential and Functional APIs of Keras.
+\item \fivem What is dropout? How does it reduce overfitting?
+\item \tenm Explain the multilayer perceptron and the backpropagation algorithm.
+\item \tenm Explain the steps to build, compile, train and evaluate an MLP classifier using Keras.
+\end{iq}

@@ -66,3 +66,15 @@
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\vect}[1]{\boldsymbol{#1}}
+
+% ---------- explanation / exam boxes ----------
+\newtcolorbox{explain}{enhanced,breakable,colback=teal!6,colframe=teal!60!black,
+  fonttitle=\bfseries,title={\faEye\ \ Reading the Figure},arc=3pt}
+\newtcolorbox{modelans}[1][]{enhanced,breakable,colback=mlgreen!5,colframe=mlgreen,
+  fonttitle=\bfseries,title={\faCheckCircle\ \ Model Answer#1},arc=3pt}
+\newtcolorbox{revision}{enhanced,breakable,colback=mlpurple!5,colframe=mlpurple,
+  fonttitle=\bfseries,title={\faBolt\ \ Quick Revision},arc=3pt}
+\newcommand{\qmarks}[1]{\hfill\textnormal{\small\textbf{[#1 marks]}}}
+\usepackage{caption}
+\captionsetup{font=small,labelfont={bf,color=mlblue},labelsep=period}
+\newcommand{\rupee}{Rs.}
